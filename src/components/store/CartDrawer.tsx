@@ -1,4 +1,5 @@
 import { X, Minus, Plus, ShoppingBag } from "lucide-react";
+import { useEffect } from "react";
 import { FREE_SHIPPING_THRESHOLD, PRODUCTS, inr } from "@/lib/products";
 import { useCart } from "./CartContext";
 
@@ -10,20 +11,45 @@ export function CartDrawer() {
   const inCart = new Set(lines.map((l) => l.id));
   const suggestions = PRODUCTS.filter((p) => !inCart.has(p.id)).slice(0, 3);
 
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open, setOpen]);
+
   return (
-    <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
+    <div
+      className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`}
+      aria-hidden={!open}
+      inert={!open}
+    >
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-foreground/40 transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 bg-foreground/45 backdrop-blur-[2px] transition-[opacity,backdrop-filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "opacity-100" : "opacity-0"}`}
       />
       <aside
-        className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-background transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Shopping cart"
+        className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-background shadow-[-24px_0_70px_rgba(0,0,0,0.16)] transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "translate-x-0" : "translate-x-full"}`}
       >
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border px-5 py-5">
           <h2 className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
             Your cart ({lines.reduce((s, l) => s + l.qty, 0)})
           </h2>
-          <button onClick={onClose} aria-label="Close cart" className="shrink-0 p-1">
+          <button
+            onClick={onClose}
+            aria-label="Close cart"
+            className="motion-button shrink-0 rounded-full p-2 hover:rotate-90 hover:bg-secondary"
+          >
             <X className="h-5 w-5" />
           </button>
         </header>
@@ -52,10 +78,11 @@ export function CartDrawer() {
             <p className="py-16 text-center text-sm text-muted-foreground">Your cart is empty.</p>
           ) : (
             <ul className="divide-y divide-border">
-              {lines.map((line) => (
+              {lines.map((line, index) => (
                 <li
                   key={line.id}
-                  className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 py-5"
+                  className="cart-line-enter grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 py-5"
+                  style={{ animationDelay: `${index * 55}ms` }}
                 >
                   <img
                     src={line.image}
@@ -71,7 +98,7 @@ export function CartDrawer() {
                       <button
                         aria-label={`Decrease ${line.name}`}
                         onClick={() => setQty(line.id, line.qty - 1)}
-                        className="px-2.5 py-1.5"
+                        className="motion-button px-2.5 py-1.5 hover:bg-secondary"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
@@ -79,7 +106,7 @@ export function CartDrawer() {
                       <button
                         aria-label={`Increase ${line.name}`}
                         onClick={() => setQty(line.id, line.qty + 1)}
-                        className="px-2.5 py-1.5"
+                        className="motion-button px-2.5 py-1.5 hover:bg-secondary"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -96,15 +123,22 @@ export function CartDrawer() {
           {suggestions.length > 0 && (
             <div className="border-t border-border py-6">
               <p className="eyebrow">Add more to save</p>
-              <div className="no-scrollbar -mx-5 mt-4 flex gap-3 overflow-x-auto px-5">
+              <div className="no-scrollbar -mx-5 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 scroll-smooth">
                 {suggestions.map((p) => (
-                  <div key={p.id} className="w-36 shrink-0 border border-border p-3">
-                    <img src={p.image} alt={p.name} className="mx-auto h-20 object-contain" />
+                  <div
+                    key={p.id}
+                    className="motion-card w-36 shrink-0 snap-start border border-border p-3"
+                  >
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="mx-auto h-20 object-contain transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-105"
+                    />
                     <p className="mt-2 truncate text-xs font-semibold uppercase">{p.name}</p>
                     <p className="text-xs text-muted-foreground">{inr(p.price)}</p>
                     <button
                       onClick={() => add(p.id)}
-                      className="mt-2 w-full border border-foreground py-1.5 text-[11px] font-semibold uppercase tracking-widest"
+                      className="motion-button mt-2 w-full border border-foreground py-1.5 text-[11px] font-semibold uppercase tracking-widest hover:bg-foreground hover:text-background"
                     >
                       Add
                     </button>
@@ -121,7 +155,7 @@ export function CartDrawer() {
             <span className="text-lg font-semibold">{inr(subtotal)}</span>
           </div>
           <button
-            className="mt-4 flex w-full items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background disabled:opacity-40"
+            className="motion-button mt-4 flex w-full items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40"
             disabled={lines.length === 0}
           >
             <ShoppingBag className="h-4 w-4" /> Checkout

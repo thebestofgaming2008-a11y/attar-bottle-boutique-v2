@@ -90,17 +90,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Rare air, crafted for the relentless. Five unisex attars made in India.",
       },
       { property: "og:type", content: "website" },
-      {
-        property: "og:image",
-        content:
-          "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/badr-campaign-banner.png",
-      },
       { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "twitter:image",
-        content:
-          "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/badr-campaign-banner.png",
-      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

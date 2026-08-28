@@ -21,20 +21,10 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:type", content: "website" },
       {
-        property: "og:image",
-        content:
-          "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/badr-campaign-banner.png",
-      },
-      {
         property: "og:url",
         content: "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev",
       },
       { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "twitter:image",
-        content:
-          "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/badr-campaign-banner.png",
-      },
     ],
   }),
   component: Index,
@@ -49,14 +39,6 @@ function Index() {
       <Hero onCta={scrollToShop} />
 
       <VideoBand />
-
-      <section className="bg-foreground px-4 pb-4 sm:px-6 sm:pb-6">
-        <img
-          src="/badr-campaign-banner.png"
-          alt="BADR collection — five luxury attar bottles"
-          className="mx-auto w-full max-w-7xl"
-        />
-      </section>
 
       {PRODUCTS.map((p, i) => (
         <div id={i === 0 ? "shop" : undefined} key={p.id}>

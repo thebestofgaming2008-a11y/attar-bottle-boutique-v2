@@ -38,14 +38,14 @@ export function Hero({
         {ctaTo ? (
           <Link
             to={ctaTo}
-            className="border border-background/70 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-background transition-colors hover:bg-background hover:text-foreground"
+            className="motion-button border border-background/70 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:bg-background hover:text-foreground"
           >
             {ctaLabel}
           </Link>
         ) : (
           <button
             onClick={onCta}
-            className="border border-background/70 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-background transition-colors hover:bg-background hover:text-foreground"
+            className="motion-button border border-background/70 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:bg-background hover:text-foreground"
           >
             {ctaLabel}
           </button>

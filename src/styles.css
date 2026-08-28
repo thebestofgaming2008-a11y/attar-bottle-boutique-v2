@@ -68,6 +68,11 @@
 
 :root {
   --radius: 0.625rem;
+  --ease-shop: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-shop-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-fast: 180ms;
+  --motion-base: 320ms;
+  --motion-slow: 560ms;
   --background: oklch(0.995 0 0);
   --foreground: oklch(0.14 0 0);
   --card: oklch(1 0 0);
@@ -138,6 +143,10 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -147,12 +156,140 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  button,
+  a,
+  input,
+  summary,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    cursor: pointer;
+    transition:
+      color var(--motion-base) var(--ease-shop),
+      background-color var(--motion-base) var(--ease-shop),
+      border-color var(--motion-base) var(--ease-shop),
+      opacity var(--motion-base) var(--ease-shop),
+      transform var(--motion-base) var(--ease-shop),
+      box-shadow var(--motion-base) var(--ease-shop);
+  }
+
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.975);
+    transition-duration: 90ms;
+  }
+
+  :where(a, button, input, [role="button"]):focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
   }
 
   ::selection {
     background: var(--color-foreground);
     color: var(--color-background);
   }
+}
+
+[data-slot="accordion-content"] {
+  animation-duration: 420ms !important;
+  animation-timing-function: var(--ease-shop) !important;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cart-count-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  65% {
+    transform: scale(1.16);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cart-line-enter {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@utility page-enter {
+  animation: page-enter var(--motion-slow) var(--ease-shop) both;
+}
+
+@utility cart-count-pop {
+  animation: cart-count-pop 360ms var(--ease-shop) both;
+}
+
+@utility cart-line-enter {
+  animation: cart-line-enter 420ms var(--ease-shop) both;
+}
+
+@utility shop-transition {
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--ease-shop);
+}
+
+@utility shop-transition-slow {
+  transition-duration: var(--motion-slow);
+  transition-timing-function: var(--ease-shop);
+}
+
+@utility motion-card {
+  transition:
+    transform var(--motion-base) var(--ease-shop),
+    box-shadow var(--motion-base) var(--ease-shop),
+    border-color var(--motion-base) var(--ease-shop);
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 55px rgb(0 0 0 / 0.12);
+  }
+}
+
+@utility motion-button {
+  transition:
+    transform var(--motion-fast) var(--ease-shop),
+    color var(--motion-base) var(--ease-shop),
+    background-color var(--motion-base) var(--ease-shop),
+    border-color var(--motion-base) var(--ease-shop),
+    opacity var(--motion-base) var(--ease-shop),
+    box-shadow var(--motion-base) var(--ease-shop);
+  &:active {
+    transform: scale(0.975);
+    transition-duration: 90ms;
+  }
+}
+
+@utility motion-link {
+  transition:
+    color var(--motion-base) var(--ease-shop),
+    opacity var(--motion-base) var(--ease-shop),
+    transform var(--motion-base) var(--ease-shop);
 }
 
 @utility eyebrow {
@@ -172,7 +309,9 @@
 /* Display type: wide + heavy, Akira-Expanded energy without the full weight */
 @layer base {
   .font-display {
-    font-variation-settings: "wdth" 125, "wght" 780;
+    font-variation-settings:
+      "wdth" 125,
+      "wght" 780;
     font-weight: 780;
     letter-spacing: -0.01em;
     text-transform: uppercase;
@@ -240,6 +379,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
   .reveal {
     opacity: 1;
     transform: none;
@@ -252,4 +402,3 @@
     animation: none;
   }
 }
-

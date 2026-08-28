@@ -22,12 +22,12 @@ export function ScentChapter({ product, index }: { product: Product; index: numb
         <img
           src={scene}
           alt={`${product.name} attar — cinematic campaign poster`}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.04]"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
           loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/30" />
 
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 p-8 text-center sm:p-12">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 p-8 text-center transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-2 sm:p-12">
           <Reveal>
             <p className="text-[10px] uppercase tracking-[0.3em] text-white/60">
               {String(index + 1).padStart(2, "0")}

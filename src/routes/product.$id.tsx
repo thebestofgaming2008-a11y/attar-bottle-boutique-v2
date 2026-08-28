@@ -94,7 +94,7 @@ function ProductPage() {
           <div className="mx-auto max-w-7xl">
             <Link
               to="/"
-              className="mb-6 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/60 transition-colors hover:text-foreground"
+              className="motion-link mb-6 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/60 hover:-translate-x-1 hover:text-foreground"
             >
               <ArrowLeft className="h-3.5 w-3.5" /> Back to collection
             </Link>
@@ -159,7 +159,7 @@ function ProductPage() {
                       type="button"
                       aria-label="Decrease quantity"
                       onClick={() => setQty((value) => Math.max(1, value - 1))}
-                      className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white"
+                      className="motion-button grid h-11 w-11 place-items-center rounded-full hover:bg-white"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
@@ -170,7 +170,7 @@ function ProductPage() {
                       type="button"
                       aria-label="Increase quantity"
                       onClick={() => setQty((value) => value + 1)}
-                      className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white"
+                      className="motion-button grid h-11 w-11 place-items-center rounded-full hover:bg-white"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
@@ -178,7 +178,7 @@ function ProductPage() {
                   <button
                     type="button"
                     onClick={() => cart.add(product.id, qty)}
-                    className="rounded-full bg-foreground px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-background transition-transform hover:-translate-y-0.5 hover:shadow-xl"
+                    className="motion-button rounded-full bg-foreground px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-background hover:-translate-y-0.5 hover:shadow-xl"
                   >
                     Add {qty > 1 ? `${qty} to bag` : "to bag"} · {inr(product.price * qty)}
                   </button>
@@ -331,7 +331,7 @@ function ProductPage() {
         <button
           type="button"
           onClick={() => cart.add(product.id, qty)}
-          className="shrink-0 rounded-full bg-foreground px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-background"
+          className="motion-button shrink-0 rounded-full bg-foreground px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-background hover:-translate-y-0.5 hover:shadow-lg"
         >
           Add to bag
         </button>
@@ -357,7 +357,7 @@ function ProductGallery({
         <img
           src={scene}
           alt={`${name} luxury attar campaign`}
-          className="h-full w-full object-cover transition-transform duration-1000 hover:scale-[1.025]"
+          className="h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.025]"
         />
         <figcaption className="absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md">
           BADR · Made in India
@@ -367,14 +367,14 @@ function ProductGallery({
         <img
           src={packshot}
           alt={`${name} bottle front view`}
-          className="h-full w-full object-contain transition-transform duration-700 hover:scale-105"
+          className="h-full w-full object-contain transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-105"
         />
       </figure>
       <figure className="aspect-square overflow-hidden bg-[#e7e1d8]">
         <img
           src={detail}
           alt={`${name} product detail`}
-          className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-105"
         />
       </figure>
     </div>
