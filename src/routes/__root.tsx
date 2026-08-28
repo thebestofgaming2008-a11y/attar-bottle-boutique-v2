@@ -78,14 +78,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "BADR Attar — Rare Air" },
+      {
+        name: "description",
+        content: "Rare air, crafted for the relentless. Shop BADR's unisex 6 ml attars.",
+      },
+      { name: "author", content: "BADR" },
+      { property: "og:title", content: "BADR Attar — Rare Air" },
+      {
+        property: "og:description",
+        content: "Rare air, crafted for the relentless. Five unisex attars made in India.",
+      },
       { property: "og:type", content: "website" },
+      {
+        property: "og:image",
+        content:
+          "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/badr-campaign-banner.png",
+      },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      {
+        name: "twitter:image",
+        content:
+          "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/badr-campaign-banner.png",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

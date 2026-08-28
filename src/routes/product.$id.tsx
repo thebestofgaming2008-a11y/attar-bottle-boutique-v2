@@ -1,13 +1,25 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { Minus, Plus } from "lucide-react";
-import { PRODUCTS, inr } from "@/lib/products";
+import { ArrowLeft, Check, Droplets, MapPin, Minus, Plus, ShieldCheck, Truck } from "lucide-react";
+import {
+  BOTTLE_IMAGES,
+  FREE_SHIPPING_THRESHOLD,
+  PRODUCTS,
+  SCENE_IMAGES,
+  inr,
+} from "@/lib/products";
 import { useCart } from "@/components/store/CartContext";
-import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
-import { Hero } from "@/components/store/Hero";
-import { VideoBand } from "@/components/store/VideoBand";
+import { ProductCard } from "@/components/store/ProductCard";
+import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { Section, SectionHead } from "@/components/store/Section";
-import { Reveal } from "@/components/store/Reveal";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+const SITE_ORIGIN = "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
 
 export const Route = createFileRoute("/product/$id")({
   loader: ({ params }) => {
@@ -22,15 +34,26 @@ export const Route = createFileRoute("/product/$id")({
         meta: [{ title: "Unavailable — BADR" }, { name: "robots", content: "noindex" }],
       };
     }
+
+    const pageUrl = `${SITE_ORIGIN}/product/${p.id}`;
+    const socialImage = new URL(SCENE_IMAGES[p.id] ?? p.image, SITE_ORIGIN).toString();
+    const description = `${p.hook} ${p.category}, 6 ml roll-on, ${inr(p.price)}.`;
+
     return {
       meta: [
         { title: `${p.name} — BADR Attar` },
-        { name: "description", content: `${p.hook} ${p.category}, 6 ml roll-on, ${inr(p.price)}.` },
+        { name: "description", content: description },
         { property: "og:title", content: `${p.name} — BADR Attar` },
         { property: "og:description", content: p.hook },
         { property: "og:type", content: "product" },
+        { property: "og:url", content: pageUrl },
+        { property: "og:image", content: socialImage },
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: `${p.name} — BADR Attar` },
+        { name: "twitter:description", content: p.hook },
+        { name: "twitter:image", content: socialImage },
       ],
+      links: [{ rel: "canonical", href: pageUrl }],
     };
   },
   component: ProductPage,
@@ -40,132 +63,356 @@ function ProductPage() {
   const { product } = Route.useLoaderData();
   const cart = useCart();
   const [qty, setQty] = useState(1);
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const scene = SCENE_IMAGES[product.id] ?? product.image;
+  const bottle = BOTTLE_IMAGES[product.id] ?? product.image;
+  const related = PRODUCTS.filter((candidate) => candidate.id !== product.id).slice(0, 4);
+  const shippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - product.price * qty);
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    image: [new URL(scene, SITE_ORIGIN).toString()],
+    description: product.hook,
+    brand: { "@type": "Brand", name: "BADR" },
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "INR",
+      price: product.price,
+      url: `${SITE_ORIGIN}/product/${product.id}`,
+    },
+  };
 
   return (
     <StoreShell>
-      <Hero headline={product.name} ctaLabel="Add to bag" onCta={() => cart.add(product.id, qty)} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
 
-      <VideoBand />
+      <main>
+        <section className="bg-[#f1eee8] px-4 pb-20 pt-24 sm:px-6 sm:pb-28 sm:pt-28">
+          <div className="mx-auto max-w-7xl">
+            <Link
+              to="/"
+              className="mb-6 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/60 transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to collection
+            </Link>
 
-      <Section bordered={false}>
-        <div className="grid gap-12 lg:grid-cols-2 lg:items-start lg:gap-16">
-          <Reveal>
-            <div className="bg-secondary px-8 py-16">
-              <img
-                src={product.image}
-                alt={`${product.name} attar, 6 ml roll-on`}
-                className="mx-auto w-full max-w-[280px]"
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] lg:items-start lg:gap-14">
+              <ProductGallery
+                name={product.name}
+                scene={scene}
+                packshot={bottle}
+                detail={product.image}
               />
+
+              <div className="lg:sticky lg:top-24 lg:py-4">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="eyebrow text-foreground/55">{product.category}</p>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-foreground/15 bg-white/55 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]">
+                    <Check className="h-3 w-3" /> 6 ml roll-on
+                  </span>
+                </div>
+
+                <h1 className="mt-6 font-display text-5xl leading-[0.86] sm:text-6xl lg:text-7xl">
+                  {product.name}
+                </h1>
+                <p className="mt-5 max-w-lg text-[11px] font-semibold uppercase leading-relaxed tracking-[0.17em] text-foreground/55">
+                  {product.mood}
+                </p>
+                <p className="mt-7 max-w-lg font-display text-xl leading-tight sm:text-2xl">
+                  {product.hook}
+                </p>
+
+                <div className="mt-8 flex items-end justify-between gap-4 border-y border-foreground/15 py-5">
+                  <div>
+                    <p className="font-display text-3xl leading-none">{inr(product.price)}</p>
+                    <p className="mt-1.5 text-xs text-foreground/50">6 ml · roll-on attar</p>
+                  </div>
+                  <p className="text-right text-[10px] uppercase leading-relaxed tracking-[0.14em] text-foreground/50">
+                    Made in India
+                    <br />
+                    Unisex parfum
+                  </p>
+                </div>
+
+                <div className="mt-7">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/55">
+                    Key notes
+                  </p>
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {product.notes.map((note) => (
+                      <li
+                        key={note}
+                        className="rounded-full border border-foreground/20 bg-white/40 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.15em]"
+                      >
+                        {note}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-8 grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+                  <div className="inline-flex items-center rounded-full border border-foreground/20 bg-white/55 p-1">
+                    <button
+                      type="button"
+                      aria-label="Decrease quantity"
+                      onClick={() => setQty((value) => Math.max(1, value - 1))}
+                      className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="min-w-8 text-center text-sm font-semibold" aria-live="polite">
+                      {qty}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Increase quantity"
+                      onClick={() => setQty((value) => value + 1)}
+                      className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => cart.add(product.id, qty)}
+                    className="rounded-full bg-foreground px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-background transition-transform hover:-translate-y-0.5 hover:shadow-xl"
+                  >
+                    Add {qty > 1 ? `${qty} to bag` : "to bag"} · {inr(product.price * qty)}
+                  </button>
+                </div>
+
+                <p className="mt-3 text-center text-xs text-foreground/50">
+                  {shippingRemaining > 0
+                    ? `Add ${inr(shippingRemaining)} more to unlock free shipping.`
+                    : "Your order qualifies for free shipping."}
+                </p>
+
+                <ProductBenefits />
+
+                <Accordion type="single" collapsible className="mt-8 border-t border-foreground/15">
+                  <AccordionItem value="story" className="border-foreground/15">
+                    <AccordionTrigger className="py-5 text-[11px] font-semibold uppercase tracking-[0.18em] hover:no-underline">
+                      The story
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-6 text-sm leading-relaxed text-foreground/65">
+                      {product.meaning ? `${product.meaning} ` : ""}
+                      {product.story}
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="wear" className="border-foreground/15">
+                    <AccordionTrigger className="py-5 text-[11px] font-semibold uppercase tracking-[0.18em] hover:no-underline">
+                      How to wear it
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-6 text-sm leading-relaxed text-foreground/65">
+                      Roll lightly over pulse points — wrists, inner elbows and behind the ears. Let
+                      the oil settle naturally instead of rubbing it in.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="delivery" className="border-foreground/15">
+                    <AccordionTrigger className="py-5 text-[11px] font-semibold uppercase tracking-[0.18em] hover:no-underline">
+                      Delivery & returns
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-6 text-sm leading-relaxed text-foreground/65">
+                      Free shipping on orders over {inr(FREE_SHIPPING_THRESHOLD)}. Cash on delivery
+                      is available, with free returns within 7 days.
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
             </div>
-          </Reveal>
+          </div>
+        </section>
 
-          <Reveal delay={100}>
-            <p className="eyebrow">{product.category}</p>
-            <h1 className="mt-4 font-display text-4xl leading-[0.95] sm:text-5xl">
-              {product.name}
-            </h1>
-            <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-              {product.mood}
-            </p>
-            <p className="mt-6 font-display text-lg leading-snug">{product.hook}</p>
+        <section className="overflow-hidden bg-foreground text-background">
+          <div className="mx-auto grid max-w-7xl lg:grid-cols-2">
+            <div className="flex flex-col justify-center px-6 py-20 sm:px-12 sm:py-28 lg:px-16">
+              <p className="eyebrow text-background/45">The scent</p>
+              <h2 className="mt-5 max-w-lg font-display text-4xl leading-[0.92] sm:text-6xl">
+                {product.tag.replaceAll("·", ".")}
+              </h2>
+              <p className="mt-8 max-w-xl text-sm leading-7 text-background/65 sm:text-base">
+                {product.meaning ? `${product.meaning} ` : ""}
+                {product.story}
+              </p>
 
-            <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
-              {product.meaning ? `${product.meaning} ` : ""}
-              {product.story}
-            </p>
+              <dl className="mt-12 grid grid-cols-3 gap-px bg-background/15">
+                <ScentStat label="Wear" value={product.longevity} />
+                <ScentStat label="Character" value={product.intensity} />
+                <ScentStat label="Best for" value={product.occasion} />
+              </dl>
+            </div>
+            <div className="relative min-h-[540px] lg:min-h-[760px]">
+              <img
+                src={scene}
+                alt={`${product.name} campaign scene`}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
+            </div>
+          </div>
+        </section>
 
-            <p className="eyebrow mt-7">Key notes</p>
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {product.notes.map((n) => (
-                <li
-                  key={n}
-                  className="border border-border px-3 py-1.5 text-[11px] uppercase tracking-[0.14em]"
-                >
-                  {n}
+        <Section className="bg-[#f7f5f0]">
+          <div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="eyebrow">The composition</p>
+              <h2 className="mt-5 font-display text-4xl leading-[0.92] sm:text-6xl">
+                Notes that stay with you.
+              </h2>
+              <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">
+                A compact 6 ml roll-on built for close, deliberate wear. Each note unfolds slowly on
+                skin and becomes more personal as the hours pass.
+              </p>
+            </div>
+            <ol className="divide-y divide-border border-y border-border">
+              {product.notes.map((note, index) => (
+                <li key={note} className="grid grid-cols-[3rem_minmax(0,1fr)] items-center py-6">
+                  <span className="text-xs text-muted-foreground">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="font-display text-2xl sm:text-3xl">{note}</span>
                 </li>
               ))}
-            </ul>
+            </ol>
+          </div>
+        </Section>
 
-            <div className="mt-8 flex items-baseline gap-3">
-              <span className="font-display text-2xl">{inr(product.price)}</span>
-            </div>
+        <Section>
+          <SectionHead
+            eyebrow="Questions, answered"
+            title="Know your attar."
+            sub="The essentials before this bottle becomes part of your routine."
+          />
+          <Accordion
+            type="single"
+            collapsible
+            defaultValue="faq-0"
+            className="mx-auto mt-12 max-w-3xl border-t border-border"
+          >
+            {product.faqs.map((faq, index) => (
+              <AccordionItem key={faq.q} value={`faq-${index}`}>
+                <AccordionTrigger className="py-6 text-left text-base font-semibold hover:no-underline">
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent className="max-w-2xl pb-6 text-sm leading-7 text-muted-foreground">
+                  {faq.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </Section>
 
-            <div className="mt-6 flex items-stretch gap-3">
-              <div className="inline-flex items-center border border-border">
-                <button
-                  aria-label="Decrease quantity"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="px-3.5 py-3"
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span className="min-w-8 text-center text-sm">{qty}</span>
-                <button
-                  aria-label="Increase quantity"
-                  onClick={() => setQty((q) => q + 1)}
-                  className="px-3.5 py-3"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <button
-                onClick={() => cart.add(product.id, qty)}
-                className="flex-1 bg-foreground px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-background transition-opacity hover:opacity-85"
-              >
-                Add to bag
-              </button>
-            </div>
-          </Reveal>
-        </div>
-      </Section>
-
-      <Section>
-        <SectionHead title="FAQs" />
-        <div className="mx-auto mt-12 max-w-2xl border-t border-border">
-          {product.faqs.map((f, i) => (
-            <div key={f.q} className="border-b border-border">
-              <button
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                aria-expanded={openFaq === i}
-                className="flex w-full items-center justify-between gap-4 py-5 text-left"
-              >
-                <span className="text-sm font-semibold">{f.q}</span>
-                <Plus
-                  className={`h-4 w-4 shrink-0 transition-transform duration-300 ${
-                    openFaq === i ? "rotate-45" : ""
-                  }`}
-                />
-              </button>
-              <div
-                className={`grid transition-all duration-300 ease-out ${
-                  openFaq === i ? "grid-rows-[1fr] pb-5 opacity-100" : "grid-rows-[0fr] opacity-0"
-                }`}
-              >
-                <p className="overflow-hidden text-sm leading-relaxed text-muted-foreground">
-                  {f.a}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
+        <Section dark bordered={false}>
+          <SectionHead
+            eyebrow="The BADR collection"
+            title="Choose your next mood."
+            sub="Five distinct scents. One signature bottle."
+            dark
+          />
+          <div className="mt-14 grid gap-px bg-background/15 sm:grid-cols-2 lg:grid-cols-4">
+            {related.map((candidate) => (
+              <ProductCard key={candidate.id} product={candidate} />
+            ))}
+          </div>
+        </Section>
+      </main>
 
       <SiteFooter />
 
-      {/* Sticky mobile add-to-bag */}
-      <div className="sticky bottom-0 z-30 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border bg-background/95 px-5 py-3 backdrop-blur sm:hidden">
+      <div className="sticky bottom-0 z-30 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border bg-background/95 px-4 py-3 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:hidden">
         <div className="min-w-0">
           <p className="truncate font-display text-sm leading-none">{product.name}</p>
           <p className="mt-1 text-xs text-muted-foreground">{inr(product.price)} · 6 ml</p>
         </div>
         <button
+          type="button"
           onClick={() => cart.add(product.id, qty)}
-          className="shrink-0 bg-foreground px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-background"
+          className="shrink-0 rounded-full bg-foreground px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-background"
         >
           Add to bag
         </button>
       </div>
     </StoreShell>
+  );
+}
+
+function ProductGallery({
+  name,
+  scene,
+  packshot,
+  detail,
+}: {
+  name: string;
+  scene: string;
+  packshot: string;
+  detail: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <figure className="relative col-span-2 aspect-square overflow-hidden bg-foreground sm:aspect-[4/5]">
+        <img
+          src={scene}
+          alt={`${name} luxury attar campaign`}
+          className="h-full w-full object-cover transition-transform duration-1000 hover:scale-[1.025]"
+        />
+        <figcaption className="absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md">
+          BADR · Made in India
+        </figcaption>
+      </figure>
+      <figure className="aspect-square overflow-hidden bg-white p-8 sm:p-10">
+        <img
+          src={packshot}
+          alt={`${name} bottle front view`}
+          className="h-full w-full object-contain transition-transform duration-700 hover:scale-105"
+        />
+      </figure>
+      <figure className="aspect-square overflow-hidden bg-[#e7e1d8]">
+        <img
+          src={detail}
+          alt={`${name} product detail`}
+          className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+        />
+      </figure>
+    </div>
+  );
+}
+
+function ProductBenefits() {
+  const benefits = [
+    { icon: Droplets, label: "6 ml roll-on" },
+    { icon: MapPin, label: "Made in India" },
+    { icon: Truck, label: "Free ship ₹999+" },
+    { icon: ShieldCheck, label: "7-day returns" },
+  ];
+
+  return (
+    <ul className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-foreground/10 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+      {benefits.map(({ icon: Icon, label }) => (
+        <li
+          key={label}
+          className="flex min-h-24 flex-col items-center justify-center gap-2 bg-white/45 p-3 text-center"
+        >
+          <Icon className="h-4 w-4" strokeWidth={1.6} />
+          <span className="text-[9px] font-semibold uppercase leading-relaxed tracking-[0.13em]">
+            {label}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ScentStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-foreground px-4 py-5">
+      <dt className="text-[9px] uppercase tracking-[0.2em] text-background/40">{label}</dt>
+      <dd className="mt-2 font-display text-sm capitalize leading-tight text-background">
+        {value}
+      </dd>
+    </div>
   );
 }

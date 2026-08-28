@@ -10,6 +10,11 @@ import sceneGulaab from "@/assets/scene-oud-gulaab.jpg";
 import sceneFitoor from "@/assets/scene-fitoor.jpg";
 import sceneDariya from "@/assets/scene-dariya.jpg";
 import sceneUlfat from "@/assets/scene-ulfat.jpg";
+import spinZafar from "@/assets/spin-oud-zafar.png";
+import spinGulaab from "@/assets/spin-oud-gulaab.png";
+import spinFitoor from "@/assets/spin-fitoor.png";
+import spinDariya from "@/assets/spin-dariya.png";
+import spinUlfat from "@/assets/spin-ulfat.png";
 
 /** Cinematic poster per scent, keyed by product id. */
 export const SCENE_IMAGES: Record<string, string> = {
@@ -18,6 +23,15 @@ export const SCENE_IMAGES: Record<string, string> = {
   fitoor: sceneFitoor,
   dariya: sceneDariya,
   ulfat: sceneUlfat,
+};
+
+/** Clean front-facing bottle renders used in product galleries. */
+export const BOTTLE_IMAGES: Record<string, string> = {
+  "oud-zafar": spinZafar,
+  "oud-gulaab": spinGulaab,
+  fitoor: spinFitoor,
+  dariya: spinDariya,
+  ulfat: spinUlfat,
 };
 
 export const BOTTLE_IMAGE = bottle.url;
@@ -42,6 +56,7 @@ export type Product = {
   mrp: number;
   occasion: Occasion;
   intensity: "bold" | "soft";
+  longevity: string;
   faqs: { q: string; a: string }[];
 };
 
@@ -54,6 +69,7 @@ export const PRODUCTS: Product[] = [
     mood: "Battlefields · Late nights · The ones who don't back down",
     occasion: "evening",
     intensity: "bold",
+    longevity: "8+ hours",
     hook: "It smells like oud, saffron and a fight worth winning.",
     image: imgZafar,
     story:
@@ -84,6 +100,7 @@ export const PRODUCTS: Product[] = [
     mood: "Evenings · Weddings · The quiet kind of confidence",
     occasion: "evening",
     intensity: "soft",
+    longevity: "6–8 hours",
     hook: "It smells like rose, oud and a slow exhale.",
     image: imgGulaab,
     story:
@@ -115,6 +132,7 @@ export const PRODUCTS: Product[] = [
     meaning: "Fitoor means obsession — the good kind.",
     occasion: "everyday",
     intensity: "bold",
+    longevity: "6–8 hours",
     hook: "It smells like pineapple, vanilla and a little bit of obsession.",
     image: imgFitoor,
     story:
@@ -143,6 +161,7 @@ export const PRODUCTS: Product[] = [
     meaning: "Dariya means river — and it wears like one.",
     occasion: "morning",
     intensity: "soft",
+    longevity: "Around 6 hours",
     hook: "It smells like bergamot, vetiver and open water.",
     image: imgDariya,
     story:
@@ -173,6 +192,7 @@ export const PRODUCTS: Product[] = [
     mood: "Date nights · Cold evenings · Being someone's favourite",
     occasion: "close",
     intensity: "soft",
+    longevity: "8+ hours",
     hook: "It smells like vanilla, amber and being close to someone.",
     image: imgUlfat,
     story:
