@@ -101,10 +101,9 @@ function SiteHeader() {
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-foreground px-6 py-20 text-center text-background">
-      <Wordmark size="lg" estd className="mx-auto block" />
-      <p className="mt-5 font-display text-xl leading-none">Rare air.</p>
-      <p className="mt-4 text-xs uppercase tracking-[0.2em] text-background/60">
-        Crafted for the relentless
+      <Wordmark size="lg" className="mx-auto block" />
+      <p className="mt-5 font-display text-xl leading-tight">
+        Rare Air. Crafted for the Relentless.
       </p>
       <p className="mt-10 text-xs text-background/50">ESTD 1448 AH · Made in India</p>
       <div className="h-8" />

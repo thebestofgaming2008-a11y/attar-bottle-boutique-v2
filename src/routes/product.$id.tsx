@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { PRODUCTS, inr } from "@/lib/products";
@@ -8,8 +8,6 @@ import { Hero } from "@/components/store/Hero";
 import { VideoBand } from "@/components/store/VideoBand";
 import { Section, SectionHead } from "@/components/store/Section";
 import { Reveal } from "@/components/store/Reveal";
-import { ProductCard } from "@/components/store/ProductCard";
-import { TrustStrip } from "@/components/store/TrustStrip";
 
 export const Route = createFileRoute("/product/$id")({
   loader: ({ params }) => {
@@ -21,10 +19,7 @@ export const Route = createFileRoute("/product/$id")({
     const p = loaderData?.product;
     if (!p) {
       return {
-        meta: [
-          { title: "Unavailable — BADR" },
-          { name: "robots", content: "noindex" },
-        ],
+        meta: [{ title: "Unavailable — BADR" }, { name: "robots", content: "noindex" }],
       };
     }
     return {
@@ -46,7 +41,6 @@ function ProductPage() {
   const cart = useCart();
   const [qty, setQty] = useState(1);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const others = PRODUCTS.filter((p) => p.id !== product.id);
 
   return (
     <StoreShell>
@@ -68,7 +62,9 @@ function ProductPage() {
 
           <Reveal delay={100}>
             <p className="eyebrow">{product.category}</p>
-            <h1 className="mt-4 font-display text-4xl leading-[0.95] sm:text-5xl">{product.name}</h1>
+            <h1 className="mt-4 font-display text-4xl leading-[0.95] sm:text-5xl">
+              {product.name}
+            </h1>
             <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
               {product.mood}
             </p>
@@ -79,7 +75,8 @@ function ProductPage() {
               {product.story}
             </p>
 
-            <ul className="mt-7 flex flex-wrap gap-2">
+            <p className="eyebrow mt-7">Key notes</p>
+            <ul className="mt-3 flex flex-wrap gap-2">
               {product.notes.map((n) => (
                 <li
                   key={n}
@@ -92,7 +89,6 @@ function ProductPage() {
 
             <div className="mt-8 flex items-baseline gap-3">
               <span className="font-display text-2xl">{inr(product.price)}</span>
-              <span className="text-sm text-muted-foreground line-through">{inr(product.mrp)}</span>
             </div>
 
             <div className="mt-6 flex items-stretch gap-3">
@@ -120,18 +116,12 @@ function ProductPage() {
                 Add to bag
               </button>
             </div>
-
-            <p className="mt-4 text-xs text-muted-foreground">
-              Free shipping over ₹999 · COD available · 7-day returns
-            </p>
           </Reveal>
         </div>
       </Section>
 
-      <TrustStrip />
-
       <Section>
-        <SectionHead eyebrow="Good to know" title="Questions" />
+        <SectionHead title="FAQs" />
         <div className="mx-auto mt-12 max-w-2xl border-t border-border">
           {product.faqs.map((f, i) => (
             <div key={f.q} className="border-b border-border">
@@ -158,25 +148,6 @@ function ProductPage() {
               </div>
             </div>
           ))}
-        </div>
-      </Section>
-
-      <Section>
-        <SectionHead eyebrow="Keep going" title="The other four" />
-        <div className="no-scrollbar -mx-6 mt-12 flex gap-5 overflow-x-auto px-6 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
-          {others.map((p, i) => (
-            <Reveal key={p.id} delay={i * 60} className="w-[70vw] shrink-0 sm:w-auto">
-              <ProductCard product={p} />
-            </Reveal>
-          ))}
-        </div>
-        <div className="mt-12 text-center">
-          <Link
-            to="/"
-            className="border border-foreground px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em]"
-          >
-            Back to the collection
-          </Link>
         </div>
       </Section>
 

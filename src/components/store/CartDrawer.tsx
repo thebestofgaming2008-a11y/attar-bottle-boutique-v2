@@ -11,10 +11,7 @@ export function CartDrawer() {
   const suggestions = PRODUCTS.filter((p) => !inCart.has(p.id)).slice(0, 3);
 
   return (
-    <div
-      className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`}
-      aria-hidden={!open}
-    >
+    <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
       <div
         onClick={onClose}
         className={`absolute inset-0 bg-foreground/40 transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0"}`}
@@ -35,14 +32,18 @@ export function CartDrawer() {
           <p className="text-center text-sm">
             {remaining > 0 ? (
               <>
-                You're <span className="font-semibold">{inr(remaining)}</span> away from free shipping
+                You're <span className="font-semibold">{inr(remaining)}</span> away from free
+                shipping
               </>
             ) : (
               <span className="font-semibold">Free shipping unlocked</span>
             )}
           </p>
           <div className="mt-3 h-[3px] w-full bg-border">
-            <div className="h-full bg-foreground transition-all duration-500" style={{ width: `${pct}%` }} />
+            <div
+              className="h-full bg-foreground transition-all duration-500"
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
 
@@ -52,10 +53,19 @@ export function CartDrawer() {
           ) : (
             <ul className="divide-y divide-border">
               {lines.map((line) => (
-                <li key={line.id} className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 py-5">
-                  <img src={line.image} alt={line.name} className="h-16 w-16 shrink-0 object-contain" />
+                <li
+                  key={line.id}
+                  className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 py-5"
+                >
+                  <img
+                    src={line.image}
+                    alt={line.name}
+                    className="h-16 w-16 shrink-0 object-contain"
+                  />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold uppercase tracking-wide">{line.name}</p>
+                    <p className="truncate text-sm font-semibold uppercase tracking-wide">
+                      {line.name}
+                    </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">6 ml roll-on</p>
                     <div className="mt-2 inline-flex items-center border border-border">
                       <button
@@ -77,7 +87,6 @@ export function CartDrawer() {
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-semibold">{inr(line.price * line.qty)}</p>
-                    <p className="text-xs text-muted-foreground line-through">{inr(line.mrp * line.qty)}</p>
                   </div>
                 </li>
               ))}
@@ -111,7 +120,10 @@ export function CartDrawer() {
             <span className="uppercase tracking-widest">Subtotal</span>
             <span className="text-lg font-semibold">{inr(subtotal)}</span>
           </div>
-          <button className="mt-4 flex w-full items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background disabled:opacity-40" disabled={lines.length === 0}>
+          <button
+            className="mt-4 flex w-full items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background disabled:opacity-40"
+            disabled={lines.length === 0}
+          >
             <ShoppingBag className="h-4 w-4" /> Checkout
           </button>
           <p className="mt-3 text-center text-xs text-muted-foreground">

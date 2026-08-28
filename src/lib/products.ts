@@ -54,17 +54,26 @@ export const PRODUCTS: Product[] = [
     mood: "Battlefields · Late nights · The ones who don't back down",
     occasion: "evening",
     intensity: "bold",
-    hook: "Oud, saffron and a fight worth winning.",
+    hook: "It smells like oud, saffron and a fight worth winning.",
     image: imgZafar,
     story:
-      "Bold oud and saffron sit at the centre, rose keeps it warm, sandalwood stays on the skin long after you've left the room.",
+      "Oud Zafar carries the name of victory for a reason. Bold oud and saffron sit at the center, rose keeps it warm, sandalwood stays on the skin long after you've left the room. Wear it on the day you need that in your bones.",
     notes: ["Oud", "Saffron", "Rose", "Amber", "Sandalwood"],
     price: 599,
     mrp: 899,
     faqs: [
-      { q: "How long does it last?", a: "Built to stay close for 8+ hours depending on skin and weather." },
-      { q: "What does it smell like?", a: "Deep oud and saffron with a soft rose warmth and a sandalwood drydown." },
-      { q: "When should I wear it?", a: "Evenings, occasions, any day you're walking in to win something." },
+      {
+        q: "How long does Oud Zafar last?",
+        a: "It's built to stay close for 8+ hours depending on skin and weather — this is the hero attar, made to be felt.",
+      },
+      {
+        q: "What does Oud Zafar smell like?",
+        a: "Warm and commanding — deep oud and saffron with a soft rose warmth and a sandalwood drydown. Not loud — just present.",
+      },
+      {
+        q: "When should I wear it?",
+        a: "Evenings, occasions, any day you're walking in to win something.",
+      },
     ],
   },
   {
@@ -75,17 +84,26 @@ export const PRODUCTS: Product[] = [
     mood: "Evenings · Weddings · The quiet kind of confidence",
     occasion: "evening",
     intensity: "soft",
-    hook: "Rose, oud and a slow exhale.",
+    hook: "It smells like rose, oud and a slow exhale.",
     image: imgGulaab,
     story:
-      "Turkish rose with a soft resinous oud, backed by sandalwood and musk that hang around till the night's over.",
+      "Oud Gulaab pairs Turkish rose with a soft resinous oud, backed by sandalwood and musk that hang around till the night's over. Rose and oud have shared a bottle for centuries — this is BADR's take, without the harshness attars usually get blamed for.",
     notes: ["Rose", "Oud", "Sandalwood", "Musk"],
     price: 599,
     mrp: 899,
     faqs: [
-      { q: "How long does it last?", a: "Easily 6–8 hours — rose and oud both have staying power." },
-      { q: "What does it smell like?", a: "Romantic but not sweet. Bright rose first, then a soft resinous oud." },
-      { q: "Can I wear this every day?", a: "Yes, though it really comes alive in the evening." },
+      {
+        q: "How long does Oud Gulaab last?",
+        a: "Easily 6-8 hours — rose and oud both have staying power.",
+      },
+      {
+        q: "What does Oud Gulaab smell like?",
+        a: "Romantic but not sweet. Bright rose first, then a soft resinous oud underneath.",
+      },
+      {
+        q: "Can I wear this every day?",
+        a: "Yes, though it really comes alive in the evening.",
+      },
     ],
   },
   {
@@ -97,17 +115,23 @@ export const PRODUCTS: Product[] = [
     meaning: "Fitoor means obsession — the good kind.",
     occasion: "everyday",
     intensity: "bold",
-    hook: "Pineapple, vanilla and a little bit of obsession.",
+    hook: "It smells like pineapple, vanilla and a little bit of obsession.",
     image: imgFitoor,
     story:
-      "Juicy pineapple and apple lead, soft woods sit underneath, and a warm vanilla-musk trail closes it out.",
+      "Juicy pineapple and apple lead, soft woods sit underneath, and a warm vanilla-musk trail closes it out. This is the one you reach for without thinking, the scent that becomes part of your routine before you notice it happened.",
     notes: ["Pineapple", "Apple", "Vanilla", "Musk"],
     price: 499,
     mrp: 749,
     faqs: [
-      { q: "How long does it last?", a: "6–8 hours, fresh through the day." },
-      { q: "What does it smell like?", a: "Fruity and woody, sweet but not heavy." },
-      { q: "Summer or winter?", a: "Both. Light enough for daily wear, warm enough for cooler months." },
+      { q: "How long does Fitoor last?", a: "6-8 hours, fresh through the day." },
+      {
+        q: "What does Fitoor smell like?",
+        a: "Fruity and woody, sweet but not heavy — the kind of scent people ask you about.",
+      },
+      {
+        q: "Summer or winter?",
+        a: "Both. Light enough for daily wear, warm enough to hold up in cooler months.",
+      },
     ],
   },
   {
@@ -119,17 +143,26 @@ export const PRODUCTS: Product[] = [
     meaning: "Dariya means river — and it wears like one.",
     occasion: "morning",
     intensity: "soft",
-    hook: "Bergamot, vetiver and open water.",
+    hook: "It smells like bergamot, vetiver and open water.",
     image: imgDariya,
     story:
-      "Bergamot and mandarin open it up clean, vetiver carries it home — for the days you want to feel like you just stepped outside.",
+      "Bergamot and mandarin open it up clean, vetiver carries it home. The fresh, aquatic note BADR's lineup was missing, for the days you want to feel like you just stepped outside.",
     notes: ["Bergamot", "Mandarin", "Vetiver"],
     price: 499,
     mrp: 749,
     faqs: [
-      { q: "How long does it last?", a: "Around 6 hours — freshies wear lighter by design." },
-      { q: "What does it smell like?", a: "Clean citrus that dries down to an earthy vetiver." },
-      { q: "When should I wear it?", a: "Mornings, workdays, gym bag." },
+      {
+        q: "How long does Dariya last?",
+        a: "Around 6 hours — freshies wear lighter by design.",
+      },
+      {
+        q: "What does Dariya smell like?",
+        a: "Clean citrus that dries down to an earthy vetiver.",
+      },
+      {
+        q: "When should I wear it?",
+        a: "Mornings, workdays, gym bag — anywhere you want to smell awake.",
+      },
     ],
   },
   {
@@ -138,20 +171,28 @@ export const PRODUCTS: Product[] = [
     category: "Unisex Gourmand Vanilla Parfum",
     tag: "Sweet · Amber · Close",
     mood: "Date nights · Cold evenings · Being someone's favourite",
-    meaning: "Ulfat means affection.",
     occasion: "close",
     intensity: "soft",
-    hook: "Vanilla, amber and being close to someone.",
+    hook: "It smells like vanilla, amber and being close to someone.",
     image: imgUlfat,
     story:
-      "Lavender opens it, vanilla carries the heart, amber wraps it up warm — sweet without asking for permission.",
+      "Ulfat means affection, and it's the softest thing in the BADR lineup. Lavender opens it, vanilla carries the heart, amber wraps it up warm. The gourmand attar BADR never had until now — sweet without asking for permission.",
     notes: ["Lavender", "Vanilla", "Amber"],
     price: 499,
     mrp: 749,
     faqs: [
-      { q: "How long does it last?", a: "Vanilla and amber both linger — expect 8+ hours." },
-      { q: "What does it smell like?", a: "Warm, sweet, a little addictive — skin-warmed vanilla." },
-      { q: "When should I wear it?", a: "Cold weather, date nights, anytime you want people to lean in." },
+      {
+        q: "How long does Ulfat last?",
+        a: "Vanilla and amber both linger — expect 8+ hours.",
+      },
+      {
+        q: "What does Ulfat smell like?",
+        a: "Warm, sweet, a little addictive. Not sugary — more like skin-warmed vanilla.",
+      },
+      {
+        q: "When should I wear it?",
+        a: "Cold weather, date nights, anytime you want people to lean in.",
+      },
     ],
   },
 ];
