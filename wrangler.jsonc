@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "badr-boutique-studio-v2",
+  "main": ".output/server/index.mjs",
+  "compatibility_date": "2026-08-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".output/public",
+    "binding": "ASSETS",
+  },
+  "vars": {
+    "PUBLIC_SITE_URL": "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev",
+    "R2_PUBLIC_BASE_URL": "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev",
+    "VITE_CONVEX_URL": "https://vivid-bloodhound-355.convex.cloud",
+    "VITE_CONVEX_SITE_URL": "https://vivid-bloodhound-355.convex.site",
+  },
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "badr-attars-product-media",
+    },
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+}

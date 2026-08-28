@@ -105,11 +105,11 @@ function SiteHeader() {
             Home
           </Link>
           <a
-            href="/#shop"
+            href="/shop"
             onClick={() => setMenuOpen(false)}
             className="motion-button border border-background/35 px-6 py-4 text-center text-xs font-semibold uppercase tracking-[0.24em] hover:-translate-y-0.5 hover:bg-background hover:text-foreground"
           >
-            Shop
+            Shop all
           </a>
           <button
             onClick={() => {
@@ -120,6 +120,20 @@ function SiteHeader() {
           >
             Cart
           </button>
+          <Link
+            to="/account"
+            onClick={() => setMenuOpen(false)}
+            className="motion-button border border-background/35 px-6 py-4 text-center text-xs font-semibold uppercase tracking-[0.24em] hover:-translate-y-0.5 hover:bg-background hover:text-foreground"
+          >
+            Account
+          </Link>
+          <Link
+            to="/track-order"
+            onClick={() => setMenuOpen(false)}
+            className="motion-button border border-background/35 px-6 py-4 text-center text-xs font-semibold uppercase tracking-[0.24em] hover:-translate-y-0.5 hover:bg-background hover:text-foreground"
+          >
+            Track order
+          </Link>
         </nav>
       </div>
     </>

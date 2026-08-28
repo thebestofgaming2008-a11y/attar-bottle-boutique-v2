@@ -26,7 +26,10 @@ export function BottleSpin({ className = "" }: { className?: string }) {
     <div className={`overflow-hidden ${className}`}>
       <div className="marquee-track items-end gap-14" style={{ animationDuration: "26s" }}>
         {row.map((b, i) => (
-          <figure key={`${b.id}-${i}`} className="relative flex w-36 shrink-0 flex-col items-center gap-3">
+          <figure
+            key={`${b.id}-${i}`}
+            className="relative flex w-36 shrink-0 flex-col items-center gap-3"
+          >
             <Link
               to="/product/$id"
               params={{ id: b.id }}

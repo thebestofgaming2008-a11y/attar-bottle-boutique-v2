@@ -1,4 +1,4 @@
-const ITEMS = ["0% alcohol", "6 ml roll-on", "Free shipping over ₹999", "Made in India"];
+const ITEMS = ["0% alcohol", "6 ml roll-on", "India shipping included", "Made in India"];
 
 export function TrustStrip() {
   return (

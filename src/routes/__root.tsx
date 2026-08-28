@@ -7,11 +7,20 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../components/store/CartContext";
+import { AuthProvider } from "../contexts/AuthContext";
+import { CurrencyProvider } from "../contexts/CurrencyContext";
+import { convex } from "../integrations/convex/client";
+
+const SITE_ORIGIN =
+  import.meta.env.VITE_PUBLIC_SITE_URL ||
+  "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
+const SOCIAL_IMAGE =
+  "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/products/scene-oud-zafar.jpg";
 
 function NotFoundComponent() {
   return (
@@ -38,10 +47,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -90,7 +95,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Rare air, crafted for the relentless. Five unisex attars made in India.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_ORIGIN },
+      { property: "og:image", content: SOCIAL_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: SOCIAL_IMAGE },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -131,10 +139,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CartProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </CartProvider>
+      <ConvexAuthProvider client={convex}>
+        <AuthProvider>
+          <CurrencyProvider>
+            <CartProvider>
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+            </CartProvider>
+          </CurrencyProvider>
+        </AuthProvider>
+      </ConvexAuthProvider>
     </QueryClientProvider>
   );
 }

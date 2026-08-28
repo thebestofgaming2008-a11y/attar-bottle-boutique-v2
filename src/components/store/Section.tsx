@@ -48,9 +48,7 @@ export function SectionHead({
   const a = align === "center" ? "text-center mx-auto" : "text-left";
   return (
     <header className={a}>
-      {eyebrow && (
-        <p className={`eyebrow ${dark ? "text-background/60" : ""}`}>{eyebrow}</p>
-      )}
+      {eyebrow && <p className={`eyebrow ${dark ? "text-background/60" : ""}`}>{eyebrow}</p>}
       <h2 className="mt-4 font-display text-3xl leading-[0.95] sm:text-5xl">{title}</h2>
       {sub && (
         <p

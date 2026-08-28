@@ -2,9 +2,10 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleWorkerApi } from "./lib/worker-api";
 
 type ServerEntry = {
-  fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
+  fetch: (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response> | Response;
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
@@ -45,10 +46,15 @@ function isH3SwallowedErrorBody(body: string): boolean {
 }
 
 export default {
-  async fetch(request: Request, env: unknown, ctx: unknown) {
+  async fetch(request: Request, bindings: Env, ctx: ExecutionContext) {
     try {
+      // Nitro invokes the SSR service with only the Request after exposing the
+      // Cloudflare bindings on its request-scoped runtime global.
+      const workerEnv = bindings ?? (globalThis as typeof globalThis & { __env__?: Env }).__env__;
+      const apiResponse = workerEnv ? await handleWorkerApi(request, workerEnv) : null;
+      if (apiResponse) return apiResponse;
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(request, bindings, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

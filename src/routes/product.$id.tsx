@@ -1,14 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Check, Droplets, MapPin, Minus, Plus, ShieldCheck, Truck } from "lucide-react";
-import {
-  BOTTLE_IMAGES,
-  FREE_SHIPPING_THRESHOLD,
-  PRODUCTS,
-  SCENE_IMAGES,
-  inr,
-} from "@/lib/products";
+import { BOTTLE_IMAGES, PRODUCTS, SCENE_IMAGES, inr } from "@/lib/products";
 import { useCart } from "@/components/store/CartContext";
+import { getProductBySlug } from "@/services/productService";
+import type { Product } from "@/lib/products";
 import { ProductCard } from "@/components/store/ProductCard";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { Section, SectionHead } from "@/components/store/Section";
@@ -19,11 +15,52 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-const SITE_ORIGIN = "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
+const SITE_ORIGIN =
+  import.meta.env.VITE_PUBLIC_SITE_URL ||
+  "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
 
 export const Route = createFileRoute("/product/$id")({
-  loader: ({ params }) => {
-    const product = PRODUCTS.find((p) => p.id === params.id);
+  loader: async ({ params }) => {
+    const staticProduct = PRODUCTS.find((p) => p.id === params.id);
+    const liveProduct = await getProductBySlug(params.id);
+    const product: Product | undefined = staticProduct
+      ? {
+          ...staticProduct,
+          price:
+            liveProduct?.sale_price_inr ??
+            liveProduct?.sale_price ??
+            liveProduct?.price_inr ??
+            staticProduct.price,
+          mrp: liveProduct?.price_inr ?? staticProduct.mrp,
+          image: liveProduct?.cover_image_url || staticProduct.image,
+        }
+      : liveProduct
+        ? {
+            id: liveProduct.slug || liveProduct.id,
+            name: liveProduct.name,
+            category: liveProduct.category || "Unisex Attar",
+            tag: (liveProduct.tags || []).slice(0, 3).join(" · ") || "BADR Attar",
+            mood: liveProduct.short_description || "Rare air, crafted for the relentless",
+            hook:
+              liveProduct.short_description || liveProduct.description || "A BADR signature attar.",
+            image: liveProduct.cover_image_url || "",
+            story:
+              liveProduct.description || liveProduct.short_description || "A BADR signature attar.",
+            notes: (liveProduct.tags || []).slice(0, 8),
+            price: liveProduct.sale_price_inr ?? liveProduct.sale_price ?? liveProduct.price_inr,
+            mrp: liveProduct.price_inr,
+            occasion: "everyday",
+            intensity: "soft",
+            longevity: "Long-lasting",
+            faqs: [
+              {
+                q: "How do I wear this attar?",
+                a: "Roll lightly over pulse points and let the oil settle naturally on the skin.",
+              },
+              { q: "Is it unisex?", a: "Yes. BADR attars are designed for personal, unisex wear." },
+            ],
+          }
+        : undefined;
     if (!product) throw notFound();
     return { product };
   },
@@ -66,7 +103,6 @@ function ProductPage() {
   const scene = SCENE_IMAGES[product.id] ?? product.image;
   const bottle = BOTTLE_IMAGES[product.id] ?? product.image;
   const related = PRODUCTS.filter((candidate) => candidate.id !== product.id).slice(0, 4);
-  const shippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - product.price * qty);
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -185,9 +221,8 @@ function ProductPage() {
                 </div>
 
                 <p className="mt-3 text-center text-xs text-foreground/50">
-                  {shippingRemaining > 0
-                    ? `Add ${inr(shippingRemaining)} more to unlock free shipping.`
-                    : "Your order qualifies for free shipping."}
+                  India shipping is included. International shipping is confirmed on WhatsApp at
+                  checkout.
                 </p>
 
                 <ProductBenefits />
@@ -216,8 +251,8 @@ function ProductPage() {
                       Delivery & returns
                     </AccordionTrigger>
                     <AccordionContent className="pb-6 text-sm leading-relaxed text-foreground/65">
-                      Free shipping on orders over {inr(FREE_SHIPPING_THRESHOLD)}. Cash on delivery
-                      is available, with free returns within 7 days.
+                      India shipping is included in the displayed price. International availability,
+                      shipping and payment details are confirmed on WhatsApp before payment.
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -385,7 +420,7 @@ function ProductBenefits() {
   const benefits = [
     { icon: Droplets, label: "6 ml roll-on" },
     { icon: MapPin, label: "Made in India" },
-    { icon: Truck, label: "Free ship ₹999+" },
+    { icon: Truck, label: "India ship included" },
     { icon: ShieldCheck, label: "7-day returns" },
   ];
 

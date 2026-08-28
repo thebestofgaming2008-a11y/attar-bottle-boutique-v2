@@ -1,24 +1,31 @@
-# Attar Bottle Boutique
+# BADR Attar Boutique
 
-Make a sample webshop that is mobile first and has the best ux optimized for conversions copied from the best shopify themes for a single product store that sells 5 skus, which are 5 attar smells and the brands signutare is the bottle becausr it is used for all scents/skus and the brand colours are black and white and lots of free space in all sections. The text must stay minimal in the hero with one head title that boosts conversions and is max 3 words and at least one cta
+Mobile-first BADR fragrance storefront with a Convex backend, Cloudflare Worker and R2 media, Razorpay checkout for India, and WhatsApp checkout for international customers.
 
-This project was built with [Lovable](https://lovable.dev).
+## Local development
 
-## Build with Lovable
+1. Copy `.env.example` to `.env.local` and fill in the development values.
+2. Copy `.dev.vars.example` to `.dev.vars` for Cloudflare Worker secrets.
+3. Install dependencies with `npm install`.
+4. Start Convex with `npx convex dev`.
+5. Start the storefront with `npm run dev`.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/0ee9310f-3042-47ec-9b64-0e66128a3925).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## Verification
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+npm run lint
+npx tsc --noEmit
+npm run build
+npx convex dev --once
 ```
+
+Razorpay secrets must only be stored in Convex environment variables. The public Razorpay key ID may be exposed to the checkout client; the key secret and webhook secret must never be placed in frontend source or public environment variables.
+
+## Deployment
+
+- Deploy Convex functions with `npx convex deploy`.
+- Configure production environment variables from `.env.example` in Convex and Cloudflare.
+- Build and deploy the Cloudflare Worker with `npm run build` and `npx wrangler deploy`.
+- Configure Razorpay to send `payment.captured`, `payment.failed`, and `order.paid` to `https://<convex-site-url>/razorpay/webhook`.
+
+Test credentials are suitable only for staging. Use separately generated live credentials after Razorpay has approved the production domain.

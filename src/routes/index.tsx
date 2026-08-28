@@ -5,6 +5,10 @@ import { Hero } from "@/components/store/Hero";
 import { VideoBand } from "@/components/store/VideoBand";
 import { ScentChapter } from "@/components/store/ScentChapter";
 
+const SITE_ORIGIN =
+  import.meta.env.VITE_PUBLIC_SITE_URL ||
+  "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -12,7 +16,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Five unisex attars in one signature 6 ml bottle. Oud Zafar, Oud Gulaab, Fitoor, Dariya and Ulfat — from ₹499, free shipping over ₹999.",
+          "Five unisex attars in one signature 6 ml bottle. Oud Zafar, Oud Gulaab, Fitoor, Dariya and Ulfat — from ₹499 with India shipping included.",
       },
       { property: "og:title", content: "BADR Attar — Shop Your Scent" },
       {
@@ -22,10 +26,11 @@ export const Route = createFileRoute("/")({
       { property: "og:type", content: "website" },
       {
         property: "og:url",
-        content: "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev",
+        content: SITE_ORIGIN,
       },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: SITE_ORIGIN }],
   }),
   component: Index,
 });

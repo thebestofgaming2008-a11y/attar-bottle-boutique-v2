@@ -1,13 +1,14 @@
+import { Link } from "@tanstack/react-router";
 import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useEffect } from "react";
-import { FREE_SHIPPING_THRESHOLD, PRODUCTS, inr } from "@/lib/products";
+import { PRODUCTS, inr } from "@/lib/products";
 import { useCart } from "./CartContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export function CartDrawer() {
   const { open, setOpen, lines, subtotal, setQty, add } = useCart();
+  const { detectedCountry } = useCurrency();
   const onClose = () => setOpen(false);
-  const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-  const pct = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
   const inCart = new Set(lines.map((l) => l.id));
   const suggestions = PRODUCTS.filter((p) => !inCart.has(p.id)).slice(0, 3);
 
@@ -54,23 +55,12 @@ export function CartDrawer() {
           </button>
         </header>
 
-        <div className="border-b border-border px-5 py-5">
-          <p className="text-center text-sm">
-            {remaining > 0 ? (
-              <>
-                You're <span className="font-semibold">{inr(remaining)}</span> away from free
-                shipping
-              </>
-            ) : (
-              <span className="font-semibold">Free shipping unlocked</span>
-            )}
+        <div className="border-b border-border px-5 py-4">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.14em]">
+            {detectedCountry === "IN"
+              ? "India shipping included"
+              : "International shipping and payment confirmed at checkout"}
           </p>
-          <div className="mt-3 h-[3px] w-full bg-border">
-            <div
-              className="h-full bg-foreground transition-all duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
         </div>
 
         <div className="no-scrollbar flex-1 overflow-y-auto px-5">
@@ -154,14 +144,24 @@ export function CartDrawer() {
             <span className="uppercase tracking-widest">Subtotal</span>
             <span className="text-lg font-semibold">{inr(subtotal)}</span>
           </div>
-          <button
-            className="motion-button mt-4 flex w-full items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40"
-            disabled={lines.length === 0}
-          >
-            <ShoppingBag className="h-4 w-4" /> Checkout
-          </button>
+          {lines.length > 0 ? (
+            <Link
+              to="/checkout"
+              onClick={onClose}
+              className="motion-button mt-4 flex w-full items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:shadow-xl"
+            >
+              <ShoppingBag className="h-4 w-4" /> Checkout
+            </Link>
+          ) : (
+            <button
+              className="mt-4 flex w-full cursor-not-allowed items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background opacity-40"
+              disabled
+            >
+              <ShoppingBag className="h-4 w-4" /> Checkout
+            </button>
+          )}
           <p className="mt-3 text-center text-xs text-muted-foreground">
-            COD available · Free returns within 7 days
+            Secure Razorpay checkout in India · WhatsApp checkout internationally
           </p>
         </footer>
       </aside>

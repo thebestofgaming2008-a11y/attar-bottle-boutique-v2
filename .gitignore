@@ -19,6 +19,13 @@ dist-ssr
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+.env
+.env.*
+!.env.example
+
+# Convex local deployment state
+.convex/
+.convex-tmp/
 
 # Editor directories and files
 .vscode/*
