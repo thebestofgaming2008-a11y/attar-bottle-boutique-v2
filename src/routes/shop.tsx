@@ -1,15 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { Heart, Search } from "lucide-react";
-import { api } from "../../convex/_generated/api";
+import { Search } from "lucide-react";
 import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
 import { useCart } from "@/components/store/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
-import { useAuth } from "@/contexts/AuthContext";
 import { BOTTLE_IMAGES } from "@/lib/products";
 import { SearchSelect } from "@/components/ui/search-select";
+
+const SITE_ORIGIN = "https://houseofbadr.com";
 
 export const Route = createFileRoute("/shop")({
   loader: async () => ({ products: await listActiveProducts() }),
@@ -29,7 +28,7 @@ export const Route = createFileRoute("/shop")({
     links: [
       {
         rel: "canonical",
-        href: "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/shop",
+        href: `${SITE_ORIGIN}/shop`,
       },
     ],
   }),
@@ -39,9 +38,6 @@ export const Route = createFileRoute("/shop")({
 function ShopPage() {
   const { products } = Route.useLoaderData();
   const cart = useCart();
-  const auth = useAuth();
-  const wishlistIds = useQuery(api.wishlists.listMine, auth.user ? {} : "skip");
-  const toggleWishlist = useMutation(api.wishlists.toggle);
   const { format } = useCurrency();
   const [search, setSearch] = useState("");
   const [collection, setCollection] = useState("all");
@@ -120,18 +116,6 @@ function ShopPage() {
                           className="h-full w-full object-contain p-[8%] transition-transform duration-700 group-hover:scale-[1.045]"
                         />
                       </Link>
-                      {auth.user ? (
-                        <button
-                          type="button"
-                          aria-label={`Toggle ${product.name} wishlist`}
-                          onClick={() => void toggleWishlist({ productId: product.id })}
-                          className="absolute right-3 top-3 grid h-9 w-9 place-items-center bg-white/90"
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${wishlistIds?.includes(product.id) ? "fill-current" : ""}`}
-                          />
-                        </button>
-                      ) : null}
                     </div>
                     <div className="flex flex-1 flex-col items-center px-1 pt-4">
                       <Link to="/product/$id" params={{ id: slug }}>

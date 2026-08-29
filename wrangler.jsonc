@@ -4,15 +4,21 @@
   "main": ".output/server/index.mjs",
   "compatibility_date": "2026-08-29",
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    { "pattern": "houseofbadr.com", "custom_domain": true },
+    { "pattern": "www.houseofbadr.com", "custom_domain": true },
+  ],
   "assets": {
     "directory": ".output/public",
     "binding": "ASSETS",
   },
   "vars": {
-    "PUBLIC_SITE_URL": "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev",
+    "PUBLIC_SITE_URL": "https://houseofbadr.com",
+    "VITE_PUBLIC_SITE_URL": "https://houseofbadr.com",
+    "VITE_TURNSTILE_SITE_KEY": "0x4AAAAAAEhEjE-qECz2ubAR",
     "R2_PUBLIC_BASE_URL": "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev",
-    "VITE_CONVEX_URL": "https://vivid-bloodhound-355.convex.cloud",
-    "VITE_CONVEX_SITE_URL": "https://vivid-bloodhound-355.convex.site",
+    "VITE_CONVEX_URL": "https://impressive-stoat-118.convex.cloud",
+    "VITE_CONVEX_SITE_URL": "https://impressive-stoat-118.convex.site",
     "WHATSAPP_ORDER_NUMBER": "919073215410",
   },
   "r2_buckets": [

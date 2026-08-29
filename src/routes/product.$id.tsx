@@ -24,9 +24,7 @@ import { listPublishedReviews, type ProductReview } from "@/services/reviewServi
 import { SearchSelect } from "@/components/ui/search-select";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
-const SITE_ORIGIN =
-  import.meta.env.VITE_PUBLIC_SITE_URL ||
-  "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
+const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://houseofbadr.com";
 
 const PRODUCT_DATA_TIMEOUT_MS = 3500;
 

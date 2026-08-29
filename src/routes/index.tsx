@@ -6,9 +6,7 @@ import { ScentChapter } from "@/components/store/ScentChapter";
 import { ProductCard } from "@/components/store/ProductCard";
 import { listActiveProducts } from "@/services/productService";
 
-const SITE_ORIGIN =
-  import.meta.env.VITE_PUBLIC_SITE_URL ||
-  "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
+const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://houseofbadr.com";
 
 export const Route = createFileRoute("/")({
   loader: async () => {

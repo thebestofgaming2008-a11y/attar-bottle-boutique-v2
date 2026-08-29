@@ -9,6 +9,10 @@ type ServerEntry = {
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+const CANONICAL_ORIGIN = "https://houseofbadr.com";
+const CANONICAL_HOST = "houseofbadr.com";
+const WWW_HOST = "www.houseofbadr.com";
+const LEGACY_WORKER_HOST = "badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -38,7 +42,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 function withSecurityHeaders(response: Response) {
   const headers = new Headers(response.headers);
-  headers.set("strict-transport-security", "max-age=31536000");
+  headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-frame-options", "DENY");
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
@@ -48,6 +52,25 @@ function withSecurityHeaders(response: Response) {
     status: response.status,
     statusText: response.statusText,
     headers,
+  });
+}
+
+function canonicalRedirect(request: Request) {
+  const url = new URL(request.url);
+  const isStoreHost = url.hostname === CANONICAL_HOST || url.hostname === WWW_HOST;
+  const shouldRedirect =
+    url.hostname === WWW_HOST ||
+    url.hostname === LEGACY_WORKER_HOST ||
+    (isStoreHost && url.protocol !== "https:");
+  if (!shouldRedirect) return null;
+
+  const destination = new URL(`${url.pathname}${url.search}`, CANONICAL_ORIGIN);
+  return new Response(null, {
+    status: 308,
+    headers: {
+      location: destination.toString(),
+      "cache-control": "public, max-age=3600",
+    },
   });
 }
 
@@ -63,6 +86,9 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, bindings: Env, ctx: ExecutionContext) {
     try {
+      const redirect = canonicalRedirect(request);
+      if (redirect) return withSecurityHeaders(redirect);
+
       // Nitro invokes the SSR service with only the Request after exposing the
       // Cloudflare bindings on its request-scoped runtime global.
       const workerEnv = bindings ?? (globalThis as typeof globalThis & { __env__?: Env }).__env__;

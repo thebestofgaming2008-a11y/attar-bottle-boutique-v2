@@ -522,6 +522,11 @@ function razorpayKeys() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) throw new Error("Razorpay keys are not configured.");
+  const publicSiteUrl = process.env.PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "";
+  const isLiveStore = /(^|\/)houseofbadr\.com\/?$/i.test(publicSiteUrl.trim());
+  if (isLiveStore && !keyId.startsWith("rzp_live_")) {
+    throw new Error("Online payments are not activated yet. Please try again shortly.");
+  }
   return { keyId, keySecret };
 }
 

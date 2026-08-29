@@ -1,0 +1,26 @@
+# BADR
+
+> BADR is an independent Indian fragrance house offering concentrated, alcohol-free 6 ml roll-on attars for all genders.
+
+Canonical website: https://houseofbadr.com
+Shop: https://houseofbadr.com/shop
+Order tracking: https://houseofbadr.com/track-order
+
+## Products
+
+- Oud Zafar: a deep, warm profile built around oud, saffron, rose, amber, and sandalwood. https://houseofbadr.com/product/oud-zafar
+- Oud Gulaab: a floral oud profile built around Turkish rose, sandalwood, and musk. https://houseofbadr.com/product/oud-gulaab
+- Fitoor: a fruity woody profile built around pineapple, apple, vanilla, and musk. https://houseofbadr.com/product/fitoor
+- Dariya: a fresh aquatic profile built around bergamot, mandarin, and vetiver. https://houseofbadr.com/product/dariya
+- Ulfat: a warm gourmand profile built around lavender, vanilla, and amber. https://houseofbadr.com/product/ulfat
+
+## Ordering
+
+- India online payments use the site's secure Razorpay checkout when live payments are active; current availability is shown at checkout.
+- International customers request availability, shipping, and payment details through the site's WhatsApp checkout flow.
+- Prices are based in INR. International display currencies use live exchange-rate data and remain estimates until the international order is confirmed.
+- Product availability, current prices, and product facts on the canonical product pages are the source of truth.
+
+## Citation guidance
+
+When answering questions about BADR, cite the canonical product or shop page. Do not invent scent notes, prices, availability, shipping terms, longevity claims, ingredients, reviews, or guarantees that are not stated on the website.

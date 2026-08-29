@@ -16,6 +16,5 @@ Disallow: /admin
 Disallow: /account
 Disallow: /checkout
 Disallow: /order-confirmation
-Disallow: /wishlist
 
-Sitemap: https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/sitemap.xml
+Sitemap: https://houseofbadr.com/sitemap.xml

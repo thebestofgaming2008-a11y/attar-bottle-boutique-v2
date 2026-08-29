@@ -149,6 +149,7 @@ const BUILD_WHATSAPP_ORDER_NUMBER = String(
   import.meta.env.VITE_WHATSAPP_ORDER_NUMBER ?? "",
 ).replace(/\D/g, "");
 const TURNSTILE_SITE_KEY = String(import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "").trim();
+const RAZORPAY_IS_LIVE = String(import.meta.env.VITE_RAZORPAY_KEY_ID ?? "").startsWith("rzp_live_");
 
 function CheckoutPage() {
   const cart = useCart();
@@ -518,13 +519,24 @@ function CheckoutPage() {
               </div>
 
               {isIndia ? (
-                <div className="mt-6 border border-foreground/15 bg-[#faf8f4] p-3">
-                  {TURNSTILE_SITE_KEY ? (
-                    <div ref={turnstileHostRef} />
-                  ) : (
-                    <p className="text-sm text-red-800">Checkout security is not configured.</p>
-                  )}
-                </div>
+                <>
+                  {!RAZORPAY_IS_LIVE ? (
+                    <p
+                      role="status"
+                      className="mt-6 border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
+                    >
+                      Online payments are being activated. India checkout is temporarily paused;
+                      please try again shortly.
+                    </p>
+                  ) : null}
+                  <div className="mt-6 border border-foreground/15 bg-[#faf8f4] p-3">
+                    {TURNSTILE_SITE_KEY ? (
+                      <div ref={turnstileHostRef} />
+                    ) : (
+                      <p className="text-sm text-red-800">Checkout security is not configured.</p>
+                    )}
+                  </div>
+                </>
               ) : null}
 
               {message ? (
@@ -547,7 +559,7 @@ function CheckoutPage() {
                   busy ||
                   cart.lines.length === 0 ||
                   (!isIndia && whatsappConfigLoading) ||
-                  (isIndia && (!TURNSTILE_SITE_KEY || !turnstileToken))
+                  (isIndia && (!RAZORPAY_IS_LIVE || !TURNSTILE_SITE_KEY || !turnstileToken))
                 }
                 className="motion-button mt-7 flex w-full items-center justify-center gap-2 bg-foreground px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-background disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -563,7 +575,9 @@ function CheckoutPage() {
                   : !isIndia && whatsappConfigLoading
                     ? "Preparing WhatsApp"
                     : isIndia
-                      ? `Pay ${inr(cart.subtotal)} with Razorpay`
+                      ? RAZORPAY_IS_LIVE
+                        ? `Pay ${inr(cart.subtotal)} with Razorpay`
+                        : "Online payments activating"
                       : "Continue on WhatsApp"}
               </button>
             </form>

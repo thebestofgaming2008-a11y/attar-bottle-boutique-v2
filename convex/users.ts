@@ -26,6 +26,14 @@ async function getProfileByUserId(ctx: any, userId: string) {
     .unique();
 }
 
+export const authCapabilities = query({
+  args: {},
+  returns: v.object({ passwordResetEnabled: v.boolean() }),
+  handler: async () => ({
+    passwordResetEnabled: Boolean(process.env.RESEND_API_KEY && process.env.AUTH_EMAIL_FROM),
+  }),
+});
+
 export const currentProfile = query({
   args: {},
   handler: async (ctx) => {

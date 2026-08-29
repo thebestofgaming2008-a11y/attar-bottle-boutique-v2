@@ -18,6 +18,7 @@ export const Route = createFileRoute("/account")({
 
 function AccountPage() {
   const auth = useAuth();
+  const authCapabilities = useQuery(api.users.authCapabilities, {});
   const orders = useQuery(api.orders.listMine, auth.user ? {} : "skip");
   const addresses = useQuery(api.addresses.listMine, auth.user ? {} : "skip");
   const createAddress = useMutation(api.addresses.create);
@@ -52,6 +53,16 @@ function AccountPage() {
       phone: auth.profile.phone || "",
     });
   }, [auth.profile]);
+
+  useEffect(() => {
+    if (
+      authCapabilities?.passwordResetEnabled === false &&
+      (mode === "reset" || mode === "resetCode")
+    ) {
+      setMode("signIn");
+      setMessage(null);
+    }
+  }, [authCapabilities?.passwordResetEnabled, mode]);
 
   async function submitAuth(event: FormEvent) {
     event.preventDefault();
@@ -200,17 +211,19 @@ function AccountPage() {
                     ? "Already have an account? Sign in"
                     : "New to BADR? Create an account"}
                 </button>
-                <button
-                  onClick={() => {
-                    setMode(mode === "reset" || mode === "resetCode" ? "signIn" : "reset");
-                    setMessage(null);
-                  }}
-                  className="underline underline-offset-4"
-                >
-                  {mode === "reset" || mode === "resetCode"
-                    ? "Back to sign in"
-                    : "Forgot your password?"}
-                </button>
+                {authCapabilities?.passwordResetEnabled ? (
+                  <button
+                    onClick={() => {
+                      setMode(mode === "reset" || mode === "resetCode" ? "signIn" : "reset");
+                      setMessage(null);
+                    }}
+                    className="underline underline-offset-4"
+                  >
+                    {mode === "reset" || mode === "resetCode"
+                      ? "Back to sign in"
+                      : "Forgot your password?"}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : (
@@ -224,12 +237,6 @@ function AccountPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link
-                    to="/wishlist"
-                    className="border border-foreground px-4 py-3 text-xs font-semibold uppercase tracking-[0.13em]"
-                  >
-                    Wishlist
-                  </Link>
                   {auth.isAdmin ? (
                     <Link
                       to="/admin"

@@ -218,9 +218,6 @@ function SiteHeader() {
             <Link to="/account" onClick={closeMenu} className="menu-center-link">
               Account
             </Link>
-            <Link to="/wishlist" onClick={closeMenu} className="menu-center-link">
-              Wishlist
-            </Link>
             <Link
               to="/track-order"
               search={{ order: undefined, email: undefined }}
