@@ -155,6 +155,7 @@ function ProductPage() {
         </section>
 
         <ProductDescription product={product} />
+        <ProductProfile product={product} />
         {product.faqs.length ? <ProductFaqs product={product} /> : null}
 
         <section className="bg-white px-3 py-16 sm:px-6 sm:py-24">
@@ -211,13 +212,13 @@ function ProductInformation({
   const categoryTokens = product.category.split(/\s+/).filter(Boolean).slice(0, 4);
 
   return (
-    <div className="min-w-0 px-5 py-8 sm:px-8 lg:sticky lg:top-13 lg:self-start lg:px-16 lg:py-7">
+    <div className="min-w-0 px-5 py-6 sm:px-8 lg:sticky lg:top-13 lg:self-start lg:px-12 lg:py-8 xl:px-16">
       <h1 className="font-display text-[2rem] leading-none sm:text-4xl">
         {product.name}{" "}
         <span className="whitespace-nowrap text-[0.52em]">({product.volume || "6 ml"})</span>
       </h1>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         {categoryTokens.map((token) => (
           <span
             key={token}
@@ -233,6 +234,15 @@ function ProductInformation({
       </p>
       <p className="mt-1 text-sm leading-6 text-black/68">{product.hook}</p>
 
+      {product.notes.length ? (
+        <div className="mt-5">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-black/40">
+            Key notes
+          </p>
+          <p className="mt-2 text-sm leading-6">{product.notes.join(" · ")}</p>
+        </div>
+      ) : null}
+
       <div className="mt-5 flex items-baseline gap-3">
         <span className="text-2xl">{inr(product.price)}</span>
         {product.mrp > product.price ? (
@@ -240,9 +250,13 @@ function ProductInformation({
         ) : null}
       </div>
       <p className="mt-1 text-[10px] text-black/55">Incl. of all taxes</p>
+      <p className="mt-1 text-[10px] text-black/45">
+        {product.volume || "6 ml"} · {product.format || "Roll-on attar"} · Made in{" "}
+        {product.countryOfOrigin || "India"}
+      </p>
 
       {related.length ? (
-        <div className="mt-6">
+        <div className="mt-5">
           <h2 className="text-xs">Choose variants</h2>
           <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-2">
             {related.map((candidate) => (
@@ -341,15 +355,15 @@ function ProductGallery({ product }: { product: Product }) {
 
 function ProductDescription({ product }: { product: Product }) {
   return (
-    <section className="border-t border-black/12 bg-white px-5 py-16 sm:px-8 sm:py-24">
-      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-24">
+    <section className="border-t border-black/12 bg-white px-5 py-14 sm:px-8 sm:py-20">
+      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
         <h2 className="font-display text-3xl sm:text-5xl">Product description</h2>
         <div>
           <p className="max-w-3xl text-base leading-8 text-black/72 sm:text-lg sm:leading-9">
             {product.meaning ? `${product.meaning} ` : ""}
             {product.story}
           </p>
-          <div className="mt-12 grid gap-7 border-t border-black/15 pt-8 sm:grid-cols-3">
+          <div className="mt-9 grid gap-7 border-t border-black/15 pt-7 sm:grid-cols-3">
             <Detail label="Key notes" value={product.notes.join(", ")} />
             <Detail label="Wear it" value={`${product.occasion} · ${product.intensity}`} />
             <Detail
@@ -363,13 +377,35 @@ function ProductDescription({ product }: { product: Product }) {
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function ProductProfile({ product }: { product: Product }) {
+  return (
+    <section className="bg-black px-5 py-12 text-white sm:px-8 sm:py-16">
+      <div className="mx-auto grid max-w-6xl gap-8 sm:grid-cols-3 sm:gap-12">
+        <Detail label="Scent profile" value={product.tag} inverted />
+        <Detail label="Longevity" value={product.longevity} inverted />
+        <Detail label="Best worn" value={product.occasion} inverted />
+      </div>
+    </section>
+  );
+}
+
+function Detail({
+  label,
+  value,
+  inverted = false,
+}: {
+  label: string;
+  value: string;
+  inverted?: boolean;
+}) {
   return (
     <div>
-      <h3 className="text-[9px] font-semibold uppercase tracking-[0.15em] text-black/45">
+      <h3
+        className={`text-[9px] font-semibold uppercase tracking-[0.15em] ${inverted ? "text-white/45" : "text-black/45"}`}
+      >
         {label}
       </h3>
-      <p className="mt-3 text-sm leading-6">{value}</p>
+      <p className={`mt-3 leading-6 ${inverted ? "font-display text-2xl" : "text-sm"}`}>{value}</p>
     </div>
   );
 }

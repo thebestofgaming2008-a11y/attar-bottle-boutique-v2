@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { ChevronDown, Heart, Menu, PackageSearch, ShoppingCart, UserRound, X } from "lucide-react";
+import { Heart, Menu, PackageSearch, ShoppingCart, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PRODUCTS } from "@/lib/products";
 import { Wordmark } from "./Wordmark";
@@ -84,7 +84,6 @@ function SiteHeader() {
   const cart = useCart();
   const pathname = useLocation({ select: (location) => location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
-  const [fragrancesOpen, setFragrancesOpen] = useState(false);
   const darkHeader = pathname === "/";
 
   useEffect(() => {
@@ -105,15 +104,11 @@ function SiteHeader() {
 
   return (
     <>
-      <div className="flex h-6 items-center justify-center bg-white px-4 text-center text-[8px] font-semibold uppercase tracking-[0.2em] text-black">
-        <span className="sm:hidden">India shipping included</span>
-        <span className="hidden sm:inline">
-          India shipping included · International orders on WhatsApp
-        </span>
-      </div>
       <header
-        className={`sticky top-0 z-50 grid h-13 grid-cols-[1fr_auto_1fr] items-center px-3 transition-colors duration-300 sm:px-5 ${
-          darkHeader ? "bg-black text-white" : "border-b border-black/10 bg-white text-black"
+        className={`z-50 grid h-13 grid-cols-[1fr_auto_1fr] items-center px-3 transition-colors duration-300 sm:px-5 ${
+          darkHeader
+            ? "pointer-events-none fixed inset-x-0 top-3 text-white mix-blend-difference"
+            : "sticky top-0 border-b border-black/10 bg-white text-black"
         }`}
       >
         <button
@@ -121,21 +116,23 @@ function SiteHeader() {
           onClick={() => setMenuOpen(true)}
           aria-label="Menu"
           aria-expanded={menuOpen}
-          className="grid h-10 w-10 place-items-center justify-self-start hover:opacity-55"
+          className="pointer-events-auto grid h-10 w-10 place-items-center justify-self-start hover:opacity-55"
         >
           <Menu className="h-5 w-5" strokeWidth={1.7} />
         </button>
 
-        <Link to="/" aria-label="BADR home" className="px-4 py-2 hover:opacity-60">
+        <Link
+          to="/"
+          aria-label="BADR home"
+          className="pointer-events-auto px-4 py-2 hover:opacity-60"
+        >
           <Wordmark size="md" />
         </Link>
 
         <div className="flex items-center justify-self-end gap-2 sm:gap-4">
           <Link
             to="/shop"
-            className={`px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] sm:px-5 sm:text-[10px] ${
-              darkHeader ? "bg-white text-black" : "bg-black text-white"
-            }`}
+            className={`pointer-events-auto bg-black px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-white sm:px-5 sm:text-[10px] ${darkHeader ? "hidden" : ""}`}
           >
             Buy now
           </Link>
@@ -143,7 +140,7 @@ function SiteHeader() {
             type="button"
             onClick={() => cart.setOpen(true)}
             aria-label={`Cart${cart.count ? `, ${cart.count} items` : ""}`}
-            className="relative grid h-10 w-9 place-items-center hover:opacity-55"
+            className="pointer-events-auto relative grid h-10 w-9 place-items-center hover:opacity-55"
           >
             <ShoppingCart className="h-5 w-5" strokeWidth={1.7} />
             {cart.count ? (
@@ -185,44 +182,40 @@ function SiteHeader() {
             <X className="h-6 w-6" strokeWidth={1.5} />
           </button>
 
-          <nav className="mt-21 text-[12px] font-semibold uppercase tracking-[0.08em]">
-            <Link to="/shop" onClick={closeMenu} className="block px-7 py-4 hover:bg-black/5">
+          <nav className="mt-22 px-7 uppercase">
+            <Link
+              to="/shop"
+              onClick={closeMenu}
+              className="block font-display text-4xl leading-none hover:opacity-45 sm:text-5xl"
+            >
               Shop all
             </Link>
-            <div>
-              <button
-                type="button"
-                onClick={() => setFragrancesOpen((open) => !open)}
-                aria-expanded={fragrancesOpen}
-                className="flex w-full items-center justify-between bg-black/[0.035] px-7 py-4 text-left hover:bg-black/[0.07]"
-              >
-                Fragrances
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${fragrancesOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-              <div
-                className={`grid overflow-hidden transition-[grid-template-rows] duration-400 ${
-                  fragrancesOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                }`}
-              >
-                <div className="min-h-0">
-                  {PRODUCTS.map((product) => (
-                    <Link
-                      key={product.id}
-                      to="/product/$id"
-                      params={{ id: product.id }}
-                      onClick={closeMenu}
-                      className="flex items-center gap-3 border-b border-black/8 px-7 py-3 pl-10 hover:bg-black/5"
-                    >
-                      <img src={product.image} alt="" className="h-9 w-9 object-contain" />
+            <div className="mt-9">
+              <p className="text-[9px] font-semibold tracking-[0.18em] text-black/40">Fragrances</p>
+              <div className="mt-4 space-y-2">
+                {PRODUCTS.map((product) => (
+                  <Link
+                    key={product.id}
+                    to="/product/$id"
+                    params={{ id: product.id }}
+                    onClick={closeMenu}
+                    className="group flex items-center justify-between gap-5 py-1.5 hover:opacity-45"
+                  >
+                    <span className="font-display text-3xl leading-none sm:text-4xl">
                       {product.name}
-                    </Link>
-                  ))}
-                </div>
+                    </span>
+                    <span className="hidden max-w-32 text-right text-[8px] leading-3 tracking-[0.1em] text-black/35 sm:block">
+                      {product.tag}
+                    </span>
+                  </Link>
+                ))}
               </div>
             </div>
-            <Link to="/wishlist" onClick={closeMenu} className="block px-7 py-4 hover:bg-black/5">
+            <Link
+              to="/wishlist"
+              onClick={closeMenu}
+              className="mt-9 block font-display text-2xl leading-none hover:opacity-45"
+            >
               Wishlist
             </Link>
           </nav>
@@ -260,50 +253,17 @@ function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="bg-black px-6 py-14 text-white sm:px-8 sm:py-20">
-      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.2fr_2fr]">
-        <div>
-          <Wordmark size="lg" />
-          <h2 className="mt-6 max-w-md font-display text-3xl leading-[0.95] sm:text-5xl">
-            Rare air. Crafted for the relentless.
-          </h2>
-        </div>
-        <div className="grid grid-cols-2 gap-8 text-xs sm:grid-cols-3">
-          <FooterGroup title="Fragrances">
-            {PRODUCTS.map((product) => (
-              <Link key={product.id} to="/product/$id" params={{ id: product.id }}>
-                {product.name}
-              </Link>
-            ))}
-          </FooterGroup>
-          <FooterGroup title="Store">
-            <Link to="/shop">Shop all</Link>
-            <Link to="/account">Account</Link>
-            <Link to="/wishlist">Wishlist</Link>
-          </FooterGroup>
-          <FooterGroup title="Support">
-            <Link to="/track-order">Track order</Link>
-            <Link to="/checkout">Checkout</Link>
-          </FooterGroup>
-        </div>
+    <footer className="border-t border-white/10 bg-black px-6 py-20 text-center text-white">
+      <Wordmark size="lg" className="mx-auto block" />
+      <p className="mt-5 font-display text-xl leading-tight">
+        Rare Air. Crafted for the Relentless.
+      </p>
+      <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-[9px] font-semibold uppercase tracking-[0.13em] text-white/55">
+        <Link to="/shop">Shop</Link>
+        <Link to="/account">Account</Link>
+        <Link to="/track-order">Track order</Link>
       </div>
-      <div className="mx-auto mt-16 flex max-w-7xl flex-wrap justify-between gap-4 border-t border-white/15 pt-6 text-[9px] uppercase tracking-[0.16em] text-white/50">
-        <span>© {new Date().getFullYear()} BADR</span>
-        <span>ESTD 1448 AH · Made in India</span>
-      </div>
+      <p className="mt-10 text-[10px] text-white/40">ESTD 1448 AH · Made in India</p>
     </footer>
-  );
-}
-
-function FooterGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section>
-      <h3 className="mb-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
-        {title}
-      </h3>
-      <div className="flex flex-col gap-3 [&_a]:transition-opacity [&_a:hover]:opacity-50">
-        {children}
-      </div>
-    </section>
   );
 }

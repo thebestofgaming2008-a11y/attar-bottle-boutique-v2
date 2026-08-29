@@ -3,11 +3,9 @@ import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useEffect } from "react";
 import { PRODUCTS, inr } from "@/lib/products";
 import { useCart } from "./CartContext";
-import { useCurrency } from "@/contexts/CurrencyContext";
 
 export function CartDrawer() {
   const { open, setOpen, lines, subtotal, setQty, add } = useCart();
-  const { detectedCountry } = useCurrency();
   const onClose = () => setOpen(false);
   const inCart = new Set(lines.map((l) => l.id));
   const suggestions = PRODUCTS.filter((p) => !inCart.has(p.id)).slice(0, 3);
@@ -55,17 +53,18 @@ export function CartDrawer() {
           </button>
         </header>
 
-        <div className="border-b border-border px-5 py-4">
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.14em]">
-            {detectedCountry === "IN"
-              ? "India shipping included"
-              : "International shipping and payment confirmed at checkout"}
-          </p>
-        </div>
-
         <div className="no-scrollbar flex-1 overflow-y-auto px-5">
           {lines.length === 0 ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">Your cart is empty.</p>
+            <div className="py-16 text-center">
+              <p className="text-sm text-muted-foreground">Your cart is empty.</p>
+              <Link
+                to="/shop"
+                onClick={onClose}
+                className="mt-6 inline-flex min-h-11 items-center bg-foreground px-7 text-[10px] font-semibold uppercase tracking-[0.12em] text-background"
+              >
+                Continue shopping
+              </Link>
+            </div>
           ) : (
             <ul className="divide-y divide-border">
               {lines.map((line, index) => (
@@ -112,9 +111,9 @@ export function CartDrawer() {
             </ul>
           )}
 
-          {suggestions.length > 0 && (
+          {lines.length > 0 && suggestions.length > 0 ? (
             <div className="border-t border-border py-6">
-              <p className="eyebrow">Add more to save</p>
+              <p className="eyebrow">You may also like</p>
               <div className="no-scrollbar -mx-5 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 scroll-smooth">
                 {suggestions.map((p) => (
                   <div
@@ -140,15 +139,15 @@ export function CartDrawer() {
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
-        <footer className="border-t border-border bg-secondary px-5 pb-6 pt-5">
-          <div className="flex items-center justify-between text-sm">
-            <span className="uppercase tracking-widest">Subtotal</span>
-            <span className="text-lg font-semibold">{inr(subtotal)}</span>
-          </div>
-          {lines.length > 0 ? (
+        {lines.length > 0 ? (
+          <footer className="border-t border-border bg-secondary px-5 pb-6 pt-5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="uppercase tracking-widest">Subtotal</span>
+              <span className="text-lg font-semibold">{inr(subtotal)}</span>
+            </div>
             <Link
               to="/checkout"
               onClick={onClose}
@@ -156,18 +155,8 @@ export function CartDrawer() {
             >
               <ShoppingBag className="h-4 w-4" /> Checkout
             </Link>
-          ) : (
-            <button
-              className="mt-4 flex w-full cursor-not-allowed items-center justify-center gap-2 bg-foreground py-4 text-sm font-semibold uppercase tracking-[0.2em] text-background opacity-40"
-              disabled
-            >
-              <ShoppingBag className="h-4 w-4" /> Checkout
-            </button>
-          )}
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            Secure Razorpay checkout in India · WhatsApp checkout internationally
-          </p>
-        </footer>
+          </footer>
+        ) : null}
       </aside>
     </div>
   );
