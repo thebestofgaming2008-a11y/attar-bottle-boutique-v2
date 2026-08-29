@@ -198,11 +198,12 @@ function topCategory(product: Pick<Product, "category" | "category_id">): string
 export async function listActiveProducts(): Promise<Product[]> {
   const cached = readActiveProductsCache();
   if (cached) return cached;
-  if (activeProductsInFlight) return activeProductsInFlight;
+  const canShareInFlightRequest = typeof window !== "undefined";
+  if (canShareInFlightRequest && activeProductsInFlight) return activeProductsInFlight;
 
   const request = convex.query(api.products.listActiveProducts, {});
 
-  activeProductsInFlight = request
+  const loadProducts = request
     .then((raw) => {
       const products = normalizeProductList(raw);
       writeActiveProductsCache(products);
@@ -218,10 +219,16 @@ export async function listActiveProducts(): Promise<Product[]> {
       } catch {
         return [];
       }
-    })
-    .finally(() => {
-      activeProductsInFlight = null;
     });
+
+  // Cloudflare request I/O cannot be shared across request contexts. Keep the
+  // in-flight deduplication in the browser only; on the server every request
+  // gets its own Convex query promise.
+  if (!canShareInFlightRequest) return loadProducts;
+
+  activeProductsInFlight = loadProducts.finally(() => {
+    activeProductsInFlight = null;
+  });
 
   return activeProductsInFlight;
 }

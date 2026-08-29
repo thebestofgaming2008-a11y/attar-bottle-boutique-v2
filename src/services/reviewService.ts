@@ -1,5 +1,9 @@
+import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
-import { convex } from "@/integrations/convex/client";
+
+const convexUrl = import.meta.env.VITE_CONVEX_URL;
+if (!convexUrl) throw new Error("Missing VITE_CONVEX_URL.");
+const convex = new ConvexHttpClient(convexUrl);
 
 export interface ProductReview {
   id: string;

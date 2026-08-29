@@ -27,11 +27,22 @@ const SITE_ORIGIN =
   import.meta.env.VITE_PUBLIC_SITE_URL ||
   "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
 
+const PRODUCT_DATA_TIMEOUT_MS = 3500;
+
+function withProductFallback<T>(request: Promise<T>, fallback: T): Promise<T> {
+  return Promise.race([
+    request,
+    new Promise<T>((resolve) => {
+      setTimeout(() => resolve(fallback), PRODUCT_DATA_TIMEOUT_MS);
+    }),
+  ]).catch(() => fallback);
+}
+
 export const Route = createFileRoute("/product/$id")({
   loader: async ({ params }) => {
     const [liveProduct, activeProducts] = await Promise.all([
-      getProductBySlug(params.id),
-      listActiveProducts(),
+      withProductFallback(getProductBySlug(params.id), null),
+      withProductFallback(listActiveProducts(), []),
     ]);
     const staticProduct = PRODUCTS.find((product) => product.id === params.id);
     const product = liveProduct
@@ -49,7 +60,7 @@ export const Route = createFileRoute("/product/$id")({
     ];
     const related = completeCatalog.filter((item) => item.id !== product.id).slice(0, 4);
     const reviews = liveProduct?.id
-      ? await listPublishedReviews(liveProduct.id).catch(() => [])
+      ? await withProductFallback(listPublishedReviews(liveProduct.id), [])
       : [];
 
     return { product, related, reviews };
