@@ -149,7 +149,10 @@ const BUILD_WHATSAPP_ORDER_NUMBER = String(
   import.meta.env.VITE_WHATSAPP_ORDER_NUMBER ?? "",
 ).replace(/\D/g, "");
 const TURNSTILE_SITE_KEY = String(import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "").trim();
-const RAZORPAY_IS_LIVE = String(import.meta.env.VITE_RAZORPAY_KEY_ID ?? "").startsWith("rzp_live_");
+const RAZORPAY_KEY_ID = String(import.meta.env.VITE_RAZORPAY_KEY_ID ?? "").trim();
+const RAZORPAY_IS_LIVE = RAZORPAY_KEY_ID.startsWith("rzp_live_");
+const RAZORPAY_IS_AVAILABLE =
+  RAZORPAY_IS_LIVE || (import.meta.env.DEV && RAZORPAY_KEY_ID.startsWith("rzp_test_"));
 
 function CheckoutPage() {
   const cart = useCart();
@@ -520,7 +523,7 @@ function CheckoutPage() {
 
               {isIndia ? (
                 <>
-                  {!RAZORPAY_IS_LIVE ? (
+                  {!RAZORPAY_IS_AVAILABLE ? (
                     <p
                       role="status"
                       className="mt-6 border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
@@ -559,7 +562,7 @@ function CheckoutPage() {
                   busy ||
                   cart.lines.length === 0 ||
                   (!isIndia && whatsappConfigLoading) ||
-                  (isIndia && (!RAZORPAY_IS_LIVE || !TURNSTILE_SITE_KEY || !turnstileToken))
+                  (isIndia && (!RAZORPAY_IS_AVAILABLE || !TURNSTILE_SITE_KEY || !turnstileToken))
                 }
                 className="motion-button mt-7 flex w-full items-center justify-center gap-2 bg-foreground px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-background disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -575,7 +578,7 @@ function CheckoutPage() {
                   : !isIndia && whatsappConfigLoading
                     ? "Preparing WhatsApp"
                     : isIndia
-                      ? RAZORPAY_IS_LIVE
+                      ? RAZORPAY_IS_AVAILABLE
                         ? `Pay ${inr(cart.subtotal)} with Razorpay`
                         : "Online payments activating"
                       : "Continue on WhatsApp"}
