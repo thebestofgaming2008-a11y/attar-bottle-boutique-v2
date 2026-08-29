@@ -160,11 +160,9 @@ function ProductPage() {
 
         <section className="bg-[#f3efe7] px-3 py-16 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-7xl">
-            <p className="text-center text-[9px] font-semibold uppercase tracking-[0.18em] text-black/45">
-              The BADR collection
-            </p>
-            <h2 className="mt-3 text-center font-display text-3xl sm:text-5xl">
-              Find your next scent
+            <p className="text-center text-xs text-black/48">The BADR collection</p>
+            <h2 className="mt-2 text-center font-display text-3xl sm:text-5xl">
+              You may also like
             </h2>
             <div className="mt-9 grid grid-cols-2 gap-x-2 gap-y-10 lg:grid-cols-4">
               {related.map((candidate) => (
@@ -181,7 +179,7 @@ function ProductPage() {
 
       <div className="fixed inset-x-0 bottom-0 z-40 grid h-18 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-black/10 bg-[#f3efe7] px-5 sm:hidden">
         <div className="min-w-0">
-          <p className="truncate text-[9px] uppercase tracking-[0.12em] text-black/55">
+          <p className="truncate text-xs text-black/55">
             {product.name} · {product.volume || "6 ml"}
           </p>
           <p className="mt-1 text-sm">{inr(product.price)}</p>
@@ -217,22 +215,22 @@ function ProductInformation({
   return (
     <div className="min-w-0 px-5 py-8 sm:px-10 sm:py-10 lg:sticky lg:top-13 lg:self-start lg:px-12 lg:py-10 xl:px-16">
       <div className="flex items-center justify-between gap-5">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-black/50">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-black/50">
           {product.category}
         </p>
-        <p className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.16em] text-black/50">
+        <p className="shrink-0 text-xs text-black/52">
           {product.inStock === false ? "Sold out" : "In stock"}
         </p>
       </div>
 
-      <h1 className="mt-5 font-display text-[2.75rem] leading-[0.88] sm:text-6xl lg:text-5xl xl:text-6xl">
+      <h1 className="mt-4 font-display text-[2.5rem] leading-[0.92] sm:text-5xl xl:text-[3.5rem]">
         {product.name}
       </h1>
 
-      <p className="mt-5 max-w-xl font-display text-xl leading-[1.05] sm:text-2xl">
+      <p className="mt-4 max-w-xl text-[15px] leading-6 text-black/72 sm:text-base sm:leading-7">
         {product.hook}
       </p>
-      <p className="mt-4 max-w-xl text-[10px] font-semibold uppercase leading-5 tracking-[0.1em] text-black/52">
+      <p className="mt-2 max-w-xl text-[11px] font-medium uppercase leading-5 tracking-[0.06em] text-black/50">
         {product.mood}
       </p>
 
@@ -251,32 +249,21 @@ function ProductInformation({
       </div>
 
       {product.notes.length ? (
-        <section aria-labelledby="scent-notes-heading" className="mt-8 bg-white/55 px-4 py-4">
-          <h2
-            id="scent-notes-heading"
-            className="text-[9px] font-semibold uppercase tracking-[0.18em] text-black/42"
-          >
-            Scent notes
+        <section aria-labelledby="scent-notes-heading" className="mt-7 bg-white/55 px-4 py-4">
+          <h2 id="scent-notes-heading" className="text-xs font-medium text-black/52">
+            Key notes
           </h2>
-          <p className="mt-2 font-display text-lg leading-6 sm:text-xl">
-            {product.notes.join(" / ")}
-          </p>
+          <p className="mt-2 text-sm leading-6 sm:text-[15px]">{product.notes.join(" · ")}</p>
         </section>
       ) : null}
 
       {related.length ? (
         <section aria-labelledby="other-scents-heading" className="mt-7">
           <div className="flex items-baseline justify-between gap-4">
-            <h2
-              id="other-scents-heading"
-              className="text-[10px] font-semibold uppercase tracking-[0.14em]"
-            >
+            <h2 id="other-scents-heading" className="text-xs font-medium">
               Choose another scent
             </h2>
-            <Link
-              to="/shop"
-              className="text-[9px] uppercase tracking-[0.12em] text-black/45 underline underline-offset-4"
-            >
+            <Link to="/shop" className="text-[10px] text-black/48 underline underline-offset-4">
               See all
             </Link>
           </div>
@@ -297,7 +284,7 @@ function ProductInformation({
                     decoding="async"
                   />
                 </span>
-                <span className="mt-2 block text-[9px] font-semibold uppercase leading-3 tracking-[0.04em]">
+                <span className="mt-2 block text-[10px] font-medium leading-3">
                   {candidate.name}
                 </span>
               </Link>
@@ -338,7 +325,7 @@ function ProductInformation({
 
       <Accordion type="single" collapsible className="mt-6 border-y border-black/18">
         <AccordionItem value="story" className="border-black/18">
-          <AccordionTrigger className="py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] hover:no-underline">
+          <AccordionTrigger className="py-4 text-left text-[13px] font-medium hover:no-underline">
             The story behind {product.name}
           </AccordionTrigger>
           <AccordionContent className="pb-5 text-sm leading-7 text-black/62">
@@ -347,7 +334,7 @@ function ProductInformation({
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="wear" className="border-black/18">
-          <AccordionTrigger className="py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] hover:no-underline">
+          <AccordionTrigger className="py-4 text-left text-[13px] font-medium hover:no-underline">
             How to wear it
           </AccordionTrigger>
           <AccordionContent className="pb-5 text-sm leading-7 text-black/62">
@@ -356,7 +343,7 @@ function ProductInformation({
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="delivery" className="border-0">
-          <AccordionTrigger className="py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] hover:no-underline">
+          <AccordionTrigger className="py-4 text-left text-[13px] font-medium hover:no-underline">
             Delivery & international orders
           </AccordionTrigger>
           <AccordionContent className="pb-5 text-sm leading-7 text-black/62">
@@ -372,10 +359,8 @@ function ProductInformation({
 function ProductFact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45">
-        {label}
-      </dt>
-      <dd className="mt-2 text-[11px] leading-4">{value}</dd>
+      <dt className="text-[9px] font-medium uppercase tracking-[0.08em] text-white/48">{label}</dt>
+      <dd className="mt-2 text-xs leading-4 text-white/90">{value}</dd>
     </div>
   );
 }
@@ -423,36 +408,44 @@ function ProductGallery({ product }: { product: Product }) {
 }
 
 function ScentComposition({ product }: { product: Product }) {
-  const composition = product.notes.length
-    ? product.notes.join(" / ")
-    : product.tag.replaceAll("·", "/");
-
   return (
     <section className="bg-white px-5 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.68fr_1.32fr] lg:gap-24">
         <div>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-black/45">
-            Scent composition
-          </p>
-          <h2 className="mt-4 max-w-md font-display text-4xl leading-[0.9] sm:text-6xl">
-            What stays on skin.
+          <p className="text-xs text-black/48">Fragrance notes</p>
+          <h2 className="mt-3 max-w-md font-display text-4xl leading-[0.94] sm:text-5xl">
+            Scent profile
           </h2>
-          <p className="mt-6 max-w-sm text-sm leading-7 text-black/58">
-            A concentrated oil that develops slowly and sits closer than a spray fragrance.
+          <p className="mt-5 max-w-sm text-sm leading-7 text-black/62">
+            {product.category} · {product.intensity} intensity
           </p>
         </div>
 
         <div className="self-end">
-          <p className="font-display text-[2rem] leading-[1.08] sm:text-5xl sm:leading-[1.02]">
-            {composition}
-          </p>
-          <p className="mt-8 max-w-2xl text-sm leading-7 text-black/62 sm:text-base sm:leading-8">
-            These are the fragrance notes that shape {product.name}. The exact impression changes
-            slightly with skin, temperature and time.
-          </p>
+          <ul className="grid gap-x-10 gap-y-4 sm:grid-cols-2">
+            {(product.notes.length ? product.notes : [product.tag]).map((note) => (
+              <li key={note} className="text-xl font-medium leading-7 sm:text-2xl">
+                {note}
+              </li>
+            ))}
+          </ul>
+          <dl className="mt-9 grid gap-6 sm:grid-cols-3">
+            <CompositionDetail label="Best worn" value={product.occasion} />
+            <CompositionDetail label="Wear time" value={product.longevity} />
+            <CompositionDetail label="Format" value={product.format || "Roll-on attar"} />
+          </dl>
         </div>
       </div>
     </section>
+  );
+}
+
+function CompositionDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-black/48">{label}</dt>
+      <dd className="mt-1 text-sm leading-6 capitalize">{value}</dd>
+    </div>
   );
 }
 
@@ -463,13 +456,11 @@ function ProductStory({ product }: { product: Product }) {
     <section className="overflow-hidden bg-black text-white">
       <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[0.92fr_1.08fr]">
         <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-24 lg:px-16">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/45">
-            The BADR reading
-          </p>
-          <h2 className="mt-5 max-w-xl font-display text-4xl leading-[0.9] sm:text-6xl">
-            {product.tag.replaceAll("·", ".")}
+          <p className="text-xs text-white/48">About {product.name}</p>
+          <h2 className="mt-3 max-w-xl font-display text-4xl leading-[0.94] sm:text-5xl">
+            The story
           </h2>
-          <p className="mt-8 max-w-xl text-sm leading-7 text-white/64 sm:text-base sm:leading-8">
+          <p className="mt-6 max-w-xl text-sm leading-7 text-white/68 sm:text-base sm:leading-8">
             {product.meaning ? `${product.meaning} ` : ""}
             {product.story}
           </p>
@@ -499,10 +490,8 @@ function ProductStory({ product }: { product: Product }) {
 function ProductStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/40">
-        {label}
-      </dt>
-      <dd className="mt-2 font-display text-lg capitalize leading-5 sm:text-xl">{value}</dd>
+      <dt className="text-[10px] text-white/45">{label}</dt>
+      <dd className="mt-2 text-sm font-medium capitalize leading-5 sm:text-base">{value}</dd>
     </div>
   );
 }
@@ -512,10 +501,8 @@ function ProductFaqs({ product }: { product: Product }) {
     <section className="bg-[#f8f6f1] px-5 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.55fr_1.45fr] lg:gap-20">
         <div>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-black/45">
-            Before you wear it
-          </p>
-          <h2 className="mt-4 font-display text-4xl sm:text-5xl">Good to know</h2>
+          <p className="text-xs text-black/48">Product information</p>
+          <h2 className="mt-3 font-display text-4xl sm:text-5xl">FAQs</h2>
         </div>
         <Accordion type="single" collapsible className="border-t border-black/18">
           {product.faqs.slice(0, 3).map((faq, index) => (
