@@ -5,7 +5,6 @@ import {
   BOTTLE_IMAGES,
   PRODUCTS,
   SCENE_IMAGES,
-  SCENT_PROFILE_IMAGES,
   inr,
   resolveStoreProduct,
   storefrontProductFromSource,
@@ -13,6 +12,7 @@ import {
 } from "@/lib/products";
 import { useCart } from "@/components/store/CartContext";
 import { ProductCard } from "@/components/store/ProductCard";
+import { ProductScentMap } from "@/components/store/ProductScentMap";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import {
   Accordion,
@@ -155,7 +155,7 @@ function ProductPage() {
           </div>
         </section>
 
-        <ScentComposition product={product} />
+        <ProductScentMap product={product} />
         <ProductStory product={product} />
         {product.faqs.length ? <ProductFaqs product={product} /> : null}
 
@@ -404,85 +404,6 @@ function ProductGallery({ product }: { product: Product }) {
           ))}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function ScentComposition({ product }: { product: Product }) {
-  const scentImage = SCENT_PROFILE_IMAGES[product.id] || product.socialImage || product.image;
-
-  return (
-    <section className="bg-white px-3 py-16 sm:px-6 sm:py-24">
-      <div className="mx-auto max-w-[1500px]">
-        <header className="px-2 sm:px-0">
-          <p className="text-xs text-black/48">Inside {product.name}</p>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-            <h2 className="font-display text-4xl leading-[0.94] sm:text-5xl">Scent profile</h2>
-            <p className="pb-1 text-sm text-black/58">
-              {product.category} · {product.intensity} intensity
-            </p>
-          </div>
-        </header>
-
-        <div className="mt-9 grid gap-2 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.55fr)] lg:gap-3">
-          <figure className="aspect-[4/3] overflow-hidden bg-[#e9e2d7] lg:aspect-auto lg:min-h-[690px]">
-            <img
-              src={scentImage}
-              alt={`${product.name} fragrance notes: ${product.notes.join(", ")}`}
-              className="h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.02]"
-              loading="lazy"
-              decoding="async"
-            />
-          </figure>
-
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-3">
-            <figure className="aspect-square overflow-hidden bg-[#e9e2d7] lg:aspect-auto">
-              <img
-                src={scentImage}
-                alt=""
-                aria-hidden="true"
-                className="h-full w-full origin-left scale-[1.32] object-cover object-left transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.38]"
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-            <figure className="aspect-square overflow-hidden bg-[#e9e2d7] lg:aspect-auto">
-              <img
-                src={scentImage}
-                alt=""
-                aria-hidden="true"
-                className="h-full w-full origin-right scale-[1.32] object-cover object-right transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.38]"
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-          </div>
-        </div>
-
-        <div className="grid gap-8 px-2 pt-9 lg:grid-cols-[1.45fr_0.55fr] lg:px-0 lg:pt-11">
-          <ul className="flex flex-wrap gap-x-8 gap-y-3" aria-label="Fragrance notes">
-            {(product.notes.length ? product.notes : [product.tag]).map((note) => (
-              <li key={note} className="text-lg font-medium sm:text-xl">
-                {note}
-              </li>
-            ))}
-          </ul>
-          <dl className="grid grid-cols-3 gap-4 lg:grid-cols-1">
-            <CompositionDetail label="Best worn" value={product.occasion} />
-            <CompositionDetail label="Wear time" value={product.longevity} />
-            <CompositionDetail label="Format" value={product.format || "Roll-on attar"} />
-          </dl>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CompositionDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-black/48">{label}</dt>
-      <dd className="mt-1 text-sm leading-6 capitalize">{value}</dd>
     </div>
   );
 }

@@ -13,11 +13,6 @@ import spinGulaab from "@/assets/spin-oud-gulaab.webp";
 import spinFitoor from "@/assets/spin-fitoor.webp";
 import spinDariya from "@/assets/spin-dariya.webp";
 import spinUlfat from "@/assets/spin-ulfat.webp";
-import notesZafar from "@/assets/notes-oud-zafar.webp";
-import notesGulaab from "@/assets/notes-oud-gulaab.webp";
-import notesFitoor from "@/assets/notes-fitoor.webp";
-import notesDariya from "@/assets/notes-dariya.webp";
-import notesUlfat from "@/assets/notes-ulfat.webp";
 
 /** Cinematic poster per scent, keyed by product id. */
 export const SCENE_IMAGES: Record<string, string> = {
@@ -35,15 +30,6 @@ export const BOTTLE_IMAGES: Record<string, string> = {
   fitoor: spinFitoor,
   dariya: spinDariya,
   ulfat: spinUlfat,
-};
-
-/** Ingredient still life used to make each scent profile visual, not just descriptive. */
-export const SCENT_PROFILE_IMAGES: Record<string, string> = {
-  "oud-zafar": notesZafar,
-  "oud-gulaab": notesGulaab,
-  fitoor: notesFitoor,
-  dariya: notesDariya,
-  ulfat: notesUlfat,
 };
 
 export type Occasion = "evening" | "everyday" | "morning" | "close";
