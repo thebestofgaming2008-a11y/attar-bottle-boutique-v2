@@ -378,12 +378,11 @@ function ProductFact({ label, value }: { label: string; value: string }) {
 }
 
 function ProductGallery({ product }: { product: Product }) {
-  const fallbackImages = [
-    product.image,
-    SCENE_IMAGES[product.id],
-    BOTTLE_IMAGES[product.id],
-  ].filter((image): image is string => Boolean(image));
-  const images = Array.from(new Set(product.gallery?.length ? product.gallery : fallbackImages));
+  const images = Array.from(
+    new Set(
+      [product.image, BOTTLE_IMAGES[product.id]].filter((image): image is string => Boolean(image)),
+    ),
+  );
   const [featuredImage, ...supportingImages] = images;
 
   return (
@@ -423,7 +422,7 @@ function ProductGallery({ product }: { product: Product }) {
 }
 
 function ProductStory({ product }: { product: Product }) {
-  const scene = product.socialImage || SCENE_IMAGES[product.id] || product.image;
+  const scene = BOTTLE_IMAGES[product.id] || product.image;
 
   return (
     <section className="overflow-hidden border-t border-black/10 bg-white text-black">
@@ -445,15 +444,14 @@ function ProductStory({ product }: { product: Product }) {
           </dl>
         </div>
 
-        <figure className="relative min-h-[480px] sm:min-h-[620px] lg:min-h-[720px]">
+        <figure className="relative min-h-[480px] border-l border-black/10 bg-white sm:min-h-[620px] lg:min-h-[720px]">
           <img
             src={scene}
-            alt={`${product.name} campaign scene`}
-            className="absolute inset-0 h-full w-full object-cover"
+            alt={`${product.name} BADR attar bottle`}
+            className="absolute inset-0 h-full w-full object-contain p-14 sm:p-20 lg:p-24"
             loading="lazy"
             decoding="async"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
         </figure>
       </div>
     </section>

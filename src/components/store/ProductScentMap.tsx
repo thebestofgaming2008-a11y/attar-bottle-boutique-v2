@@ -1,44 +1,45 @@
-import { BOTTLE_IMAGES, SCENT_PROFILE_IMAGES, type Product } from "@/lib/products";
+import realBergamot from "@/assets/real-bergamot.jpg";
+import realMandarin from "@/assets/real-mandarin.jpg";
+import realVetiver from "@/assets/real-vetiver.jpg";
+import { BOTTLE_IMAGES, type Product } from "@/lib/products";
 
 type ScentCallout = {
   index: string;
   label: string;
   title: string;
-  target: [number, number];
+  detail: string;
 };
 
-const TARGETS: Record<string, [number, number][]> = {
-  dariya: [
-    [710, 415],
-    [965, 405],
-    [1195, 420],
-  ],
-  fitoor: [
-    [690, 385],
-    [1130, 430],
-    [885, 500],
-  ],
-  "oud-gulaab": [
-    [800, 355],
-    [585, 425],
-    [1160, 455],
-  ],
-  "oud-zafar": [
-    [575, 420],
-    [885, 450],
-    [1170, 420],
-  ],
-  ulfat: [
-    [625, 375],
-    [915, 475],
-    [1180, 435],
-  ],
+type VerifiedPhoto = {
+  src: string;
+  alt: string;
+  credit: string;
+  href: string;
+  position?: string;
 };
 
-const CALLOUT_STARTS: [number, number][] = [
-  [585, 151],
-  [855, 151],
-  [1115, 151],
+const DARIYA_PHOTOS: VerifiedPhoto[] = [
+  {
+    src: realBergamot,
+    alt: "A basket of real bergamot fruit from Calabria",
+    credit: "Bergamot: Jacopo Werther",
+    href: "https://commons.wikimedia.org/wiki/File:Bergamotti_(Bergamot_fruits).jpg",
+    position: "50% 45%",
+  },
+  {
+    src: realMandarin,
+    alt: "Real peeled mandarin segments and peel on slate",
+    credit: "Mandarin: Nataliya Vaitkevich",
+    href: "https://www.pexels.com/photo/orange-peel-and-pieces-of-mandarin-on-a-chopping-board-5735594/",
+    position: "64% 50%",
+  },
+  {
+    src: realVetiver,
+    alt: "Bundles of real harvested vetiver roots",
+    credit: "Vetiver: David Monniaux",
+    href: "https://commons.wikimedia.org/wiki/File:Vetiveria_zizanoides_dsc07810.jpg",
+    position: "52% 50%",
+  },
 ];
 
 function joinNotes(notes: string[]) {
@@ -71,27 +72,34 @@ function scentGroups(product: Product) {
   return [notes.slice(0, 2), notes.slice(2, 3), notes.slice(3)];
 }
 
-function scentCallouts(product: Product): ScentCallout[] {
-  const groups = scentGroups(product);
-  const fallbackTargets: [number, number][] = [
-    [700, 410],
-    [930, 430],
-    [1160, 420],
-  ];
-  const targets = TARGETS[product.id] || fallbackTargets;
+function calloutDetail(title: string, index: number) {
+  const note = title.toLowerCase();
+  if (note.includes("bergamot")) return "Bright, green citrus opens the fragrance clean.";
+  if (note.includes("mandarin")) return "Juicy softness rounds the sharper citrus edge.";
+  if (note.includes("vetiver")) return "Dry roots create the earthy base that stays.";
+  if (index === 0) return "The first notes you notice when the oil meets skin.";
+  if (index === 1) return "The character at the centre of the composition.";
+  return "The lasting trace that settles closest to skin.";
+}
 
-  return groups.slice(0, 3).map((notes, index) => ({
-    index: `0${index + 1}`,
-    label: layerLabel(notes, index),
-    title: joinNotes(notes),
-    target: targets[index] || fallbackTargets[index],
-  }));
+function scentCallouts(product: Product): ScentCallout[] {
+  return scentGroups(product)
+    .slice(0, 3)
+    .map((notes, index) => {
+      const title = joinNotes(notes);
+      return {
+        index: `0${index + 1}`,
+        label: layerLabel(notes, index),
+        title,
+        detail: calloutDetail(title, index),
+      };
+    });
 }
 
 export function ProductScentMap({ product }: { product: Product }) {
   const callouts = scentCallouts(product);
   const bottle = BOTTLE_IMAGES[product.id] || product.image;
-  const ingredients = SCENT_PROFILE_IMAGES[product.id] || product.image;
+  const verifiedPhotos = product.id === "dariya" ? DARIYA_PHOTOS : [];
 
   return (
     <section className="overflow-hidden border-t border-black/10 bg-white py-14 sm:py-20 lg:py-24">
@@ -104,93 +112,108 @@ export function ProductScentMap({ product }: { product: Product }) {
             The scent, ingredient by ingredient.
           </h2>
           <p className="max-w-md text-sm leading-6 text-black/58 sm:text-base sm:leading-7">
-            Follow the composition from its first bright note to the trace that stays on skin.
+            Real materials. Clear notes. No invented product scene.
           </p>
         </div>
       </header>
 
       <div className="no-scrollbar mt-9 overflow-x-auto px-5 sm:mt-12 sm:px-8">
-        <div className="relative mx-auto aspect-[1360/610] min-w-[690px] max-w-[1380px] overflow-hidden border border-black/15 bg-white">
-          <img
-            src={ingredients}
-            alt={`${product.name} perfume ingredients: ${product.notes.join(", ")}`}
-            className="absolute inset-y-0 right-0 h-full w-[70%] object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-          <div className="absolute inset-y-0 left-[26%] w-[20%] bg-gradient-to-r from-white via-white/92 to-transparent" />
-
-          <div className="absolute bottom-[8%] left-[2.5%] top-[7%] w-[31%] bg-white">
-            <div className="absolute left-0 top-0 z-10 max-w-[250px]">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-black/42">
-                Scent anatomy
+        <div className="mx-auto grid h-[440px] min-w-[720px] max-w-[1380px] grid-cols-[31%_repeat(3,minmax(0,1fr))] overflow-hidden border border-black/20 bg-white lg:h-[600px] lg:grid-cols-[27%_repeat(3,minmax(0,1fr))]">
+          <article className="relative overflow-hidden bg-white px-6 py-7 lg:px-10 lg:py-10">
+            <div className="relative z-10">
+              <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-black/42">
+                BADR scent anatomy
               </p>
-              <p className="mt-2 font-display text-[34px] leading-[0.92]">{product.name}</p>
-              <p className="mt-3 max-w-[210px] text-[11px] leading-5 text-black/55">
+              <h3 className="mt-2 font-display text-3xl leading-none lg:text-5xl">
+                {product.name}
+              </h3>
+              <p className="mt-3 max-w-48 text-[10px] leading-5 text-black/55 lg:text-xs">
                 {product.tag}
               </p>
             </div>
             <img
               src={bottle}
               alt={`${product.name} BADR attar bottle`}
-              className="absolute -bottom-[4%] left-[20%] h-[83%] w-[76%] object-contain drop-shadow-[0_24px_20px_rgba(0,0,0,0.14)]"
+              className="absolute bottom-[7%] left-[17%] h-[69%] w-[72%] object-contain drop-shadow-[0_22px_18px_rgba(0,0,0,0.13)]"
               loading="lazy"
               decoding="async"
             />
-            <p className="absolute bottom-0 left-0 text-[9px] font-medium uppercase tracking-[0.1em] text-black/45">
+            <p className="absolute bottom-5 left-6 text-[8px] font-medium uppercase tracking-[0.1em] text-black/45 lg:bottom-8 lg:left-10">
               {product.volume || "6 ml"} · {product.longevity}
             </p>
-          </div>
+          </article>
 
-          <svg
-            viewBox="0 0 1360 610"
-            preserveAspectRatio="none"
-            className="pointer-events-none absolute inset-0 h-full w-full"
-            aria-hidden="true"
-          >
-            <g fill="none" stroke="currentColor" strokeWidth="1.2" className="text-black/65">
-              {callouts.map((callout, index) => {
-                const [startX, startY] = CALLOUT_STARTS[index];
-                const [targetX, targetY] = callout.target;
-                const middleY = Math.max(startY + 50, targetY - 72);
-                return (
-                  <path
-                    key={callout.index}
-                    d={`M ${startX} ${startY} V ${middleY} L ${targetX} ${targetY}`}
-                  />
-                );
-              })}
-            </g>
-            <g fill="white" stroke="currentColor" strokeWidth="2" className="text-black">
-              {callouts.map((callout) => (
-                <circle key={callout.index} cx={callout.target[0]} cy={callout.target[1]} r="5" />
-              ))}
-            </g>
-          </svg>
+          {callouts.map((callout, index) => {
+            const photo = verifiedPhotos[index];
+            return (
+              <article
+                key={callout.index}
+                className="relative min-w-0 overflow-hidden border-l border-black/20 bg-white"
+              >
+                {photo ? (
+                  <figure className="absolute inset-x-0 top-0 h-[62%] overflow-hidden bg-[#f3f3f1]">
+                    <img
+                      src={photo.src}
+                      alt={photo.alt}
+                      className="h-full w-full object-cover"
+                      style={{ objectPosition: photo.position }}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </figure>
+                ) : (
+                  <div className="absolute inset-x-0 top-0 grid h-[62%] place-items-center bg-white">
+                    <span className="font-display text-8xl text-black/[0.06]">{callout.index}</span>
+                  </div>
+                )}
 
-          <div className="absolute left-[39%] right-[2.5%] top-[6%] grid grid-cols-3 gap-[4%]">
-            {callouts.map((callout) => (
-              <article key={callout.index} className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-5 w-5 place-items-center rounded-full border border-black/40 bg-white text-[7px] font-semibold">
-                    {callout.index}
-                  </span>
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-black/55">
-                    {callout.label}
+                <span className="absolute left-1/2 top-[55%] h-[19%] w-px -translate-x-1/2 bg-black/75">
+                  <span className="absolute -left-1 top-0 h-2 w-2 rounded-full border border-black bg-white" />
+                </span>
+
+                <div className="absolute inset-x-4 bottom-5 lg:inset-x-7 lg:bottom-8">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-semibold text-black/42">{callout.index}</span>
+                    <p className="text-[8px] font-semibold uppercase tracking-[0.13em] text-black/55">
+                      {callout.label}
+                    </p>
+                  </div>
+                  <h3 className="mt-2 font-display text-xl leading-none tracking-[-0.02em] lg:text-3xl">
+                    {callout.title}
+                  </h3>
+                  <p className="mt-3 max-w-56 text-[9px] leading-4 text-black/55 lg:text-[11px] lg:leading-5">
+                    {callout.detail}
                   </p>
                 </div>
-                <h3 className="mt-2 max-w-[220px] font-display text-[18px] leading-[0.95] tracking-[-0.02em] lg:text-[25px]">
-                  {callout.title}
-                </h3>
               </article>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 
-      <p className="mt-3 px-5 text-right text-[9px] uppercase tracking-[0.12em] text-black/42 sm:hidden">
-        Swipe to follow the notes →
-      </p>
+      <div className="mx-auto mt-3 flex max-w-[1380px] flex-wrap justify-between gap-3 px-5 sm:px-8">
+        <p className="text-[8px] uppercase tracking-[0.12em] text-black/40 sm:hidden">
+          Swipe to follow the notes →
+        </p>
+        {verifiedPhotos.length ? (
+          <p className="text-[8px] leading-4 text-black/35">
+            Documentary ingredient photography:{" "}
+            {verifiedPhotos.map((photo, index) => (
+              <span key={photo.href}>
+                {index ? " · " : ""}
+                <a
+                  href={photo.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  {photo.credit}
+                </a>
+              </span>
+            ))}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }
