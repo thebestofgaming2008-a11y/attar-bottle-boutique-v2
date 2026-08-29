@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PRODUCTS, storefrontProductFromSource, type Product } from "@/lib/products";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { Hero } from "@/components/store/Hero";
-import { VideoBand } from "@/components/store/VideoBand";
 import { ScentChapter } from "@/components/store/ScentChapter";
 import { ProductCard } from "@/components/store/ProductCard";
 import { listActiveProducts } from "@/services/productService";
@@ -60,14 +59,9 @@ function Index() {
     const current = collectionById.get(product.id);
     return current ? [current] : [];
   });
-  const scrollToShop = () =>
-    document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
-
   return (
     <StoreShell>
-      <Hero onCta={scrollToShop} />
-
-      <VideoBand />
+      <Hero products={collection} />
 
       {chapterProducts.map((p) => (
         <div key={p.id}>

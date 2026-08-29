@@ -601,6 +601,7 @@ async function verifyTurnstileToken(tokenValue: string) {
       .map((hostname) => hostname.trim().toLowerCase())
       .filter(Boolean);
     if (
+      !usesOfficialTestSecret &&
       allowedHostnames.length > 0 &&
       !allowedHostnames.includes(String(result.hostname ?? "").toLowerCase())
     ) {

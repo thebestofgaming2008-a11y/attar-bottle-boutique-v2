@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Minus, Plus, Star } from "lucide-react";
+import { Check, Minus, Plus, ShoppingBag, Star } from "lucide-react";
 import {
   BOTTLE_IMAGES,
   PRODUCTS,
@@ -118,14 +118,22 @@ function ProductPage() {
   const [selectedSize, setSelectedSize] = useState(
     product.sizeOptions?.[0] || `${product.volume || "6 ml"} roll-on`,
   );
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     setQty(1);
     setSelectedColor(product.colorOptions?.[0] || "");
     setSelectedSize(product.sizeOptions?.[0] || `${product.volume || "6 ml"} roll-on`);
+    setAdded(false);
   }, [product.id, product.colorOptions, product.sizeOptions, product.volume]);
 
-  const addCurrentProduct = () =>
+  useEffect(() => {
+    if (!added) return;
+    const timeout = window.setTimeout(() => setAdded(false), 1600);
+    return () => window.clearTimeout(timeout);
+  }, [added]);
+
+  const addCurrentProduct = () => {
     cart.addProduct(
       {
         productId: product.backendId,
@@ -139,6 +147,8 @@ function ProductPage() {
       },
       qty,
     );
+    setAdded(true);
+  };
   const socialImage = product.socialImage || SCENE_IMAGES[product.id] || product.image;
   const productSchema = {
     "@context": "https://schema.org",
@@ -192,6 +202,7 @@ function ProductPage() {
               onDecrease={() => setQty((value) => Math.max(1, value - 1))}
               onIncrease={() => setQty((value) => value + 1)}
               onAdd={addCurrentProduct}
+              added={added}
             />
           </div>
         </section>
@@ -219,7 +230,7 @@ function ProductPage() {
 
       <SiteFooter />
 
-      <div className="fixed inset-x-0 bottom-0 z-40 grid h-18 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-black/10 bg-white px-5 sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 grid min-h-20 grid-cols-[minmax(0,0.72fr)_minmax(190px,1.28fr)] items-center gap-4 border-t border-black/10 bg-[#f7f6f2]/95 px-4 py-3 shadow-[0_-14px_45px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:hidden">
         <div className="min-w-0">
           <p className="truncate text-xs text-black/55">
             {product.name} · {product.volume || "6 ml"}
@@ -230,9 +241,21 @@ function ProductPage() {
           type="button"
           disabled={product.inStock === false}
           onClick={addCurrentProduct}
-          className="min-h-12 min-w-40 bg-black px-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#292929] disabled:opacity-40"
+          className={`motion-button flex min-h-13 items-center justify-center gap-2 px-5 font-display text-base text-white disabled:opacity-40 ${
+            added ? "bg-[#254a36]" : "bg-black hover:bg-[#292929]"
+          }`}
         >
-          {product.inStock === false ? "Sold out" : "Add to cart"}
+          {product.inStock === false ? (
+            "Sold out"
+          ) : added ? (
+            <>
+              <Check className="h-4 w-4" /> Added to bag
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="h-4 w-4" /> Add to bag
+            </>
+          )}
         </button>
       </div>
     </StoreShell>
@@ -250,6 +273,7 @@ function ProductInformation({
   onDecrease,
   onIncrease,
   onAdd,
+  added,
 }: {
   product: Product;
   related: Product[];
@@ -261,6 +285,7 @@ function ProductInformation({
   onDecrease: () => void;
   onIncrease: () => void;
   onAdd: () => void;
+  added: boolean;
 }) {
   return (
     <div className="min-w-0 px-5 py-8 sm:px-10 sm:py-10 lg:sticky lg:top-13 lg:self-start lg:px-12 lg:py-10 xl:px-16">
@@ -384,11 +409,21 @@ function ProductInformation({
           type="button"
           disabled={product.inStock === false}
           onClick={onAdd}
-          className="min-h-13 bg-black px-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#292929] disabled:cursor-not-allowed disabled:opacity-40"
+          className={`motion-button flex min-h-13 items-center justify-center gap-2 px-5 font-display text-base text-white disabled:cursor-not-allowed disabled:opacity-40 ${
+            added ? "bg-[#254a36]" : "bg-black hover:bg-[#292929]"
+          }`}
         >
-          {product.inStock === false
-            ? "Sold out"
-            : `Add to cart · ${inr(product.price * quantity)}`}
+          {product.inStock === false ? (
+            "Sold out"
+          ) : added ? (
+            <>
+              <Check className="h-4 w-4" /> Added to bag
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="h-4 w-4" /> Add to bag · {inr(product.price * quantity)}
+            </>
+          )}
         </button>
       </div>
 
