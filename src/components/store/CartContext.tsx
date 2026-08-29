@@ -64,12 +64,20 @@ function readStoredCart() {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>(readStoredCart);
+  // Match the server render first, then restore the persisted cart after hydration.
+  const [lines, setLines] = useState<CartLine[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    setLines(readStoredCart());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
-  }, [lines]);
+  }, [hydrated, lines]);
 
   const addProduct = useCallback((product: CartProductInput, qty = 1) => {
     const safeQty = Math.max(1, Math.floor(qty));
