@@ -19,7 +19,7 @@ npm run build
 npx convex dev --once
 ```
 
-Razorpay secrets must only be stored in Convex environment variables. The public Razorpay key ID may be exposed to the checkout client; the key secret and webhook secret must never be placed in frontend source or public environment variables.
+Razorpay and Turnstile secrets must only be stored in Convex environment variables. Public site/key IDs may be exposed to the checkout client; secret keys must never be placed in frontend source or public environment variables.
 
 ## Deployment
 
@@ -27,5 +27,8 @@ Razorpay secrets must only be stored in Convex environment variables. The public
 - Configure production environment variables from `.env.example` in Convex and Cloudflare.
 - Build and deploy the Cloudflare Worker with `npm run build` and `npx wrangler deploy`.
 - Configure Razorpay to send `payment.captured`, `payment.failed`, and `order.paid` to `https://<convex-site-url>/razorpay/webhook`.
+- Create a hostname-bound Cloudflare Turnstile widget and set its public site key plus the Convex-only secret. Official dummy keys are staging-only and do not provide production abuse protection.
 
 Test credentials are suitable only for staging. Use separately generated live credentials after Razorpay has approved the production domain.
+
+Operational and incident procedures are in [`docs/PAYMENTS_RUNBOOK.md`](docs/PAYMENTS_RUNBOOK.md).

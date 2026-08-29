@@ -41,8 +41,17 @@ export async function createRazorpayCheckoutOrder(args: {
   subtotal: number;
   shipping: number;
   total: number;
+  checkoutAttemptId: string;
+  turnstileToken: string;
 }) {
   return await convex.action(api.orders.createRazorpayCheckoutOrder, args);
+}
+
+export async function cancelRazorpayCheckout(razorpayOrderId: string, checkoutAttemptId: string) {
+  return await convex.mutation(api.orders.cancelRazorpayCheckout, {
+    razorpay_order_id: razorpayOrderId,
+    checkout_attempt_id: checkoutAttemptId,
+  });
 }
 
 export interface RazorpayVerificationArgs {

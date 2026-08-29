@@ -147,9 +147,11 @@ export default defineSchema({
     .index("by_created_at", ["created_at"]),
   checkout_intents: defineTable({
     razorpay_order_id: v.string(),
+    checkout_attempt_id: optionalString,
     user_id: optionalString,
     payment_id: optionalString,
     status: v.string(),
+    stock_reserved: optionalBoolean,
     cart: v.array(v.any()),
     customer: v.any(),
     amount_paise: v.number(),
@@ -162,10 +164,10 @@ export default defineSchema({
     updated_at: v.string(),
   })
     .index("by_razorpay_order_id", ["razorpay_order_id"])
+    .index("by_checkout_attempt_id", ["checkout_attempt_id"])
     .index("by_status", ["status"])
     .index("by_status_and_expires_at", ["status", "expires_at"])
-    .index("by_status_and_reconcile_after", ["status", "reconcile_after"])
-    .index("by_expires_at", ["expires_at"]),
+    .index("by_status_and_reconcile_after", ["status", "reconcile_after"]),
   razorpay_webhook_events: defineTable({
     event_id: v.string(),
     event_type: v.string(),

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery } from "convex/react";
 import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, MessageCircle } from "lucide-react";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
@@ -7,6 +7,7 @@ import { useCart } from "@/components/store/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
 import {
+  cancelRazorpayCheckout,
   createRazorpayCheckoutOrder,
   verifyRazorpayPaymentWithRetry,
   type CheckoutCartLine,
@@ -30,9 +31,27 @@ type RazorpayInstance = {
   ) => void;
 };
 
+type TurnstileApi = {
+  render: (
+    container: HTMLElement,
+    options: {
+      sitekey: string;
+      action: string;
+      theme: "light";
+      size: "flexible";
+      callback: (token: string) => void;
+      "expired-callback": () => void;
+      "error-callback": () => void;
+    },
+  ) => string;
+  reset: (widgetId: string) => void;
+  remove: (widgetId: string) => void;
+};
+
 declare global {
   interface Window {
     Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
+    turnstile?: TurnstileApi;
   }
 }
 
@@ -95,6 +114,29 @@ function loadRazorpay() {
   });
 }
 
+function loadTurnstile() {
+  if (window.turnstile) return Promise.resolve();
+  const source = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  const existing = document.querySelector<HTMLScriptElement>(`script[src="${source}"]`);
+  if (existing) {
+    return new Promise<void>((resolve, reject) => {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Security check did not load.")), {
+        once: true,
+      });
+    });
+  }
+  return new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = source;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Security check did not load."));
+    document.head.appendChild(script);
+  });
+}
+
 function countryIsIndia(country: string) {
   return ["india", "in", "bharat"].includes(country.trim().toLowerCase());
 }
@@ -103,6 +145,7 @@ const WHATSAPP_ORDER_NUMBER = String(import.meta.env.VITE_WHATSAPP_ORDER_NUMBER 
   /\D/g,
   "",
 );
+const TURNSTILE_SITE_KEY = String(import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "").trim();
 
 function CheckoutPage() {
   const cart = useCart();
@@ -124,11 +167,53 @@ function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [checkoutAttemptId, setCheckoutAttemptId] = useState(() => crypto.randomUUID());
+  const turnstileHostRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
   const isIndia = countryIsIndia(customer.country);
 
   useEffect(() => {
     void loadRazorpay().catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!isIndia || !TURNSTILE_SITE_KEY) return;
+    let cancelled = false;
+    void loadTurnstile()
+      .then(() => {
+        if (cancelled || !window.turnstile || !turnstileHostRef.current) return;
+        turnstileWidgetIdRef.current = window.turnstile.render(turnstileHostRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          action: "checkout",
+          theme: "light",
+          size: "flexible",
+          callback: (token) => setTurnstileToken(token),
+          "expired-callback": () => setTurnstileToken(""),
+          "error-callback": () => setTurnstileToken(""),
+        });
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setMessage(error instanceof Error ? error.message : "Security check did not load.");
+      });
+    return () => {
+      cancelled = true;
+      if (turnstileWidgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(turnstileWidgetIdRef.current);
+      }
+      turnstileWidgetIdRef.current = null;
+      setTurnstileToken("");
+    };
+  }, [isIndia]);
+
+  function resetCheckoutProtection() {
+    setTurnstileToken("");
+    setCheckoutAttemptId(crypto.randomUUID());
+    if (turnstileWidgetIdRef.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetIdRef.current);
+    }
+  }
 
   useEffect(() => {
     if (!detectedCountry) return;
@@ -169,6 +254,9 @@ function CheckoutPage() {
   }
 
   async function submitIndia() {
+    if (!TURNSTILE_SITE_KEY || !turnstileToken) {
+      throw new Error("Complete the security check before paying.");
+    }
     await loadRazorpay();
     if (!window.Razorpay)
       throw new Error("Razorpay Checkout did not load. Check your connection and try again.");
@@ -180,39 +268,58 @@ function CheckoutPage() {
       shipping: 0,
       total: cart.subtotal,
     };
-    const razorpayOrder = await createRazorpayCheckoutOrder(payload);
-
-    const response = await new Promise<RazorpaySuccess>((resolve, reject) => {
-      let settled = false;
-      const finish = (callback: () => void) => {
-        if (settled) return;
-        settled = true;
-        callback();
-      };
-      const checkout = new window.Razorpay!({
-        key: razorpayOrder.keyId,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        order_id: razorpayOrder.orderId,
-        name: "BADR",
-        description: "BADR attar order",
-        prefill: { name: customer.name, email: customer.email, contact: customer.phone },
-        theme: { color: "#171717" },
-        handler: (result: RazorpaySuccess) => finish(() => resolve(result)),
-        modal: {
-          ondismiss: () =>
-            finish(() => reject(new Error("Payment was cancelled. No order was placed."))),
-        },
-      });
-      checkout.on("payment.failed", (result) =>
-        finish(() =>
-          reject(new Error(result.error?.description || "Payment failed. No order was placed.")),
-        ),
-      );
-      checkout.open();
+    const razorpayOrder = await createRazorpayCheckoutOrder({
+      ...payload,
+      checkoutAttemptId,
+      turnstileToken,
     });
 
-    const order = await verifyRazorpayPaymentWithRetry({ ...payload, ...response });
+    let response: RazorpaySuccess;
+    try {
+      response = await new Promise<RazorpaySuccess>((resolve, reject) => {
+        let settled = false;
+        const finish = (callback: () => void) => {
+          if (settled) return;
+          settled = true;
+          callback();
+        };
+        const checkout = new window.Razorpay!({
+          key: razorpayOrder.keyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          order_id: razorpayOrder.orderId,
+          name: "BADR",
+          description: "BADR attar order",
+          prefill: { name: customer.name, email: customer.email, contact: customer.phone },
+          theme: { color: "#171717" },
+          handler: (result: RazorpaySuccess) => finish(() => resolve(result)),
+          modal: {
+            ondismiss: () =>
+              finish(() => reject(new Error("Payment was cancelled. No order was placed."))),
+          },
+        });
+        checkout.on("payment.failed", (result) =>
+          finish(() =>
+            reject(new Error(result.error?.description || "Payment failed. No order was placed.")),
+          ),
+        );
+        checkout.open();
+      });
+    } catch (error) {
+      await cancelRazorpayCheckout(razorpayOrder.orderId, checkoutAttemptId).catch(() => undefined);
+      resetCheckoutProtection();
+      throw error;
+    }
+
+    let order: any;
+    try {
+      order = await verifyRazorpayPaymentWithRetry({ ...payload, ...response });
+    } catch {
+      setTurnstileToken("");
+      throw new Error(
+        "Payment response received, but confirmation is still processing. Do not pay again; check tracking shortly or contact us.",
+      );
+    }
     const orderNumber = String(order?.order_number ?? "");
     cart.clear();
     setSuccess(orderNumber || "Payment verified");
@@ -369,6 +476,16 @@ function CheckoutPage() {
                 />
               </div>
 
+              {isIndia ? (
+                <div className="mt-6 border border-foreground/15 bg-[#faf8f4] p-3">
+                  {TURNSTILE_SITE_KEY ? (
+                    <div ref={turnstileHostRef} />
+                  ) : (
+                    <p className="text-sm text-red-800">Checkout security is not configured.</p>
+                  )}
+                </div>
+              ) : null}
+
               {message ? (
                 <p
                   role="alert"
@@ -385,7 +502,11 @@ function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={busy || cart.lines.length === 0}
+                disabled={
+                  busy ||
+                  cart.lines.length === 0 ||
+                  (isIndia && (!TURNSTILE_SITE_KEY || !turnstileToken))
+                }
                 className="motion-button mt-7 flex w-full items-center justify-center gap-2 bg-foreground px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-background disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {busy ? (
