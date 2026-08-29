@@ -63,7 +63,13 @@ export function ScentFinder() {
 
       {result && (
         <div className="mt-10 grid grid-cols-[110px_minmax(0,1fr)] items-center gap-5 border border-background/25 p-5 duration-700 animate-in fade-in slide-in-from-bottom-4">
-          <img src={result.image} alt={result.name} className="w-full" loading="lazy" />
+          <img
+            src={result.image}
+            alt={result.name}
+            className="w-full"
+            loading="lazy"
+            decoding="async"
+          />
           <div className="min-w-0">
             <h3 className="font-display text-2xl leading-none">{result.name}</h3>
             <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-background/50">

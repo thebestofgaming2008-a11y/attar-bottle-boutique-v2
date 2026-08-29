@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "badr-boutique-studio-v2",
   "main": ".output/server/index.mjs",
-  "compatibility_date": "2026-08-28",
+  "compatibility_date": "2026-08-29",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".output/public",

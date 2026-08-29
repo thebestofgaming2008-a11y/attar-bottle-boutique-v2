@@ -144,6 +144,7 @@
 
 @layer base {
   html {
+    overflow-x: clip;
     scroll-behavior: smooth;
   }
 
@@ -156,7 +157,7 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   button,

@@ -17,6 +17,7 @@ export function ProductCard({ product }: { product: Product }) {
           alt={`${product.name} attar, 6 ml`}
           className="mx-auto w-full max-w-[200px] transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06]"
           loading="lazy"
+          decoding="async"
         />
         <span className="absolute inset-x-4 bottom-4 translate-y-3 bg-foreground px-4 py-3 text-center text-[9px] font-semibold uppercase tracking-[0.2em] text-background opacity-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0 group-hover:opacity-100">
           View scent

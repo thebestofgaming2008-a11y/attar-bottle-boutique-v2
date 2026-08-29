@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Eye } from "lucide-react";
-import zafar from "@/assets/spin-oud-zafar.png";
-import gulaab from "@/assets/spin-oud-gulaab.png";
-import fitoor from "@/assets/spin-fitoor.png";
-import dariya from "@/assets/spin-dariya.png";
-import ulfat from "@/assets/spin-ulfat.png";
+import zafar from "@/assets/spin-oud-zafar.webp";
+import gulaab from "@/assets/spin-oud-gulaab.webp";
+import fitoor from "@/assets/spin-fitoor.webp";
+import dariya from "@/assets/spin-dariya.webp";
+import ulfat from "@/assets/spin-ulfat.webp";
 
 export const SPIN_BOTTLES = [
   { src: zafar, name: "Oud Zafar", id: "oud-zafar" },
@@ -45,6 +45,7 @@ export function BottleSpin({ className = "" }: { className?: string }) {
               aria-hidden={i >= SPIN_BOTTLES.length}
               className="w-full"
               loading={i >= SPIN_BOTTLES.length ? "lazy" : "eager"}
+              decoding="async"
               draggable={false}
             />
             <figcaption className="text-[9px] uppercase tracking-[0.3em] text-background/50">

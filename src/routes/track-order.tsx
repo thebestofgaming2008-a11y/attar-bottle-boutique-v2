@@ -131,6 +131,8 @@ function TrackOrderPage() {
                       src={item.product_image_url || ""}
                       alt=""
                       className="h-12 w-12 object-contain"
+                      loading="lazy"
+                      decoding="async"
                     />
                     <div className="text-sm">
                       {item.product_name}

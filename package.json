@@ -7,7 +7,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "preview": "vite preview",
+    "assets:optimize": "node scripts/optimize-assets.mjs",
+    "preview": "npm run build && wrangler dev --local",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -83,10 +84,13 @@
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
+    "sharp": "^0.35.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.2.0",
-    "vite-tsconfig-paths": "^6.1.1",
     "wrangler": "^4.127.1"
+  },
+  "overrides": {
+    "undici": "^7.29.0"
   }
 }

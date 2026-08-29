@@ -1,4 +1,5 @@
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { convex } from "@/integrations/convex/client";
 import type { Product } from "./productService";
 
@@ -125,10 +126,11 @@ export async function refreshPublicCatalog(product?: Pick<Product, "id" | "slug"
 }
 
 export async function uploadProductImage(file: File): Promise<string | null> {
-  const contentType = inferProductMediaType(file);
   if (file.size > 25 * 1024 * 1024) {
     throw new Error("Product media must be 25 MB or smaller.");
   }
+  const preparedFile = await optimizeProductImage(file);
+  const contentType = inferProductMediaType(preparedFile);
   if (!contentType) {
     throw new Error(
       "Upload JPG, PNG, WebP, AVIF, GIF, MP4, or WebM. HEIC/HEIF phone photos must be exported as JPG first.",
@@ -136,16 +138,16 @@ export async function uploadProductImage(file: File): Promise<string | null> {
   }
 
   const media = await convex.action(api.media.createProductMediaUpload, {
-    fileName: safeUploadFileName(file.name || "product-media"),
+    fileName: safeUploadFileName(preparedFile.name || "product-media"),
     contentType,
-    size: file.size,
+    size: preparedFile.size,
   });
   let result: Response;
   try {
     result = await fetch(media.uploadUrl, {
       method: media.method ?? "POST",
       headers: media.headers,
-      body: file,
+      body: preparedFile,
     });
   } catch (error) {
     throw new Error(uploadErrorMessage(error));
@@ -157,7 +159,42 @@ export async function uploadProductImage(file: File): Promise<string | null> {
   const payload = (await result.json().catch(() => null)) as { url?: string } | null;
   const url = media.publicUrl || payload?.url;
   if (!url) throw new Error("Upload finished, but no media URL was returned.");
-  return `${url}#${encodeURIComponent(file.name)}`;
+  return `${url}#${encodeURIComponent(preparedFile.name)}`;
+}
+
+async function optimizeProductImage(file: File): Promise<File> {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(inferProductMediaType(file) ?? "")) {
+    return file;
+  }
+  if (typeof document === "undefined" || typeof createImageBitmap === "undefined") return file;
+
+  const image = await createImageBitmap(file);
+  try {
+    if (image.width * image.height > 40_000_000) {
+      throw new Error("Product images cannot exceed 40 megapixels.");
+    }
+    const maxDimension = 1800;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: true });
+    if (!context) return file;
+    context.drawImage(image, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/webp", 0.86),
+    );
+    if (!blob || blob.type !== "image/webp" || blob.size >= file.size) return file;
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "product-image";
+    return new File([blob], `${baseName}.webp`, {
+      type: "image/webp",
+      lastModified: file.lastModified,
+    });
+  } finally {
+    image.close();
+  }
 }
 
 function safeUploadFileName(name: string) {
@@ -301,7 +338,17 @@ export interface AdminOrder {
   status: string | null;
   payment_status: string | null;
   refund_amount_inr?: number | null;
+  refund_status?: string | null;
+  refund_id?: string | null;
+  refund_requested_at?: string | null;
+  refund_reason?: string | null;
+  refund_error?: string | null;
   refunded_at?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  returned_at?: string | null;
+  return_reason?: string | null;
+  inventory_restocked_at?: string | null;
   inventory_attention?: boolean | null;
   shipping_payment_status?: string | null;
   shipping_payment_note?: string | null;
@@ -347,7 +394,7 @@ export async function listPaymentRecoveries(): Promise<PaymentRecovery[]> {
 }
 
 export async function updateOrderStatus(id: string, status: string): Promise<boolean> {
-  return await convex.mutation(api.orders.updateStatus, { id, status });
+  return await convex.mutation(api.orders.updateStatus, { id: id as Id<"orders">, status });
 }
 
 export async function updateOrderTracking(
@@ -355,7 +402,7 @@ export async function updateOrderTracking(
   payload: { carrier?: string | null; trackingNumber: string; trackingUrl?: string | null },
 ): Promise<AdminOrder | null> {
   return (await convex.mutation(api.orders.updateTracking, {
-    id,
+    id: id as Id<"orders">,
     ...payload,
   })) as AdminOrder | null;
 }

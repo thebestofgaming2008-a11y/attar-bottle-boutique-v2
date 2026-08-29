@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { LogOut, MapPin, Package, UserRound } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
@@ -20,8 +20,17 @@ function AccountPage() {
   const addresses = useQuery(api.addresses.listMine, auth.user ? {} : "skip");
   const createAddress = useMutation(api.addresses.create);
   const removeAddress = useMutation(api.addresses.remove);
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
-  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const setDefaultAddress = useMutation(api.addresses.setDefault);
+  const updateProfile = useMutation(api.users.updateProfile);
+  const [mode, setMode] = useState<"signIn" | "signUp" | "reset" | "resetCode">("signIn");
+  const [authForm, setAuthForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    code: "",
+    newPassword: "",
+  });
+  const [profileForm, setProfileForm] = useState({ fullName: "", phone: "" });
   const [address, setAddress] = useState({
     full_name: "",
     phone: "",
@@ -33,13 +42,50 @@ function AccountPage() {
   });
   const [message, setMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!auth.profile) return;
+    setProfileForm({
+      fullName: auth.profile.full_name || "",
+      phone: auth.profile.phone || "",
+    });
+  }, [auth.profile]);
+
   async function submitAuth(event: FormEvent) {
     event.preventDefault();
+    setMessage(null);
+    if (mode === "reset") {
+      const result = await auth.requestPasswordReset(authForm.email);
+      if (!result.error) {
+        setMode("resetCode");
+        setMessage("Check your email for the six-digit reset code.");
+      } else setMessage(result.error.message);
+      return;
+    }
+    if (mode === "resetCode") {
+      const result = await auth.resetPassword(authForm.email, authForm.code, authForm.newPassword);
+      if (!result.error) setMessage("Password changed. You are now signed in.");
+      else setMessage(result.error.message);
+      return;
+    }
     const result =
       mode === "signIn"
         ? await auth.signIn(authForm.email, authForm.password)
         : await auth.signUp(authForm.email, authForm.password, authForm.name);
     setMessage(result.error?.message ?? null);
+  }
+
+  async function submitProfile(event: FormEvent) {
+    event.preventDefault();
+    setMessage(null);
+    try {
+      await updateProfile({
+        full_name: profileForm.fullName.trim() || null,
+        phone: profileForm.phone.trim() || null,
+      });
+      setMessage("Account details saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save account details.");
+    }
   }
 
   async function submitAddress(event: FormEvent) {
@@ -71,7 +117,11 @@ function AccountPage() {
             <div className="mx-auto max-w-md bg-background p-6 shadow-sm sm:p-9">
               <UserRound className="h-8 w-8" />
               <h1 className="mt-5 font-display text-5xl">
-                {mode === "signIn" ? "Welcome back." : "Create your account."}
+                {mode === "signIn"
+                  ? "Welcome back."
+                  : mode === "signUp"
+                    ? "Create your account."
+                    : "Reset your password."}
               </h1>
               <p className="mt-3 text-sm text-muted-foreground">
                 Accounts are optional. Guest checkout always remains available.
@@ -90,32 +140,74 @@ function AccountPage() {
                   value={authForm.email}
                   onChange={(email) => setAuthForm((form) => ({ ...form, email }))}
                 />
-                <AccountInput
-                  label="Password"
-                  type="password"
-                  value={authForm.password}
-                  onChange={(password) => setAuthForm((form) => ({ ...form, password }))}
-                />
+                {mode === "signIn" || mode === "signUp" ? (
+                  <AccountInput
+                    label="Password"
+                    type="password"
+                    value={authForm.password}
+                    onChange={(password) => setAuthForm((form) => ({ ...form, password }))}
+                  />
+                ) : null}
+                {mode === "signUp" ? (
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Use at least 10 characters with upper-case, lower-case, and a number.
+                  </p>
+                ) : null}
+                {mode === "resetCode" ? (
+                  <>
+                    <AccountInput
+                      label="Six-digit code"
+                      inputMode="numeric"
+                      value={authForm.code}
+                      onChange={(code) => setAuthForm((form) => ({ ...form, code }))}
+                    />
+                    <AccountInput
+                      label="New password"
+                      type="password"
+                      value={authForm.newPassword}
+                      onChange={(newPassword) => setAuthForm((form) => ({ ...form, newPassword }))}
+                    />
+                  </>
+                ) : null}
                 {message ? (
                   <p role="alert" className="text-sm text-red-700">
                     {message}
                   </p>
                 ) : null}
                 <button className="bg-foreground py-4 text-xs font-semibold uppercase tracking-[0.18em] text-background">
-                  {mode === "signIn" ? "Sign in" : "Create account"}
+                  {mode === "signIn"
+                    ? "Sign in"
+                    : mode === "signUp"
+                      ? "Create account"
+                      : mode === "reset"
+                        ? "Send reset code"
+                        : "Change password"}
                 </button>
               </form>
-              <button
-                onClick={() => {
-                  setMode((value) => (value === "signIn" ? "signUp" : "signIn"));
-                  setMessage(null);
-                }}
-                className="mt-5 w-full text-xs underline underline-offset-4"
-              >
-                {mode === "signIn"
-                  ? "New to BADR? Create an account"
-                  : "Already have an account? Sign in"}
-              </button>
+              <div className="mt-5 grid gap-3 text-center text-xs">
+                <button
+                  onClick={() => {
+                    setMode(mode === "signUp" ? "signIn" : "signUp");
+                    setMessage(null);
+                  }}
+                  className="underline underline-offset-4"
+                >
+                  {mode === "signUp"
+                    ? "Already have an account? Sign in"
+                    : "New to BADR? Create an account"}
+                </button>
+                <button
+                  onClick={() => {
+                    setMode(mode === "reset" || mode === "resetCode" ? "signIn" : "reset");
+                    setMessage(null);
+                  }}
+                  className="underline underline-offset-4"
+                >
+                  {mode === "reset" || mode === "resetCode"
+                    ? "Back to sign in"
+                    : "Forgot your password?"}
+                </button>
+              </div>
             </div>
           ) : (
             <div>
@@ -152,6 +244,28 @@ function AccountPage() {
               </div>
 
               <div className="mt-10 grid gap-6 lg:grid-cols-2">
+                <section className="bg-background p-5 sm:p-7 lg:col-span-2">
+                  <div className="flex items-center gap-3">
+                    <UserRound className="h-5 w-5" />
+                    <h2 className="font-display text-3xl">Account details</h2>
+                  </div>
+                  <form onSubmit={submitProfile} className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <AccountInput
+                      label="Full name"
+                      value={profileForm.fullName}
+                      onChange={(fullName) => setProfileForm((item) => ({ ...item, fullName }))}
+                    />
+                    <AccountInput
+                      label="Phone"
+                      type="tel"
+                      value={profileForm.phone}
+                      onChange={(phone) => setProfileForm((item) => ({ ...item, phone }))}
+                    />
+                    <button className="bg-foreground py-3 text-xs font-semibold uppercase tracking-[0.15em] text-background sm:col-span-2">
+                      Save account details
+                    </button>
+                  </form>
+                </section>
                 <section className="bg-background p-5 sm:p-7">
                   <div className="flex items-center gap-3">
                     <Package className="h-5 w-5" />
@@ -182,6 +296,8 @@ function AccountPage() {
                                     src={item.product_image_url}
                                     alt=""
                                     className="h-12 w-12 object-contain"
+                                    loading="lazy"
+                                    decoding="async"
                                   />
                                 ) : (
                                   <div className="h-12 w-12 bg-secondary" />
@@ -231,8 +347,18 @@ function AccountPage() {
                         <br />
                         {item.country} · {item.phone}
                         <button
-                          onClick={() => void removeAddress({ id: item.id })}
-                          className="mt-2 block text-xs text-red-700 underline"
+                          onClick={() => void setDefaultAddress({ id: item.id })}
+                          disabled={Boolean(item.is_default)}
+                          className="mt-2 mr-4 text-xs underline disabled:hidden"
+                        >
+                          Make default
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Remove this saved address?"))
+                              void removeAddress({ id: item.id });
+                          }}
+                          className="mt-2 text-xs text-red-700 underline"
                         >
                           Remove
                         </button>
@@ -304,11 +430,13 @@ function AccountInput({
   value,
   onChange,
   type = "text",
+  inputMode,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  inputMode?: "text" | "numeric" | "email" | "tel";
 }) {
   return (
     <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
@@ -316,6 +444,7 @@ function AccountInput({
       <input
         required
         type={type}
+        inputMode={inputMode}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal outline-none focus:border-foreground"

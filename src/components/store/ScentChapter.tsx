@@ -24,6 +24,7 @@ export function ScentChapter({ product, index }: { product: Product; index: numb
           alt={`${product.name} attar — cinematic campaign poster`}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
           loading="lazy"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/30" />
 

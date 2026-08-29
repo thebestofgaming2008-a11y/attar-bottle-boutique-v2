@@ -20,7 +20,7 @@ const SITE_ORIGIN =
   import.meta.env.VITE_PUBLIC_SITE_URL ||
   "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
 const SOCIAL_IMAGE =
-  "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/products/scene-oud-zafar.jpg";
+  "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/products/scene-oud-zafar.webp";
 
 function NotFoundComponent() {
   return (

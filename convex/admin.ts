@@ -345,6 +345,7 @@ export const listAuditLogs = query({
 
 export const launchReadiness = query({
   args: {},
+  returns: v.any(),
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const [products, orders, recoveries, pendingReviews, categories] = await Promise.all([
@@ -390,7 +391,9 @@ export const launchReadiness = query({
         turnstileSecret && !turnstileSecret.startsWith("1x0000000000000000000000000000000"),
       ),
       authSecret: Boolean(process.env.AUTH_SECRET),
+      passwordResetEmail: Boolean(process.env.RESEND_API_KEY && process.env.AUTH_EMAIL_FROM),
     };
+    const refundAttention = orders.filter((order) => order.refund_status === "attention_required");
     const blockers = [
       ...(!env.adminEmail ? ["ADMIN_EMAIL/ADMIN_EMAILS is not configured."] : []),
       ...(!env.razorpayKeyId || !env.razorpaySecret
@@ -404,8 +407,14 @@ export const launchReadiness = query({
       ...(env.turnstileSecret && !env.turnstileProduction
         ? ["Turnstile is using testing credentials; production keys are required for launch."]
         : []),
+      ...(!env.passwordResetEmail
+        ? ["Account password reset email is not configured (RESEND_API_KEY/AUTH_EMAIL_FROM)."]
+        : []),
       ...(recoveries.length
         ? [`${recoveries.length} paid checkout recovery item(s) need manual attention.`]
+        : []),
+      ...(refundAttention.length
+        ? [`${refundAttention.length} refund request(s) need manual verification.`]
         : []),
       ...(missingCover.length
         ? [`${missingCover.length} active product(s) are missing cover images.`]
@@ -434,6 +443,7 @@ export const launchReadiness = query({
         orders: orders.length,
         recoveries: recoveries.length,
         pendingReviews: pendingReviews.length,
+        refundAttention: refundAttention.length,
         categories: categories.length,
       },
       samples: {
@@ -449,6 +459,7 @@ export const launchReadiness = query({
 
 export const notifications = query({
   args: {},
+  returns: v.any(),
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const [
@@ -554,6 +565,13 @@ export const notifications = query({
         count: recoveries.length,
         title: "Paid orders need recovery",
         body: "captured payments need manual attention",
+        section: "orders",
+      },
+      {
+        id: "refund-attention",
+        count: orders.filter((o) => o.refund_status === "attention_required").length,
+        title: "Refunds need verification",
+        body: "refund requests have an uncertain outcome",
         section: "orders",
       },
       {

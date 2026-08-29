@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useState, type ClipboardEvent, type DragEvent, type FormEvent } from "react";
 import {
   ImagePlus,
@@ -73,6 +73,8 @@ function AdminPage() {
   const updateProduct = useMutation(api.products.updateProduct);
   const deleteProduct = useMutation(api.products.deleteProduct);
   const updateStatus = useMutation(api.orders.updateStatus);
+  const closeOrder = useMutation(api.orders.closeOrder);
+  const refundOrder = useAction(api.orders.refundOrder);
   const updateTracking = useMutation(api.orders.updateTracking);
   const updateReview = useMutation(api.reviews.updateStatus);
   const removeReview = useMutation(api.reviews.remove);
@@ -356,7 +358,13 @@ function AdminPage() {
                           onClick={() => setForm((item) => ({ ...item, cover: url }))}
                           className={`aspect-square border p-1 ${form.cover === url ? "border-foreground border-2" : "border-foreground/15"}`}
                         >
-                          <img src={url} alt="" className="h-full w-full object-contain" />
+                          <img
+                            src={url}
+                            alt=""
+                            className="h-full w-full object-contain"
+                            loading="lazy"
+                            decoding="async"
+                          />
                         </button>
                       ))}
                     </div>
@@ -390,6 +398,8 @@ function AdminPage() {
                       src={product.cover_image_url || ""}
                       alt=""
                       className="aspect-square w-full object-contain"
+                      loading="lazy"
+                      decoding="async"
                     />
                     <h3 className="mt-3 font-display text-2xl">{product.name}</h3>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -429,24 +439,42 @@ function AdminPage() {
                   key={order.id}
                   order={order}
                   onStatus={(status) => updateStatus({ id: order.id, status })}
+                  onClose={(outcome, restock, reason) =>
+                    closeOrder({ id: order.id, outcome, restock, reason })
+                  }
+                  onRefund={(amountInr, reason) =>
+                    refundOrder({ orderId: order.id, amountInr, reason }).then((result) => {
+                      if (result.status === "failed") {
+                        throw new Error("Razorpay reported that this refund failed.");
+                      }
+                      return result;
+                    })
+                  }
                   onTracking={async (carrier, trackingNumber, trackingUrl) => {
                     const reserved = window.open("about:blank", "_blank");
-                    const saved = await updateTracking({
-                      id: order.id,
-                      carrier,
-                      trackingNumber,
-                      trackingUrl,
-                    });
-                    const phone = String(
-                      order.customer_phone || order.shipping_address?.phone || "",
-                    ).replace(/\D/g, "");
-                    const normalized = phone.length === 10 ? `91${phone}` : phone;
-                    const text = `Assalamu alaikum. Your BADR order ${order.order_number} has shipped.\nCarrier: ${carrier || "Carrier"}\nTracking number: ${trackingNumber}${trackingUrl ? `\nTracking: ${trackingUrl}` : ""}`;
-                    if (reserved) {
-                      reserved.opener = null;
-                      reserved.location.href = `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`;
+                    try {
+                      const saved = await updateTracking({
+                        id: order.id,
+                        carrier,
+                        trackingNumber,
+                        trackingUrl,
+                      });
+                      const phone = String(
+                        order.customer_phone || order.shipping_address?.phone || "",
+                      ).replace(/\D/g, "");
+                      const normalized = phone.length === 10 ? `91${phone}` : phone;
+                      const text = `Assalamu alaikum. Your BADR order ${order.order_number} has shipped.\nCarrier: ${carrier || "Carrier"}\nTracking number: ${trackingNumber}${trackingUrl ? `\nTracking: ${trackingUrl}` : ""}`;
+                      if (reserved && normalized) {
+                        reserved.opener = null;
+                        reserved.location.href = `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`;
+                      } else {
+                        reserved?.close();
+                      }
+                      return saved;
+                    } catch (error) {
+                      reserved?.close();
+                      throw error;
                     }
-                    return saved;
                   }}
                 />
               ))}
@@ -574,15 +602,84 @@ function AdminInput({
 function OrderAdminCard({
   order,
   onStatus,
+  onClose,
+  onRefund,
   onTracking,
 }: {
   order: any;
   onStatus: (status: string) => Promise<unknown>;
+  onClose: (
+    outcome: "cancelled" | "returned",
+    restock: boolean,
+    reason: string,
+  ) => Promise<unknown>;
+  onRefund: (amountInr: number, reason: string) => Promise<unknown>;
   onTracking: (carrier: string, number: string, url: string) => Promise<unknown>;
 }) {
   const [carrier, setCarrier] = useState(order.tracking_carrier || "");
   const [number, setNumber] = useState(order.tracking_number || "");
   const [url, setUrl] = useState(order.tracking_url || "");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const currentStatus = String(order.status || "processing");
+  const remainingRefund = Math.max(
+    0,
+    Number(order.total_inr ?? order.total) - Number(order.refund_amount_inr ?? 0),
+  );
+
+  async function run(task: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      await task();
+      setNotice(success);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Operation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function requestClose(outcome: "cancelled" | "returned") {
+    const reason = window.prompt(
+      outcome === "cancelled"
+        ? "Why is this order being cancelled?"
+        : "Why was this order returned?",
+    );
+    if (!reason?.trim()) return;
+    const restock = window.confirm("Return every item in this order to product stock?");
+    if (
+      !window.confirm(
+        `${outcome === "cancelled" ? "Cancel" : "Return"} this order now? Payment is not automatically refunded.`,
+      )
+    )
+      return;
+    void run(
+      () => onClose(outcome, restock, reason),
+      restock ? "Order updated and inventory restocked." : "Order updated without restocking.",
+    );
+  }
+
+  function requestRefund() {
+    const rawAmount = window.prompt(
+      `Refund amount in INR (maximum ₹${remainingRefund.toFixed(2)}):`,
+      remainingRefund.toFixed(2),
+    );
+    if (rawAmount == null) return;
+    const amount = Number(rawAmount);
+    if (!Number.isFinite(amount) || amount < 1 || amount > remainingRefund) {
+      setNotice(`Enter an amount between ₹1 and ₹${remainingRefund.toFixed(2)}.`);
+      return;
+    }
+    const reason = window.prompt("Refund reason (saved to the audit trail):");
+    if (!reason?.trim()) return;
+    if (!window.confirm(`Refund ₹${amount.toFixed(2)} through Razorpay? This cannot be undone.`))
+      return;
+    void run(
+      () => onRefund(amount, reason),
+      "Refund submitted to Razorpay. Its webhook will confirm the final status.",
+    );
+  }
   return (
     <article className="bg-background p-4 sm:p-6">
       <div className="flex flex-wrap justify-between gap-3">
@@ -594,7 +691,10 @@ function OrderAdminCard({
         </div>
         <div className="text-right">
           <p className="font-display text-2xl">{inr(order.total_inr ?? order.total)}</p>
-          <p className="text-xs text-muted-foreground">{order.payment_status}</p>
+          <p className="text-xs text-muted-foreground">
+            {order.payment_status}
+            {order.refund_status ? ` · refund ${order.refund_status}` : ""}
+          </p>
         </div>
       </div>
       <div className="mt-4 grid gap-4 border-t border-foreground/10 pt-4 md:grid-cols-2">
@@ -618,7 +718,13 @@ function OrderAdminCard({
         <ul className="grid gap-2">
           {(order.items || []).map((item: any) => (
             <li key={item.id} className="grid grid-cols-[48px_minmax(0,1fr)_auto] gap-3 text-sm">
-              <img src={item.product_image_url || ""} alt="" className="h-12 w-12 object-contain" />
+              <img
+                src={item.product_image_url || ""}
+                alt=""
+                className="h-12 w-12 object-contain"
+                loading="lazy"
+                decoding="async"
+              />
               <span>
                 {item.product_name}
                 <small className="block text-muted-foreground">
@@ -633,15 +739,18 @@ function OrderAdminCard({
       </div>
       <div className="mt-5 grid gap-2 sm:grid-cols-4">
         <select
-          value={order.status || "processing"}
-          onChange={(event) => void onStatus(event.target.value)}
+          value={currentStatus}
+          disabled={busy || ["cancelled", "returned", "delivered"].includes(currentStatus)}
+          onChange={(event) =>
+            void run(() => onStatus(event.target.value), "Fulfillment status updated.")
+          }
           className="h-11 border border-foreground/20 bg-transparent px-3 text-sm"
         >
           <option value="processing">Processing</option>
           <option value="shipped">Shipped</option>
           <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="returned">Returned</option>
+          {currentStatus === "cancelled" ? <option value="cancelled">Cancelled</option> : null}
+          {currentStatus === "returned" ? <option value="returned">Returned</option> : null}
         </select>
         <input
           value={carrier}
@@ -656,8 +765,13 @@ function OrderAdminCard({
           className="h-11 border border-foreground/20 px-3 text-sm"
         />
         <button
-          disabled={!number}
-          onClick={() => void onTracking(carrier, number, url)}
+          disabled={!number || busy}
+          onClick={() =>
+            void run(
+              () => onTracking(carrier, number, url),
+              "Tracking saved. WhatsApp opened when a customer number was available.",
+            )
+          }
           className="flex items-center justify-center gap-2 bg-[#25D366] px-3 text-xs font-semibold disabled:opacity-40"
         >
           <MessageCircle className="h-4 w-4" /> Save + WhatsApp
@@ -669,6 +783,46 @@ function OrderAdminCard({
           className="h-11 border border-foreground/20 px-3 text-sm sm:col-span-4"
         />
       </div>
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-foreground/10 pt-3">
+        {currentStatus === "processing" ? (
+          <button
+            disabled={busy}
+            onClick={() => requestClose("cancelled")}
+            className="border border-red-300 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-40"
+          >
+            Cancel order
+          </button>
+        ) : null}
+        {["shipped", "delivered", "returned"].includes(currentStatus) ? (
+          <button
+            disabled={busy}
+            onClick={() => requestClose("returned")}
+            className="border border-amber-400 px-3 py-2 text-xs font-semibold disabled:opacity-40"
+          >
+            {currentStatus === "returned" && !order.inventory_restocked_at
+              ? "Restock returned items"
+              : "Mark returned"}
+          </button>
+        ) : null}
+        {remainingRefund >= 1 && ["paid", "partially_refunded"].includes(order.payment_status) ? (
+          <button
+            disabled={busy || order.refund_status === "pending"}
+            onClick={requestRefund}
+            className="border border-foreground px-3 py-2 text-xs font-semibold disabled:opacity-40"
+          >
+            Refund via Razorpay
+          </button>
+        ) : null}
+        {order.inventory_restocked_at ? (
+          <span className="self-center text-xs text-emerald-700">Inventory restocked once</span>
+        ) : null}
+      </div>
+      {order.refund_error ? (
+        <p className="mt-3 border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+          Refund attention: {order.refund_error}
+        </p>
+      ) : null}
+      {notice ? <p className="mt-3 text-xs leading-5">{notice}</p> : null}
     </article>
   );
 }

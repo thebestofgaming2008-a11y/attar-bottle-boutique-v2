@@ -59,11 +59,6 @@ function supportedCurrency(value: string | null | undefined) {
   return CURRENCIES.includes(next as (typeof CURRENCIES)[number]) ? next : "INR";
 }
 
-function readStoredCurrency() {
-  if (typeof window === "undefined") return "INR";
-  return supportedCurrency(window.localStorage.getItem(STORAGE_KEY));
-}
-
 function hasManualCurrency() {
   return typeof window !== "undefined" && window.localStorage.getItem(MANUAL_KEY) === "1";
 }
@@ -82,17 +77,21 @@ function cleanRates(value: RatesResponse | null | undefined) {
 }
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currency, setCurrencyState] = useState(readStoredCurrency);
-  const [detectedCountry, setDetectedCountry] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(COUNTRY_KEY);
-  });
+  // Keep the server and first client render identical. Persisted preferences are
+  // restored after hydration so returning visitors never trigger a mismatch.
+  const [currency, setCurrencyState] = useState("INR");
+  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [ratesLoading, setRatesLoading] = useState(false);
   const [rates, setRates] = useState<Record<string, number>>({ INR: 1 });
   const [rateSource, setRateSource] = useState<RateSource>("fallback");
   const [rateError, setRateError] = useState<string | null>(null);
   const [sourceTimestamp, setSourceTimestamp] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrencyState(supportedCurrency(window.localStorage.getItem(STORAGE_KEY)));
+    setDetectedCountry(window.localStorage.getItem(COUNTRY_KEY));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

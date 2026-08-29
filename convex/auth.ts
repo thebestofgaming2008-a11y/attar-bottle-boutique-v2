@@ -61,8 +61,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         };
       },
       validatePasswordRequirements(password) {
-        if (password.length < 6) {
-          throw new Error("Password must be at least 6 characters.");
+        if (password.length < 10) {
+          throw new Error("Password must be at least 10 characters.");
+        }
+        if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+          throw new Error("Password must include upper-case, lower-case, and a number.");
         }
       },
     }),

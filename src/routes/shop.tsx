@@ -93,6 +93,7 @@ function ShopPage() {
                         src={product.cover_image_url || ""}
                         alt={product.name}
                         loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
                       />
                     </Link>

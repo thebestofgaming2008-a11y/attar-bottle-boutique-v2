@@ -31,8 +31,7 @@ Frontend build variable:
 Razorpay webhook:
 
 - URL: `https://<convex-site-url>/razorpay/webhook`
-- Events: `payment.captured`, `payment.failed`, `order.paid`
-- Recommended additional refund event: `refund.processed`
+- Events: `payment.captured`, `payment.failed`, `order.paid`, `refund.created`, `refund.processed`, `refund.failed`, `payment.refunded`
 
 Cloudflare Turnstile must use a real Managed widget restricted to the production hostname. Dummy keys are only for staging tests.
 
@@ -48,6 +47,8 @@ Check the admin notifications daily. Act immediately on:
 For every customer payment complaint, search Razorpay first by payment ID, email, phone, or approximate time. Never ask the customer to pay again until Razorpay confirms that no payment was captured.
 
 Do not mark a paid order cancelled as a substitute for issuing a refund. Fulfilment status and payment/refund status are separate.
+
+Admin refunds use Razorpay's `X-Refund-Idempotency` header. If the admin reports an uncertain outcome, retry only the same amount so the stored idempotency key is reused; verify the payment in Razorpay before choosing a different amount. Cancelling or returning an order asks separately whether inventory should be restocked and records that restock only once.
 
 ## Incident procedures
 
@@ -93,6 +94,7 @@ Rotate outside peak checkout time. Webhook recovery remains the fallback for in-
 - Reconciliation checks only unresolved intents and backs off repeated checks.
 - Technical checkout/webhook records are retained for 30 days and then deleted in bounded batches.
 - Product media stays in R2 rather than Convex storage.
+- New browser image uploads are resized and WebP-compressed before R2 storage.
 - No paid queue, cache, monitoring, email, or database service is required.
 
 Provider free tiers are hard caps, not unlimited hosting guarantees. If traffic exceeds a cap, requests can fail instead of remaining free. Razorpay transaction fees are also separate from hosting and cannot be eliminated by architecture.

@@ -48,7 +48,7 @@ const checkoutPayload = {
   total: v.number(),
 };
 
-const ORDER_STATUSES = new Set(["processing", "shipped", "delivered", "cancelled", "returned"]);
+const DIRECT_ORDER_STATUSES = new Set(["processing", "shipped", "delivered"]);
 const CHECKOUT_RESERVATION_MS = 30 * 60 * 1000;
 const PAYMENT_RECOVERY_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 const PAYMENT_TECHNICAL_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -306,6 +306,43 @@ async function failCheckoutIntent(
     updated_at: nowIso(),
   });
   return true;
+}
+
+async function applyProcessedRefund(
+  ctx: any,
+  order: any,
+  amountRefundedPaise: number,
+  refundId?: string | null,
+) {
+  const timestamp = nowIso();
+  const nextRefundAmount = Math.min(
+    order.total,
+    Math.max(0, Math.round(amountRefundedPaise) / 100),
+  );
+  const previousRefundAmount = Math.max(0, Number(order.refund_amount_inr ?? 0));
+  const newlyRefundedAmount = Math.max(0, nextRefundAmount - previousRefundAmount);
+  const fullyRefunded = Math.round(nextRefundAmount * 100) >= Math.round(order.total * 100);
+  await ctx.db.patch(order._id, {
+    payment_status: fullyRefunded ? "refunded" : "partially_refunded",
+    refund_amount_inr: nextRefundAmount,
+    refund_status: "processed",
+    ...(refundId ? { refund_id: refundId } : {}),
+    refund_error: null,
+    refunded_at: timestamp,
+    updated_at: timestamp,
+  });
+  if (newlyRefundedAmount > 0 && order.user_id) {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q: any) => q.eq("userId", order.user_id))
+      .unique();
+    if (profile) {
+      await ctx.db.patch(profile._id, {
+        total_spent: Math.max(0, Number(profile.total_spent ?? 0) - newlyRefundedAmount),
+        updated_at: timestamp,
+      });
+    }
+  }
 }
 
 async function savePaidOrder(
@@ -1391,6 +1428,192 @@ export const listPaymentRecoveries = query({
   },
 });
 
+export const prepareRefundRequest = internalMutation({
+  args: {
+    order_id: v.id("orders"),
+    amount_inr: v.number(),
+    reason: v.string(),
+  },
+  returns: v.object({
+    payment_id: v.string(),
+    order_number: v.string(),
+    amount_paise: v.number(),
+    target_refunded_paise: v.number(),
+    idempotency_key: v.string(),
+    reason: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.order_id);
+    if (!order) throw new Error("Order not found.");
+    if (!order.payment_id || order.payment_provider !== "RAZORPAY") {
+      throw new Error("This order does not have a refundable Razorpay payment.");
+    }
+    if (!["paid", "partially_refunded"].includes(order.payment_status ?? "")) {
+      throw new Error("Only captured payments can be refunded.");
+    }
+    const reason = cleanText(args.reason, 240);
+    if (reason.length < 3) throw new Error("Add a refund reason for the audit trail.");
+    const amountPaise = Math.round(args.amount_inr * 100);
+    const totalPaise = Math.round(order.total * 100);
+    const refundedPaise = Math.round(Number(order.refund_amount_inr ?? 0) * 100);
+    const remainingPaise = Math.max(0, totalPaise - refundedPaise);
+    if (!Number.isFinite(amountPaise) || amountPaise < 100 || amountPaise > remainingPaise) {
+      throw new Error(`Refund must be between ₹1 and ₹${(remainingPaise / 100).toFixed(2)}.`);
+    }
+    const targetRefundedPaise = refundedPaise + amountPaise;
+    const idempotencyKey = `badr-${String(order._id)}-${targetRefundedPaise}`;
+    if (
+      ["pending", "attention_required"].includes(order.refund_status ?? "") &&
+      order.refund_request_id &&
+      order.refund_request_id !== idempotencyKey
+    ) {
+      throw new Error(
+        "A previous refund request is still unresolved. Retry that exact amount first.",
+      );
+    }
+    const timestamp = nowIso();
+    await ctx.db.patch(order._id, {
+      refund_status: "pending",
+      refund_request_id: idempotencyKey,
+      refund_requested_at: timestamp,
+      refund_reason: reason,
+      refund_error: null,
+      updated_at: timestamp,
+    });
+    await writeAuditLog(ctx, {
+      action: "order.refund.request",
+      entityType: "order",
+      entityId: String(order._id),
+      summary: `${order.order_number}: ₹${(amountPaise / 100).toFixed(2)}`,
+      metadata: { amount_paise: amountPaise, reason, idempotency_key: idempotencyKey },
+    });
+    return {
+      payment_id: order.payment_id,
+      order_number: order.order_number,
+      amount_paise: amountPaise,
+      target_refunded_paise: targetRefundedPaise,
+      idempotency_key: idempotencyKey,
+      reason,
+    };
+  },
+});
+
+export const recordRefundResponse = internalMutation({
+  args: {
+    order_id: v.id("orders"),
+    refund_id: v.string(),
+    refund_status: v.string(),
+    target_refunded_paise: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.order_id);
+    if (!order) throw new Error("Order not found.");
+    const status = cleanText(args.refund_status, 40).toLowerCase();
+    if (status === "processed") {
+      await applyProcessedRefund(ctx, order, args.target_refunded_paise, args.refund_id);
+    } else {
+      await ctx.db.patch(order._id, {
+        refund_id: cleanText(args.refund_id, 120),
+        refund_status: status === "failed" ? "failed" : "pending",
+        refund_error: status === "failed" ? "Razorpay reported that the refund failed." : null,
+        updated_at: nowIso(),
+      });
+    }
+    await writeAuditLog(ctx, {
+      action: "order.refund.response",
+      entityType: "order",
+      entityId: String(order._id),
+      summary: `${args.refund_id}: ${status}`,
+      metadata: { target_refunded_paise: args.target_refunded_paise },
+    });
+    return null;
+  },
+});
+
+export const recordRefundRequestError = internalMutation({
+  args: { order_id: v.id("orders"), error: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.order_id);
+    if (!order) return null;
+    const error = cleanText(args.error, 500) || "Refund request outcome is unknown.";
+    await ctx.db.patch(order._id, {
+      refund_status: "attention_required",
+      refund_error: error,
+      updated_at: nowIso(),
+    });
+    await writeAuditLog(ctx, {
+      action: "order.refund.attention_required",
+      entityType: "order",
+      entityId: String(order._id),
+      summary: error,
+    });
+    return null;
+  },
+});
+
+export const refundOrder = action({
+  args: { orderId: v.id("orders"), amountInr: v.number(), reason: v.string() },
+  returns: v.object({ refundId: v.string(), status: v.string(), amountInr: v.number() }),
+  handler: async (ctx, args): Promise<{ refundId: string; status: string; amountInr: number }> => {
+    const prepared: {
+      payment_id: string;
+      order_number: string;
+      amount_paise: number;
+      target_refunded_paise: number;
+      idempotency_key: string;
+      reason: string;
+    } = await ctx.runMutation(internal.orders.prepareRefundRequest, {
+      order_id: args.orderId,
+      amount_inr: args.amountInr,
+      reason: args.reason,
+    });
+    try {
+      const refund = await razorpayRequest(
+        `/payments/${encodeURIComponent(prepared.payment_id)}/refund`,
+        {
+          method: "POST",
+          headers: { "X-Refund-Idempotency": prepared.idempotency_key },
+          body: JSON.stringify({
+            amount: prepared.amount_paise,
+            speed: "normal",
+            receipt: prepared.idempotency_key.slice(0, 40),
+            notes: {
+              order_number: prepared.order_number,
+              reason: prepared.reason,
+            },
+          }),
+        },
+      );
+      const refundId = cleanText(refund?.id, 120);
+      const status = cleanText(refund?.status, 40).toLowerCase();
+      if (!refundId || !["pending", "processed", "failed"].includes(status)) {
+        throw new Error("Razorpay returned an invalid refund response.");
+      }
+      await ctx.runMutation(internal.orders.recordRefundResponse, {
+        order_id: args.orderId,
+        refund_id: refundId,
+        refund_status: status,
+        target_refunded_paise: prepared.target_refunded_paise,
+      });
+      return { refundId, status, amountInr: prepared.amount_paise / 100 };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Refund request failed.";
+      await ctx.runMutation(internal.orders.recordRefundRequestError, {
+        order_id: args.orderId,
+        error: message,
+      });
+      throw new Error(
+        `${message} The request is retained with an idempotency key; verify it before changing the amount.`,
+      );
+    }
+  },
+});
+
 export const recordRazorpayWebhook = internalMutation({
   args: {
     event_id: v.string(),
@@ -1399,8 +1622,12 @@ export const recordRazorpayWebhook = internalMutation({
     razorpay_payment_id: v.optional(v.string()),
     amount_paise: v.optional(v.number()),
     amount_refunded_paise: v.optional(v.number()),
+    refund_id: v.optional(v.string()),
+    refund_status: v.optional(v.string()),
+    refund_error: v.optional(v.string()),
     currency: v.optional(v.string()),
   },
+  returns: v.object({ duplicate: v.boolean() }),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("razorpay_webhook_events")
@@ -1432,23 +1659,40 @@ export const recordRazorpayWebhook = internalMutation({
       });
     }
     if (
-      (args.event_type === "refund.processed" || args.event_type === "payment.refunded") &&
-      args.razorpay_payment_id &&
-      args.amount_refunded_paise !== undefined
+      (args.event_type.startsWith("refund.") || args.event_type === "payment.refunded") &&
+      args.razorpay_payment_id
     ) {
       const order = await ctx.db
         .query("orders")
         .withIndex("by_payment_id", (q) => q.eq("payment_id", args.razorpay_payment_id))
         .first();
       if (order) {
-        const refundAmountInr = Math.max(0, args.amount_refunded_paise / 100);
-        const fullyRefunded = args.amount_refunded_paise >= Math.round(order.total * 100);
-        await ctx.db.patch(order._id, {
-          payment_status: fullyRefunded ? "refunded" : "partially_refunded",
-          refund_amount_inr: refundAmountInr,
-          refunded_at: nowIso(),
-          updated_at: nowIso(),
-        });
+        if (
+          (args.event_type === "refund.processed" || args.event_type === "payment.refunded") &&
+          args.amount_refunded_paise !== undefined
+        ) {
+          await applyProcessedRefund(
+            ctx,
+            order,
+            args.amount_refunded_paise,
+            args.refund_id ?? null,
+          );
+        } else if (args.event_type === "refund.failed") {
+          await ctx.db.patch(order._id, {
+            refund_status: "failed",
+            ...(args.refund_id ? { refund_id: args.refund_id } : {}),
+            refund_error:
+              cleanNullable(args.refund_error, 500) ?? "Razorpay reported a failed refund.",
+            updated_at: nowIso(),
+          });
+        } else if (args.event_type === "refund.created") {
+          await ctx.db.patch(order._id, {
+            refund_status: "pending",
+            ...(args.refund_id ? { refund_id: args.refund_id } : {}),
+            refund_error: null,
+            updated_at: nowIso(),
+          });
+        }
       }
     }
     return { duplicate: false };
@@ -1467,14 +1711,7 @@ export const applyRazorpayRefund = internalMutation({
       .withIndex("by_payment_id", (q) => q.eq("payment_id", args.razorpay_payment_id))
       .first();
     if (!order) return { updated: false, order_number: null };
-    const fullyRefunded = args.amount_refunded_paise >= Math.round(order.total * 100);
-    const timestamp = nowIso();
-    await ctx.db.patch(order._id, {
-      payment_status: fullyRefunded ? "refunded" : "partially_refunded",
-      refund_amount_inr: Math.max(0, args.amount_refunded_paise / 100),
-      refunded_at: timestamp,
-      updated_at: timestamp,
-    });
+    await applyProcessedRefund(ctx, order, args.amount_refunded_paise);
     return { updated: true, order_number: order.order_number };
   },
 });
@@ -1555,7 +1792,10 @@ export const razorpayWebhook = httpAction(async (ctx, request) => {
       payment = await razorpayRequest(`/payments/${cleanText(payment.id, 120)}`);
     }
   }
-  if (eventType === "refund.processed" && refund?.payment_id) {
+  if (
+    (eventType === "refund.processed" || eventType === "payment.refunded") &&
+    refund?.payment_id
+  ) {
     payment = await razorpayRequest(`/payments/${cleanText(refund.payment_id, 120)}`);
   }
   const normalizedEventType =
@@ -1572,11 +1812,21 @@ export const razorpayWebhook = httpAction(async (ctx, request) => {
       : order?.id
         ? cleanText(order.id, 120)
         : undefined,
-    razorpay_payment_id: payment?.id ? cleanText(payment.id, 120) : undefined,
+    razorpay_payment_id: payment?.id
+      ? cleanText(payment.id, 120)
+      : refund?.payment_id
+        ? cleanText(refund.payment_id, 120)
+        : undefined,
     amount_paise: Number.isFinite(payment?.amount) ? payment.amount : undefined,
     amount_refunded_paise: Number.isFinite(payment?.amount_refunded)
       ? payment.amount_refunded
       : undefined,
+    refund_id: refund?.id ? cleanText(refund.id, 120) : undefined,
+    refund_status: refund?.status ? cleanText(refund.status, 40) : undefined,
+    refund_error:
+      refund?.error_description || refund?.failure_reason || refund?.error_code
+        ? cleanText(refund.error_description || refund.failure_reason || refund.error_code, 500)
+        : undefined,
     currency: payment?.currency ? cleanText(payment.currency, 12) : undefined,
   });
   return new Response("ok", { status: 200 });
@@ -1614,12 +1864,27 @@ export const listAll = query({
 });
 
 export const updateStatus = mutation({
-  args: { id: v.string(), status: v.string() },
+  args: { id: v.id("orders"), status: v.string() },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const status = cleanText(args.status, 24).toLowerCase();
-    if (!ORDER_STATUSES.has(status)) throw new Error("Invalid order status.");
-    await ctx.db.patch(args.id as any, {
+    if (!DIRECT_ORDER_STATUSES.has(status)) {
+      throw new Error("Use the dedicated cancellation or return control for this status.");
+    }
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found.");
+    const current = order.status ?? "processing";
+    if (current === status) return true;
+    const allowedTransitions: Record<string, Set<string>> = {
+      processing: new Set(["shipped", "delivered"]),
+      shipped: new Set(["delivered"]),
+      delivered: new Set(),
+    };
+    if (!allowedTransitions[current]?.has(status)) {
+      throw new Error(`Order cannot move from ${current} to ${status}.`);
+    }
+    await ctx.db.patch(args.id, {
       status,
       ...(status !== "processing" ? { inventory_attention: false } : {}),
       updated_at: nowIso(),
@@ -1634,22 +1899,102 @@ export const updateStatus = mutation({
   },
 });
 
+export const closeOrder = mutation({
+  args: {
+    id: v.id("orders"),
+    outcome: v.union(v.literal("cancelled"), v.literal("returned")),
+    restock: v.boolean(),
+    reason: v.string(),
+  },
+  returns: v.object({ outcome: v.string(), restocked: v.boolean() }),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found.");
+    const reason = cleanText(args.reason, 240);
+    if (reason.length < 3) throw new Error("Add a reason for the audit trail.");
+    const current = order.status ?? "processing";
+    if (args.outcome === "cancelled" && !["processing", "cancelled"].includes(current)) {
+      throw new Error("Only an unshipped processing order can be cancelled.");
+    }
+    if (args.outcome === "returned" && !["shipped", "delivered", "returned"].includes(current)) {
+      throw new Error("Only a shipped or delivered order can be marked returned.");
+    }
+
+    let restocked = Boolean(order.inventory_restocked_at);
+    let inventoryAttention = false;
+    const timestamp = nowIso();
+    if (args.restock && !restocked) {
+      const items = await ctx.db
+        .query("order_items")
+        .withIndex("by_order_id", (q) => q.eq("order_id", args.id))
+        .take(100);
+      for (const item of items) {
+        if (!item.product_id) {
+          inventoryAttention = true;
+          continue;
+        }
+        const product: any = await ctx.db.get(item.product_id as any);
+        if (!product) {
+          inventoryAttention = true;
+          continue;
+        }
+        const nextStock = Math.max(0, Number(product.stock_quantity ?? 0) + item.quantity);
+        await ctx.db.patch(product._id, {
+          stock_quantity: nextStock,
+          in_stock: nextStock > 0,
+          updated_at: timestamp,
+        });
+      }
+      restocked = true;
+    }
+
+    await ctx.db.patch(order._id, {
+      status: args.outcome,
+      ...(args.outcome === "cancelled"
+        ? { cancelled_at: order.cancelled_at ?? timestamp, cancellation_reason: reason }
+        : { returned_at: order.returned_at ?? timestamp, return_reason: reason }),
+      ...(restocked ? { inventory_restocked_at: order.inventory_restocked_at ?? timestamp } : {}),
+      inventory_attention: inventoryAttention,
+      updated_at: timestamp,
+    });
+    await writeAuditLog(ctx, {
+      action: `order.${args.outcome}`,
+      entityType: "order",
+      entityId: String(order._id),
+      summary: reason,
+      metadata: {
+        restock_requested: args.restock,
+        restocked,
+        inventory_attention: inventoryAttention,
+      },
+    });
+    return { outcome: args.outcome, restocked };
+  },
+});
+
 export const updateTracking = mutation({
   args: {
-    id: v.string(),
+    id: v.id("orders"),
     carrier: v.optional(v.union(v.string(), v.null())),
     trackingNumber: v.string(),
     trackingUrl: v.optional(v.union(v.string(), v.null())),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    const current = await ctx.db.get(args.id);
+    if (!current) throw new Error("Order not found.");
+    if (["cancelled", "returned"].includes(current.status ?? "")) {
+      throw new Error("Tracking cannot be added to a cancelled or returned order.");
+    }
     const trackingNumber = cleanText(args.trackingNumber, 120);
     if (!trackingNumber) throw new Error("Tracking number is required.");
-    await ctx.db.patch(args.id as any, {
+    await ctx.db.patch(args.id, {
       tracking_carrier: cleanNullable(args.carrier, 80),
       tracking_number: trackingNumber,
       tracking_url: cleanTrackingUrl(args.trackingUrl),
-      status: "shipped",
+      status: current.status === "delivered" ? "delivered" : "shipped",
       inventory_attention: false,
       updated_at: nowIso(),
     });
@@ -1660,7 +2005,7 @@ export const updateTracking = mutation({
       summary: trackingNumber,
       metadata: { carrier: args.carrier ?? null },
     });
-    const order = await ctx.db.get(args.id as any);
+    const order = await ctx.db.get(args.id);
     return order ? await orderWithItems(ctx, order) : null;
   },
 });

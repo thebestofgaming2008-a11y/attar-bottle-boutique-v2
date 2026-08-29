@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import {
   BOOK_SUBJECT_KEYS,
   BOOK_SUBJECT_LABELS,
@@ -103,6 +103,59 @@ const productPatch = {
   is_on_sale: v.optional(v.union(v.boolean(), v.null())),
   in_stock: v.optional(v.union(v.boolean(), v.null())),
 };
+
+const OPTIMIZED_BADR_MEDIA = new Set([
+  "scene-dariya",
+  "scene-fitoor",
+  "scene-oud-gulaab",
+  "scene-oud-zafar",
+  "scene-ulfat",
+  "sku-dariya",
+  "sku-fitoor",
+  "sku-oud-gulaab",
+  "sku-oud-zafar",
+  "sku-ulfat",
+  "spin-dariya",
+  "spin-fitoor",
+  "spin-oud-gulaab",
+  "spin-oud-zafar",
+  "spin-ulfat",
+]);
+
+function optimizedBadrMediaUrl(value: string | null | undefined) {
+  const url = String(value ?? "");
+  const match = url.match(/\/products\/([^/?#]+)\.(?:jpe?g|png)(?=$|[?#])/i);
+  if (!match || !OPTIMIZED_BADR_MEDIA.has(match[1].toLowerCase())) return url;
+  return url.replace(/\.(?:jpe?g|png)(?=$|[?#])/i, ".webp");
+}
+
+export const rewriteCatalogMediaToWebp = internalMutation({
+  args: {},
+  returns: v.object({ inspected: v.number(), updated: v.number() }),
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").take(1000);
+    let updated = 0;
+    for (const product of products) {
+      const cover = optimizedBadrMediaUrl(product.cover_image_url);
+      const images = Array.isArray(product.images)
+        ? product.images.map((url) => optimizedBadrMediaUrl(url))
+        : product.images;
+      if (
+        cover === String(product.cover_image_url ?? "") &&
+        JSON.stringify(images) === JSON.stringify(product.images)
+      ) {
+        continue;
+      }
+      await ctx.db.patch(product._id, {
+        cover_image_url: cover || null,
+        images,
+        updated_at: nowIso(),
+      });
+      updated += 1;
+    }
+    return { inspected: products.length, updated };
+  },
+});
 
 function slugify(s: string): string {
   return s

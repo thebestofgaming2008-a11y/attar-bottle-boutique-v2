@@ -52,6 +52,8 @@ function WishlistPage() {
                         src={product.cover_image_url || ""}
                         alt={product.name}
                         className="aspect-square w-full object-contain"
+                        loading="lazy"
+                        decoding="async"
                       />
                     </Link>
                     <h2 className="mt-4 font-display text-2xl">{product.name}</h2>

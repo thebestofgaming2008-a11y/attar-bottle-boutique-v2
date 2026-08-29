@@ -285,6 +285,7 @@ function ProductPage() {
                 alt={`${product.name} campaign scene`}
                 className="absolute inset-0 h-full w-full object-cover"
                 loading="lazy"
+                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
             </div>
@@ -393,6 +394,8 @@ function ProductGallery({
           src={scene}
           alt={`${name} luxury attar campaign`}
           className="h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.025]"
+          fetchPriority="high"
+          decoding="async"
         />
         <figcaption className="absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md">
           BADR · Made in India
@@ -403,6 +406,8 @@ function ProductGallery({
           src={packshot}
           alt={`${name} bottle front view`}
           className="h-full w-full object-contain transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-105"
+          loading="lazy"
+          decoding="async"
         />
       </figure>
       <figure className="aspect-square overflow-hidden bg-[#e7e1d8]">
@@ -410,6 +415,8 @@ function ProductGallery({
           src={detail}
           alt={`${name} product detail`}
           className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-105"
+          loading="lazy"
+          decoding="async"
         />
       </figure>
     </div>

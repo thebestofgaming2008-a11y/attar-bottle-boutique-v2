@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: err instanceof Error ? err : new Error("Unable to create account.") };
       }
     },
-    [convexSignIn, ensureCurrentProfile],
+    [convexSignIn],
   );
 
   const requestPasswordReset = useCallback(

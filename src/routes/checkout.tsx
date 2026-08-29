@@ -327,6 +327,9 @@ function CheckoutPage() {
   }
 
   function submitInternational() {
+    if (!WHATSAPP_ORDER_NUMBER) {
+      throw new Error("International checkout is not configured yet. Contact the store directly.");
+    }
     const reserved = window.open("about:blank", "_blank");
     if (!reserved) throw new Error("Allow popups so we can open your WhatsApp order message.");
     const itemText = cart.lines
@@ -529,7 +532,13 @@ function CheckoutPage() {
               <ul className="mt-5 divide-y divide-background/15">
                 {cart.lines.map((line) => (
                   <li key={line.id} className="grid grid-cols-[56px_minmax(0,1fr)_auto] gap-3 py-4">
-                    <img src={line.image} alt="" className="h-14 w-14 bg-white object-contain" />
+                    <img
+                      src={line.image}
+                      alt=""
+                      className="h-14 w-14 bg-white object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{line.name}</p>
                       <p className="mt-1 text-xs text-background/55">

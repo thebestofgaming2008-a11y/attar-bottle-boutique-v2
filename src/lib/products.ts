@@ -1,20 +1,18 @@
-import bottle from "@/assets/badr-bottle.png.asset.json";
-import heroVideo from "@/assets/badr-hero.mp4.asset.json";
-import imgZafar from "@/assets/sku-oud-zafar.jpg";
-import imgGulaab from "@/assets/sku-oud-gulaab.jpg";
-import imgFitoor from "@/assets/sku-fitoor.jpg";
-import imgDariya from "@/assets/sku-dariya.jpg";
-import imgUlfat from "@/assets/sku-ulfat.jpg";
-import sceneZafar from "@/assets/scene-oud-zafar.jpg";
-import sceneGulaab from "@/assets/scene-oud-gulaab.jpg";
-import sceneFitoor from "@/assets/scene-fitoor.jpg";
-import sceneDariya from "@/assets/scene-dariya.jpg";
-import sceneUlfat from "@/assets/scene-ulfat.jpg";
-import spinZafar from "@/assets/spin-oud-zafar.png";
-import spinGulaab from "@/assets/spin-oud-gulaab.png";
-import spinFitoor from "@/assets/spin-fitoor.png";
-import spinDariya from "@/assets/spin-dariya.png";
-import spinUlfat from "@/assets/spin-ulfat.png";
+import imgZafar from "@/assets/sku-oud-zafar.webp";
+import imgGulaab from "@/assets/sku-oud-gulaab.webp";
+import imgFitoor from "@/assets/sku-fitoor.webp";
+import imgDariya from "@/assets/sku-dariya.webp";
+import imgUlfat from "@/assets/sku-ulfat.webp";
+import sceneZafar from "@/assets/scene-oud-zafar.webp";
+import sceneGulaab from "@/assets/scene-oud-gulaab.webp";
+import sceneFitoor from "@/assets/scene-fitoor.webp";
+import sceneDariya from "@/assets/scene-dariya.webp";
+import sceneUlfat from "@/assets/scene-ulfat.webp";
+import spinZafar from "@/assets/spin-oud-zafar.webp";
+import spinGulaab from "@/assets/spin-oud-gulaab.webp";
+import spinFitoor from "@/assets/spin-fitoor.webp";
+import spinDariya from "@/assets/spin-dariya.webp";
+import spinUlfat from "@/assets/spin-ulfat.webp";
 
 /** Cinematic poster per scent, keyed by product id. */
 export const SCENE_IMAGES: Record<string, string> = {
@@ -33,9 +31,6 @@ export const BOTTLE_IMAGES: Record<string, string> = {
   dariya: spinDariya,
   ulfat: spinUlfat,
 };
-
-export const BOTTLE_IMAGE = bottle.url;
-export const HERO_VIDEO = heroVideo.url;
 
 export type Occasion = "evening" | "everyday" | "morning" | "close";
 

@@ -1,10 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import bottleCut from "@/assets/badr-bottle-cut.png.asset.json";
-import logo from "@/assets/badr-logo.png.asset.json";
 import { BottleSpin } from "./BottleSpin";
-
-export const HERO_BOTTLE = bottleCut.url;
-export const BADR_LOGO = logo.url;
 
 /**
  * The signature BADR hero: black field, wordmark, one stacked headline,

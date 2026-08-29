@@ -43,13 +43,16 @@ function json(body: unknown, status = 200, cacheControl = "no-store") {
   });
 }
 
-function constantTimeEqual(left: string, right: string) {
-  if (!left || left.length !== right.length) return false;
-  let mismatch = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
-  }
-  return mismatch === 0;
+async function constantTimeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const [leftHash, rightHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right)),
+  ]);
+  const subtle = crypto.subtle as SubtleCrypto & {
+    timingSafeEqual(a: ArrayBuffer | ArrayBufferView, b: ArrayBuffer | ArrayBufferView): boolean;
+  };
+  return subtle.timingSafeEqual(leftHash, rightHash);
 }
 
 function safeFileName(value: string) {
@@ -134,7 +137,7 @@ async function uploadResponse(request: Request, env: Env) {
     return json({ error: "R2 media uploads are not configured." }, 501);
   }
   const providedToken = request.headers.get("x-admin-upload-token") ?? "";
-  if (!constantTimeEqual(providedToken, env.ADMIN_UPLOAD_TOKEN)) {
+  if (!(await constantTimeEqual(providedToken, env.ADMIN_UPLOAD_TOKEN))) {
     return json({ error: "Upload denied." }, 401);
   }
   const contentType = (request.headers.get("content-type") ?? "").split(";", 1)[0].toLowerCase();
@@ -142,7 +145,10 @@ async function uploadResponse(request: Request, env: Env) {
     return json({ error: "Only JPG, PNG, WebP, AVIF, GIF, MP4, and WebM files are allowed." }, 415);
   }
   const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (Number.isFinite(contentLength) && contentLength > MAX_PRODUCT_MEDIA_BYTES) {
+  if (!Number.isFinite(contentLength) || contentLength <= 0) {
+    return json({ error: "A valid Content-Length header is required." }, 411);
+  }
+  if (contentLength > MAX_PRODUCT_MEDIA_BYTES) {
     return json({ error: "Product media must be 25 MB or smaller." }, 413);
   }
   if (!request.body) return json({ error: "Upload body is required." }, 400);

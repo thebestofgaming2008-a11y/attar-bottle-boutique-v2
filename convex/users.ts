@@ -2,6 +2,23 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { isAdminEmail, nowIso, publicProfile, requireAdmin, requireIdentity } from "./lib";
 
+function cleanNullable(value: string | null | undefined, max: number) {
+  const cleaned = String(value ?? "")
+    .replace(/[<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+  return cleaned || null;
+}
+
+function cleanPhone(value: string | null | undefined) {
+  const phone = cleanNullable(value, 32);
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 7 || digits.length > 15) throw new Error("Enter a valid phone number.");
+  return phone;
+}
+
 async function getProfileByUserId(ctx: any, userId: string) {
   return await ctx.db
     .query("profiles")
@@ -38,6 +55,7 @@ export const ensureCurrentProfile = mutation({
     phone: v.optional(v.string()),
     marketingConsent: v.optional(v.boolean()),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const auth = await requireIdentity(ctx).catch(() => null);
     if (!auth) return null;
@@ -46,8 +64,8 @@ export const ensureCurrentProfile = mutation({
     const timestamp = nowIso();
     const patch = {
       email: authUser.email ?? null,
-      full_name: args.fullName ?? authUser.name ?? existing?.full_name ?? null,
-      phone: args.phone ?? existing?.phone ?? null,
+      full_name: cleanNullable(args.fullName ?? authUser.name ?? existing?.full_name, 120),
+      phone: cleanPhone(args.phone ?? existing?.phone),
       preferred_currency: existing?.preferred_currency ?? "INR",
       marketing_consent: args.marketingConsent ?? existing?.marketing_consent ?? false,
       updated_at: timestamp,
@@ -77,20 +95,32 @@ export const updateProfile = mutation({
     marketing_consent: v.optional(v.union(v.boolean(), v.null())),
     preferred_currency: v.optional(v.union(v.string(), v.null())),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const auth = await requireIdentity(ctx);
     const authUser = auth.user as any;
     const existing = await getProfileByUserId(ctx, auth.userId);
     const timestamp = nowIso();
+    const normalizedArgs = {
+      ...args,
+      ...(args.full_name !== undefined ? { full_name: cleanNullable(args.full_name, 120) } : {}),
+      ...(args.phone !== undefined ? { phone: cleanPhone(args.phone) } : {}),
+      ...(args.date_of_birth !== undefined
+        ? { date_of_birth: cleanNullable(args.date_of_birth, 20) }
+        : {}),
+      ...(args.preferred_currency !== undefined
+        ? { preferred_currency: cleanNullable(args.preferred_currency, 12)?.toUpperCase() ?? null }
+        : {}),
+    };
     if (!existing) {
       const id = await ctx.db.insert("profiles", {
         userId: auth.userId,
         email: authUser.email ?? null,
-        full_name: args.full_name ?? authUser.name ?? null,
-        phone: args.phone ?? null,
-        date_of_birth: args.date_of_birth ?? null,
-        preferred_currency: args.preferred_currency ?? "INR",
-        marketing_consent: args.marketing_consent ?? false,
+        full_name: normalizedArgs.full_name ?? cleanNullable(authUser.name, 120),
+        phone: normalizedArgs.phone ?? null,
+        date_of_birth: normalizedArgs.date_of_birth ?? null,
+        preferred_currency: normalizedArgs.preferred_currency ?? "INR",
+        marketing_consent: normalizedArgs.marketing_consent ?? false,
         total_orders: 0,
         total_spent: 0,
         created_at: timestamp,
@@ -99,7 +129,7 @@ export const updateProfile = mutation({
       const created = await ctx.db.get(id);
       return created ? publicProfile(created) : null;
     }
-    await ctx.db.patch(existing._id, { ...args, updated_at: timestamp });
+    await ctx.db.patch(existing._id, { ...normalizedArgs, updated_at: timestamp });
     const next = await ctx.db.get(existing._id);
     return next ? publicProfile(next) : null;
   },

@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig, loadEnv } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig(({ command, mode }) => {
   const loadedEnv = loadEnv(mode, process.cwd(), "VITE_");
@@ -18,6 +17,7 @@ export default defineConfig(({ command, mode }) => {
     define: envDefine,
     css: { transformer: "lightningcss" },
     resolve: {
+      tsconfigPaths: true,
       alias: { "@": `${process.cwd()}/src` },
       dedupe: [
         "react",
@@ -40,7 +40,6 @@ export default defineConfig(({ command, mode }) => {
     server: { host: "::", port: 8080 },
     plugins: [
       tailwindcss(),
-      tsconfigPaths({ projects: ["./tsconfig.json"] }),
       tanstackStart({ server: { entry: "server" } }),
       ...(command === "build" ? [nitro({ defaultPreset: "cloudflare-module" })] : []),
       react(),
