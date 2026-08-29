@@ -29,7 +29,7 @@ const WEBSITE_SCHEMA = {
     "@type": "Organization",
     name: "BADR",
     url: SITE_ORIGIN,
-    logo: `${SITE_ORIGIN}/favicon.png`,
+    logo: `${SITE_ORIGIN}/icon-512.png`,
   },
 };
 
@@ -135,8 +135,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
+      {
+        rel: "icon",
+        href: "/favicon-badr-32.png",
+        type: "image/png",
+        sizes: "32x32",
+      },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
       { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
