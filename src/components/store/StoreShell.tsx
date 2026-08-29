@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Heart, Menu, PackageSearch, ShoppingBag, UserRound, X } from "lucide-react";
+import { Link, useLocation } from "@tanstack/react-router";
+import { ChevronDown, Heart, Menu, PackageSearch, ShoppingCart, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PRODUCTS } from "@/lib/products";
 import { Wordmark } from "./Wordmark";
@@ -43,15 +43,13 @@ export function StoreShell({ children }: { children: ReactNode }) {
     };
     const register = (scope: Element) => {
       if (
-        scope instanceof Element &&
         scope.matches("main > section, main > div, main article, [data-store-reveal], footer > *")
       ) {
         registerTarget(scope);
       }
-      const targets = scope.querySelectorAll(
+      for (const target of scope.querySelectorAll(
         "main > section, main > div, main article, [data-store-reveal], footer > *",
-      );
-      for (const target of targets) {
+      )) {
         registerTarget(target);
       }
     };
@@ -84,25 +82,10 @@ export function StoreShell({ children }: { children: ReactNode }) {
 
 function SiteHeader() {
   const cart = useCart();
+  const pathname = useLocation({ select: (location) => location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        setScrolled(window.scrollY > 18);
-        frame = 0;
-      });
-    };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", update);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, []);
+  const [fragrancesOpen, setFragrancesOpen] = useState(false);
+  const darkHeader = pathname === "/";
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -118,177 +101,158 @@ function SiteHeader() {
     };
   }, [menuOpen]);
 
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <>
+      <div className="flex h-6 items-center justify-center bg-white px-4 text-center text-[8px] font-semibold uppercase tracking-[0.2em] text-black">
+        <span className="sm:hidden">India shipping included</span>
+        <span className="hidden sm:inline">
+          India shipping included · International orders on WhatsApp
+        </span>
+      </div>
       <header
-        data-scrolled={scrolled || undefined}
-        className={`pointer-events-none fixed inset-x-0 z-50 grid grid-cols-[1fr_auto_1fr] items-center px-4 text-white mix-blend-difference transition-[top,padding] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:px-6 ${scrolled ? "top-3" : "top-4 sm:top-6"}`}
+        className={`sticky top-0 z-50 grid h-13 grid-cols-[1fr_auto_1fr] items-center px-3 transition-colors duration-300 sm:px-5 ${
+          darkHeader ? "bg-black text-white" : "border-b border-black/10 bg-white text-black"
+        }`}
       >
         <button
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Menu"
           aria-expanded={menuOpen}
-          className="header-control motion-button pointer-events-auto grid h-11 w-11 place-items-center justify-self-start rounded-full hover:scale-110 hover:opacity-65"
+          className="grid h-10 w-10 place-items-center justify-self-start hover:opacity-55"
         >
-          <span className="relative block h-5 w-5">
-            <Menu
-              className={`absolute inset-0 h-5 w-5 shop-transition ${
-                menuOpen ? "rotate-90 scale-75 opacity-0" : "rotate-0 scale-100 opacity-100"
-              }`}
-            />
-            <X
-              className={`absolute inset-0 h-5 w-5 shop-transition ${
-                menuOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-75 opacity-0"
-              }`}
-            />
-          </span>
+          <Menu className="h-5 w-5" strokeWidth={1.7} />
         </button>
 
-        <Link
-          to="/"
-          aria-label="BADR home"
-          className="header-control motion-button pointer-events-auto px-3 py-2 hover:scale-105 hover:opacity-65"
-        >
-          <Wordmark size="sm" />
+        <Link to="/" aria-label="BADR home" className="px-4 py-2 hover:opacity-60">
+          <Wordmark size="md" />
         </Link>
 
-        <button
-          onClick={() => {
-            setMenuOpen(false);
-            cart.setOpen(true);
-          }}
-          aria-label="Open cart"
-          className="header-control motion-button pointer-events-auto relative grid h-11 w-11 place-items-center justify-self-end rounded-full hover:scale-110 hover:opacity-65"
-        >
-          <ShoppingBag className="h-5 w-5" />
-          {cart.count > 0 ? (
-            <span
-              key={cart.count}
-              className="cart-count-pop absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-white px-1 text-[10px] font-semibold text-black"
-            >
-              {cart.count}
-            </span>
-          ) : null}
-        </button>
+        <div className="flex items-center justify-self-end gap-2 sm:gap-4">
+          <Link
+            to="/shop"
+            className={`px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] sm:px-5 sm:text-[10px] ${
+              darkHeader ? "bg-white text-black" : "bg-black text-white"
+            }`}
+          >
+            Buy now
+          </Link>
+          <button
+            type="button"
+            onClick={() => cart.setOpen(true)}
+            aria-label={`Cart${cart.count ? `, ${cart.count} items` : ""}`}
+            className="relative grid h-10 w-9 place-items-center hover:opacity-55"
+          >
+            <ShoppingCart className="h-5 w-5" strokeWidth={1.7} />
+            {cart.count ? (
+              <span className="cart-count-pop absolute -right-0.5 top-0.5 text-[8px] font-bold">
+                {cart.count}
+              </span>
+            ) : null}
+          </button>
+        </div>
       </header>
 
       <div
         aria-hidden={!menuOpen}
         inert={!menuOpen}
-        className={`fixed inset-0 z-40 overflow-x-hidden overflow-y-auto bg-[#080808] px-5 pb-10 pt-28 text-white transition-[opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-8 sm:pt-32 ${
-          menuOpen ? "visible opacity-100" : "invisible pointer-events-none opacity-0"
+        className={`fixed inset-0 z-[70] transition-[visibility] ${
+          menuOpen ? "visible" : "invisible pointer-events-none"
         }`}
       >
-        <nav
+        <button
+          type="button"
+          aria-label="Close menu backdrop"
+          onClick={closeMenu}
+          className={`absolute inset-0 h-full w-full bg-black/72 transition-opacity duration-500 ${
+            menuOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <aside
           aria-label="Main navigation"
-          className={`store-menu-links mx-auto grid w-full max-w-6xl gap-12 transition-[opacity,translate] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 ${
-            menuOpen ? "menu-open translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+          className={`absolute inset-y-0 left-0 flex w-[calc(100%-16px)] max-w-[395px] flex-col bg-white text-black transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <section>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/40">
-              Explore BADR
-            </p>
-            <div className="mt-5 divide-y divide-white/15 border-y border-white/15">
-              <Link
-                to="/shop"
-                onClick={() => setMenuOpen(false)}
-                className="menu-feature-link group flex items-center justify-between gap-5 py-5 sm:py-7"
-              >
-                <span className="min-w-0">
-                  <strong className="block font-display text-4xl leading-none sm:text-6xl">
-                    Shop collection
-                  </strong>
-                  <small className="mt-2 block text-xs text-white/45">
-                    Browse every scent, note and mood.
-                  </small>
-                </span>
-                <ArrowUpRight className="h-5 w-5 shrink-0 transition-[translate,rotate] duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:rotate-6 sm:h-6 sm:w-6" />
-              </Link>
+          <button
+            type="button"
+            onClick={closeMenu}
+            aria-label="Close menu"
+            className="absolute left-3 top-3 grid h-10 w-10 place-items-center border border-black/25 hover:bg-black hover:text-white"
+          >
+            <X className="h-6 w-6" strokeWidth={1.5} />
+          </button>
+
+          <nav className="mt-21 text-[12px] font-semibold uppercase tracking-[0.08em]">
+            <Link to="/shop" onClick={closeMenu} className="block px-7 py-4 hover:bg-black/5">
+              Shop all
+            </Link>
+            <div>
               <button
                 type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  cart.setOpen(true);
-                }}
-                className="menu-feature-link group flex w-full items-center justify-between gap-5 py-5 text-left sm:py-7"
+                onClick={() => setFragrancesOpen((open) => !open)}
+                aria-expanded={fragrancesOpen}
+                className="flex w-full items-center justify-between bg-black/[0.035] px-7 py-4 text-left hover:bg-black/[0.07]"
               >
-                <span className="min-w-0">
-                  <strong className="block font-display text-4xl leading-none sm:text-6xl">
-                    Your bag
-                  </strong>
-                  <small className="mt-2 block text-xs text-white/45">
-                    {cart.count
-                      ? `${cart.count} item${cart.count === 1 ? "" : "s"} waiting.`
-                      : "Your bag is ready when you are."}
-                  </small>
-                </span>
-                <ShoppingBag className="h-6 w-6 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+                Fragrances
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${fragrancesOpen ? "rotate-180" : ""}`}
+                />
               </button>
+              <div
+                className={`grid overflow-hidden transition-[grid-template-rows] duration-400 ${
+                  fragrancesOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                }`}
+              >
+                <div className="min-h-0">
+                  {PRODUCTS.map((product) => (
+                    <Link
+                      key={product.id}
+                      to="/product/$id"
+                      params={{ id: product.id }}
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 border-b border-black/8 px-7 py-3 pl-10 hover:bg-black/5"
+                    >
+                      <img src={product.image} alt="" className="h-9 w-9 object-contain" />
+                      {product.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             </div>
+            <Link to="/wishlist" onClick={closeMenu} className="block px-7 py-4 hover:bg-black/5">
+              Wishlist
+            </Link>
+          </nav>
 
-            <div className="mt-7 grid grid-cols-3 gap-3 text-center text-[9px] font-semibold uppercase tracking-[0.14em] text-white/65">
+          <div className="mt-auto px-7 pb-8">
+            <div className="grid grid-cols-2 gap-4">
+              <Link
+                to="/track-order"
+                onClick={closeMenu}
+                className="flex min-h-12 items-center justify-center gap-2 border border-black/15 text-[10px] font-semibold uppercase tracking-[0.08em] hover:bg-black hover:text-white"
+              >
+                <PackageSearch className="h-4 w-4" /> Track order
+              </Link>
               <Link
                 to="/account"
-                onClick={() => setMenuOpen(false)}
-                className="menu-utility-link flex flex-col items-center gap-2 py-3 hover:text-white"
+                onClick={closeMenu}
+                className="flex min-h-12 items-center justify-center gap-2 border border-black/15 text-[10px] font-semibold uppercase tracking-[0.08em] hover:bg-black hover:text-white"
               >
                 <UserRound className="h-4 w-4" /> Account
               </Link>
-              <Link
-                to="/wishlist"
-                onClick={() => setMenuOpen(false)}
-                className="menu-utility-link flex flex-col items-center gap-2 py-3 hover:text-white"
-              >
-                <Heart className="h-4 w-4" /> Wishlist
-              </Link>
-              <Link
-                to="/track-order"
-                onClick={() => setMenuOpen(false)}
-                className="menu-utility-link flex flex-col items-center gap-2 py-3 hover:text-white"
-              >
-                <PackageSearch className="h-4 w-4" /> Track
-              </Link>
             </div>
-          </section>
-
-          <section className="lg:border-l lg:border-white/15 lg:pl-16">
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/40">
-                  Five signatures
-                </p>
-                <h2 className="mt-3 font-display text-3xl">Choose your mood.</h2>
-              </div>
-              <Link
-                to="/"
-                onClick={() => setMenuOpen(false)}
-                className="motion-link text-[9px] font-semibold uppercase tracking-[0.18em] text-white/45 hover:text-white"
-              >
-                Home
-              </Link>
-            </div>
-            <div className="mt-6 divide-y divide-white/12">
-              {PRODUCTS.map((product) => (
-                <Link
-                  key={product.id}
-                  to="/product/$id"
-                  params={{ id: product.id }}
-                  onClick={() => setMenuOpen(false)}
-                  className="group flex items-center justify-between gap-5 py-4"
-                >
-                  <span>
-                    <strong className="font-display text-xl sm:text-2xl">{product.name}</strong>
-                    <small className="mt-1 block text-[9px] uppercase tracking-[0.14em] text-white/35">
-                      {product.tag}
-                    </small>
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-white/35 transition-[translate,color] duration-300 group-hover:translate-x-1 group-hover:text-white" />
-                </Link>
-              ))}
-            </div>
-          </section>
-        </nav>
+            <Link
+              to="/wishlist"
+              onClick={closeMenu}
+              className="mt-5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em]"
+            >
+              <Heart className="h-4 w-4" /> Saved fragrances
+            </Link>
+          </div>
+        </aside>
       </div>
     </>
   );
@@ -296,13 +260,50 @@ function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-foreground px-6 py-20 text-center text-background">
-      <Wordmark size="lg" className="mx-auto block" />
-      <p className="mt-5 font-display text-xl leading-tight">
-        Rare Air. Crafted for the Relentless.
-      </p>
-      <p className="mt-10 text-xs text-background/50">ESTD 1448 AH · Made in India</p>
-      <div className="h-8" />
+    <footer className="bg-black px-6 py-14 text-white sm:px-8 sm:py-20">
+      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.2fr_2fr]">
+        <div>
+          <Wordmark size="lg" />
+          <h2 className="mt-6 max-w-md font-display text-3xl leading-[0.95] sm:text-5xl">
+            Rare air. Crafted for the relentless.
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 gap-8 text-xs sm:grid-cols-3">
+          <FooterGroup title="Fragrances">
+            {PRODUCTS.map((product) => (
+              <Link key={product.id} to="/product/$id" params={{ id: product.id }}>
+                {product.name}
+              </Link>
+            ))}
+          </FooterGroup>
+          <FooterGroup title="Store">
+            <Link to="/shop">Shop all</Link>
+            <Link to="/account">Account</Link>
+            <Link to="/wishlist">Wishlist</Link>
+          </FooterGroup>
+          <FooterGroup title="Support">
+            <Link to="/track-order">Track order</Link>
+            <Link to="/checkout">Checkout</Link>
+          </FooterGroup>
+        </div>
+      </div>
+      <div className="mx-auto mt-16 flex max-w-7xl flex-wrap justify-between gap-4 border-t border-white/15 pt-6 text-[9px] uppercase tracking-[0.16em] text-white/50">
+        <span>© {new Date().getFullYear()} BADR</span>
+        <span>ESTD 1448 AH · Made in India</span>
+      </div>
     </footer>
+  );
+}
+
+function FooterGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section>
+      <h3 className="mb-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
+        {title}
+      </h3>
+      <div className="flex flex-col gap-3 [&_a]:transition-opacity [&_a:hover]:opacity-50">
+        {children}
+      </div>
+    </section>
   );
 }

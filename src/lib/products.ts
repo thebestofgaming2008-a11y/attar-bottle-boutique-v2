@@ -274,7 +274,13 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
   );
   const notes = strings(source.key_notes);
   const liveFaqs = productFaqs(source.faqs);
-  const cover = text(source.cover_image_url) || fallback?.image || "";
+  const sourceCover = text(source.cover_image_url) || "";
+  const isOriginalSeedCover = sourceCover.includes(`/products/sku-${slug}.webp`);
+  const cover =
+    (isOriginalSeedCover ? BOTTLE_IMAGES[slug] : sourceCover) ||
+    fallback?.image ||
+    sourceCover ||
+    "";
   const liveGallery = strings(source.images);
   const fallbackGallery = liveGallery.length
     ? []

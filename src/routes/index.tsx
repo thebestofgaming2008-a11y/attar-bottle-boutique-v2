@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PRODUCTS, storefrontProductFromSource, type Product } from "@/lib/products";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { Hero } from "@/components/store/Hero";
-import { VideoBand } from "@/components/store/VideoBand";
 import { ScentChapter } from "@/components/store/ScentChapter";
 import { ProductCard } from "@/components/store/ProductCard";
 import { listActiveProducts } from "@/services/productService";
@@ -67,8 +66,6 @@ function Index() {
     <StoreShell>
       <Hero onCta={scrollToShop} />
 
-      <VideoBand />
-
       {chapterProducts.map((p) => (
         <div key={p.id}>
           <ScentChapter product={p} />
@@ -84,26 +81,23 @@ function Index() {
 
 function CollectionSection({ products }: { products: Product[] }) {
   return (
-    <section id="shop" className="scroll-mt-20 bg-[#eeeae2] px-4 py-20 sm:px-6 sm:py-28">
+    <section id="shop" className="scroll-mt-14 bg-black px-3 py-14 text-white sm:px-6 sm:py-20">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow">The collection</p>
-            <h2 className="mt-4 max-w-3xl font-display text-5xl leading-[0.9] sm:text-7xl">
-              Five scents. Choose yours.
-            </h2>
-          </div>
+        <h2 className="text-center font-display text-2xl leading-none sm:text-4xl">
+          Shop the collection
+        </h2>
+        <div className="mt-8 grid grid-cols-2 gap-x-1 gap-y-9 sm:gap-x-2 lg:grid-cols-5">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} dark />
+          ))}
+        </div>
+        <div className="mt-12 text-center">
           <Link
             to="/shop"
-            className="motion-link text-[10px] font-semibold uppercase tracking-[0.18em]"
+            className="inline-flex min-h-11 items-center bg-white px-7 text-[10px] font-semibold uppercase tracking-[0.1em] text-black hover:bg-white/75"
           >
             View all products
           </Link>
-        </div>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
         </div>
       </div>
     </section>
