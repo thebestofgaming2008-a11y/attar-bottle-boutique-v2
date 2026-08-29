@@ -21,6 +21,19 @@ const SITE_ORIGIN =
   "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
 const SOCIAL_IMAGE =
   "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/products/scene-oud-zafar.webp";
+const WEBSITE_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "BADR",
+  url: SITE_ORIGIN,
+  description: "Rare air. Crafted for the relentless. Unisex attars made in India.",
+  publisher: {
+    "@type": "Organization",
+    name: "BADR",
+    url: SITE_ORIGIN,
+    logo: `${SITE_ORIGIN}/favicon.png`,
+  },
+};
 
 function NotFoundComponent() {
   return (
@@ -89,6 +102,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Rare air, crafted for the relentless. Shop BADR's unisex 6 ml attars.",
       },
       { name: "author", content: "BADR" },
+      {
+        name: "keywords",
+        content:
+          "BADR attar, attar perfume India, unisex perfume oil, oud attar, 6 ml roll-on attar",
+      },
+      { name: "robots", content: "index, follow, max-image-preview:large" },
+      { name: "theme-color", content: "#111111" },
+      { property: "og:site_name", content: "BADR" },
       { property: "og:title", content: "BADR Attar — Rare Air" },
       {
         property: "og:description",
@@ -98,6 +119,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:url", content: SITE_ORIGIN },
       { property: "og:image", content: SOCIAL_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "BADR Attar — Rare Air" },
+      {
+        name: "twitter:description",
+        content: "Rare air. Crafted for the relentless. Five unisex attars made in India.",
+      },
       { name: "twitter:image", content: SOCIAL_IMAGE },
     ],
     links: [
@@ -112,6 +138,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -125,6 +153,10 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_SCHEMA) }}
+        />
       </head>
       <body>
         {children}

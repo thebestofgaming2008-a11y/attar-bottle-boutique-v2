@@ -49,15 +49,32 @@ export type Product = {
   notes: string[];
   price: number;
   mrp: number;
-  occasion: Occasion;
-  intensity: "bold" | "soft";
+  occasion: string;
+  intensity: string;
   longevity: string;
   faqs: { q: string; a: string }[];
+  gallery?: string[];
+  volume?: string;
+  format?: string;
+  countryOfOrigin?: string;
+  stockQuantity?: number;
+  inStock?: boolean;
+  badge?: string;
+  isFeatured?: boolean;
+  showInCollection?: boolean;
+  isNewArrival?: boolean;
+  isBestseller?: boolean;
+  sortOrder?: number;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
+  socialImage?: string;
 };
 
 export const PRODUCTS: Product[] = [
   {
     id: "oud-zafar",
+    sortOrder: 10,
     name: "Oud Zafar",
     category: "Unisex Oud Parfum",
     tag: "Deep · Warm · Commanding",
@@ -89,6 +106,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: "oud-gulaab",
+    sortOrder: 20,
     name: "Oud Gulaab",
     category: "Unisex Floral Oud Parfum",
     tag: "Rose · Resin · Quiet confidence",
@@ -120,6 +138,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: "fitoor",
+    sortOrder: 30,
     name: "Fitoor",
     category: "Unisex Fruity Woody Parfum",
     tag: "Juicy · Woody · Everyday",
@@ -149,6 +168,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: "dariya",
+    sortOrder: 40,
     name: "Dariya",
     category: "Unisex Fresh Aquatic Parfum",
     tag: "Clean · Citrus · Open water",
@@ -181,6 +201,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: "ulfat",
+    sortOrder: 50,
     name: "Ulfat",
     category: "Unisex Gourmand Vanilla Parfum",
     tag: "Sweet · Amber · Close",
@@ -214,3 +235,119 @@ export const PRODUCTS: Product[] = [
 
 export const FREE_SHIPPING_THRESHOLD = 999;
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+type ProductSource = Record<string, unknown>;
+
+function text(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function strings(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
+}
+
+function productFaqs(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    const q = text(record.question) || text(record.q);
+    const a = text(record.answer) || text(record.a);
+    return q && a ? [{ q, a }] : [];
+  });
+}
+
+/**
+ * Converts a Convex product into the complete BADR storefront model. Static
+ * launch copy is retained only as a fallback for records that predate the
+ * editable content fields.
+ */
+export function resolveStoreProduct(source: ProductSource, fallback?: Product): Product {
+  const slug = text(source.slug) || fallback?.id || text(source.id) || "product";
+  const price = Number(source.sale_price_inr ?? source.sale_price ?? source.price_inr ?? 0);
+  const regularPrice = Number(source.price_inr ?? source.price ?? price);
+  const sourceTags = strings(source.tags).filter(
+    (tag) =>
+      !["unisex", "attars", text(source.category_id)?.toLowerCase()].includes(tag.toLowerCase()),
+  );
+  const notes = strings(source.key_notes);
+  const liveFaqs = productFaqs(source.faqs);
+  const cover = text(source.cover_image_url) || fallback?.image || "";
+  const liveGallery = strings(source.images);
+  const fallbackGallery = liveGallery.length
+    ? []
+    : [
+        fallback ? SCENE_IMAGES[fallback.id] : undefined,
+        fallback ? BOTTLE_IMAGES[fallback.id] : undefined,
+        ...(fallback?.gallery ?? []),
+      ];
+  const gallery = Array.from(
+    new Set(
+      [cover, ...liveGallery, ...fallbackGallery].filter((item): item is string => Boolean(item)),
+    ),
+  );
+  const rawStock = Number(source.stock_quantity ?? fallback?.stockQuantity ?? 0);
+
+  return {
+    id: slug,
+    name: text(source.name) || fallback?.name || "BADR Attar",
+    category:
+      text(source.product_type) || fallback?.category || text(source.category) || "Unisex Attar",
+    tag:
+      text(source.scent_profile) ||
+      fallback?.tag ||
+      sourceTags.slice(0, 3).join(" · ") ||
+      "Rare · Personal · Made in India",
+    mood:
+      text(source.mood) ||
+      fallback?.mood ||
+      text(source.short_description) ||
+      "For the moments that stay with you",
+    meaning: text(source.meaning) || fallback?.meaning,
+    hook:
+      text(source.hook) ||
+      fallback?.hook ||
+      text(source.short_description) ||
+      "A BADR signature attar.",
+    image: cover,
+    story:
+      text(source.story) ||
+      fallback?.story ||
+      text(source.description) ||
+      text(source.short_description) ||
+      "A BADR signature attar made for close, deliberate wear.",
+    notes: notes.length ? notes : fallback?.notes?.length ? fallback.notes : sourceTags.slice(0, 8),
+    price: Number.isFinite(price) && price > 0 ? price : fallback?.price || regularPrice,
+    mrp: Number.isFinite(regularPrice) && regularPrice > 0 ? regularPrice : fallback?.mrp || price,
+    occasion: text(source.occasion) || fallback?.occasion || "Everyday",
+    intensity: text(source.intensity) || fallback?.intensity || "Balanced",
+    longevity: text(source.longevity) || fallback?.longevity || "Long-lasting",
+    faqs: liveFaqs.length ? liveFaqs.slice(0, 3) : fallback?.faqs || [],
+    gallery,
+    volume: text(source.volume_label) || fallback?.volume || "6 ml",
+    format: text(source.format_label) || fallback?.format || "Roll-on attar",
+    countryOfOrigin: text(source.country_of_origin) || fallback?.countryOfOrigin || "India",
+    stockQuantity: Number.isFinite(rawStock) ? rawStock : 0,
+    inStock: source.in_stock !== false && rawStock > 0,
+    badge: text(source.badge) || fallback?.badge,
+    isFeatured: source.is_featured === true,
+    showInCollection: source.show_in_category_section !== false,
+    isNewArrival: source.is_new_arrival === true,
+    isBestseller: source.is_bestseller === true,
+    sortOrder: Number(source.sort_order ?? fallback?.sortOrder ?? Number.MAX_SAFE_INTEGER),
+    seoTitle: text(source.seo_title) || fallback?.seoTitle,
+    seoDescription: text(source.seo_description) || fallback?.seoDescription,
+    seoKeywords: strings(source.seo_keywords).length
+      ? strings(source.seo_keywords)
+      : fallback?.seoKeywords,
+    socialImage: text(source.og_image_url) || fallback?.socialImage || gallery[1] || cover,
+  };
+}
+
+export function storefrontProductFromSource(source: ProductSource) {
+  const slug = text(source.slug) || text(source.id);
+  const fallback = PRODUCTS.find((product) => product.id === slug);
+  return resolveStoreProduct(source, fallback);
+}

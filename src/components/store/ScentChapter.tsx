@@ -9,7 +9,8 @@ import { Reveal } from "./Reveal";
  */
 export function ScentChapter({ product }: { product: Product }) {
   const words = product.tag.split("·").map((w) => w.trim().toUpperCase());
-  const scene = SCENE_IMAGES[product.id] ?? product.image;
+  const scene =
+    product.socialImage || product.gallery?.[1] || SCENE_IMAGES[product.id] || product.image;
 
   return (
     <section className="relative block overflow-hidden bg-foreground text-background">

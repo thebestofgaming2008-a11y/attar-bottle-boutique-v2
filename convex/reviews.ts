@@ -95,7 +95,7 @@ export const listPublishedForProduct = query({
     const rows = await ctx.db
       .query("reviews")
       .withIndex("by_product_id", (q) => q.eq("product_id", args.productId))
-      .collect();
+      .take(200);
     return rows
       .filter((row) => row.status === "published")
       .map(publicReview)

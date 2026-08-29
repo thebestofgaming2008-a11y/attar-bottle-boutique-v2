@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useState, type ClipboardEvent, type DragEvent, type FormEvent } from "react";
 import {
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import {
+  ArrowDown,
+  ArrowUp,
   ImagePlus,
   LayoutDashboard,
   Loader2,
@@ -12,46 +20,106 @@ import {
   Star,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { StoreShell } from "@/components/store/StoreShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/services/adminService";
 import { clearProductListCache } from "@/services/productService";
-import { inr } from "@/lib/products";
+import { inr, PRODUCTS } from "@/lib/products";
 
 type Tab = "products" | "orders" | "reviews" | "customers" | "health";
 type ProductForm = {
   id: string;
   name: string;
   slug: string;
-  description: string;
+  productType: string;
+  mood: string;
+  scentProfile: string;
+  hook: string;
+  story: string;
+  meaning: string;
+  keyNotes: string;
+  occasion: string;
+  intensity: string;
+  longevity: string;
+  volume: string;
+  format: string;
+  country: string;
+  faqs: Array<{ question: string; answer: string }>;
   price: string;
   sale: string;
   stock: string;
   sku: string;
   badge: string;
   collection: string;
+  tags: string;
+  sortOrder: string;
+  seoTitle: string;
+  seoDescription: string;
+  seoKeywords: string;
+  socialImage: string;
   active: boolean;
+  featured: boolean;
+  collectionVisible: boolean;
+  newArrival: boolean;
+  bestseller: boolean;
   cover: string;
   images: string[];
 };
+
+const blankFaqs = () => Array.from({ length: 3 }, () => ({ question: "", answer: "" }));
 
 const emptyProduct: ProductForm = {
   id: "",
   name: "",
   slug: "",
-  description: "",
+  productType: "Unisex Attar",
+  mood: "",
+  scentProfile: "",
+  hook: "",
+  story: "",
+  meaning: "",
+  keyNotes: "",
+  occasion: "",
+  intensity: "",
+  longevity: "",
+  volume: "6 ml",
+  format: "Roll-on attar",
+  country: "India",
+  faqs: blankFaqs(),
   price: "",
   sale: "",
   stock: "0",
   sku: "",
   badge: "",
   collection: "oud",
+  tags: "Unisex",
+  sortOrder: "",
+  seoTitle: "",
+  seoDescription: "",
+  seoKeywords: "",
+  socialImage: "",
   active: true,
+  featured: true,
+  collectionVisible: true,
+  newArrival: false,
+  bestseller: false,
   cover: "",
   images: [],
 };
+
+function csv(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "BADR admin" }, { name: "robots", content: "noindex" }] }),
@@ -115,22 +183,56 @@ function AdminPage() {
       </StoreShell>
     );
 
-  const editProduct = (product: NonNullable<typeof products>[number]) =>
+  const editProduct = (product: NonNullable<typeof products>[number]) => {
+    const current = product as typeof product & Record<string, any>;
+    const fallback = PRODUCTS.find((item) => item.id === (current.slug || current.id));
+    const currentFaqs = Array.isArray(current.faqs)
+      ? current.faqs.slice(0, 3).map((faq: any) => ({
+          question: faq.question || faq.q || "",
+          answer: faq.answer || faq.a || "",
+        }))
+      : fallback?.faqs.map((faq) => ({ question: faq.q, answer: faq.a })) || [];
     setForm({
-      id: product.id,
-      name: product.name,
-      slug: product.slug || "",
-      description: product.description || product.short_description || "",
-      price: String(product.price_inr),
-      sale: product.sale_price_inr == null ? "" : String(product.sale_price_inr),
-      stock: String(product.stock_quantity ?? 0),
-      sku: product.sku || "",
-      badge: product.badge || "",
-      collection: product.category_id || "oud",
-      active: product.is_active !== false,
-      cover: product.cover_image_url || "",
-      images: product.images || [],
+      id: current.id,
+      name: current.name,
+      slug: current.slug || "",
+      productType: current.product_type || fallback?.category || "Unisex Attar",
+      mood: current.mood || fallback?.mood || "",
+      scentProfile: current.scent_profile || fallback?.tag || "",
+      hook: current.hook || fallback?.hook || current.short_description || "",
+      story: current.story || fallback?.story || current.description || "",
+      meaning: current.meaning || fallback?.meaning || "",
+      keyNotes: (current.key_notes || fallback?.notes || []).join(", "),
+      occasion: current.occasion || fallback?.occasion || "",
+      intensity: current.intensity || fallback?.intensity || "",
+      longevity: current.longevity || fallback?.longevity || "",
+      volume: current.volume_label || "6 ml",
+      format: current.format_label || "Roll-on attar",
+      country: current.country_of_origin || "India",
+      faqs: [...currentFaqs, ...blankFaqs()].slice(0, 3),
+      price: String(current.price_inr),
+      sale: current.sale_price_inr == null ? "" : String(current.sale_price_inr),
+      stock: String(current.stock_quantity ?? 0),
+      sku: current.sku || "",
+      badge: current.badge || "",
+      collection: current.category_id || "oud",
+      tags: (current.tags || []).join(", "),
+      sortOrder: current.sort_order == null ? "" : String(current.sort_order),
+      seoTitle: current.seo_title || "",
+      seoDescription: current.seo_description || "",
+      seoKeywords: (current.seo_keywords || []).join(", "),
+      socialImage: current.og_image_url || "",
+      active: current.is_active !== false,
+      featured: current.is_featured === true,
+      collectionVisible: current.show_in_category_section !== false,
+      newArrival: current.is_new_arrival === true,
+      bestseller: current.is_bestseller === true,
+      cover: current.cover_image_url || "",
+      images: Array.from(
+        new Set([current.cover_image_url, ...(current.images || [])].filter(Boolean)),
+      ) as string[],
     });
+  };
 
   async function saveProduct(event: FormEvent) {
     event.preventDefault();
@@ -140,23 +242,44 @@ function AdminPage() {
       const payload = {
         name: form.name,
         slug: form.slug || null,
-        short_description: form.description.slice(0, 280),
-        description: form.description,
+        product_type: form.productType || null,
+        mood: form.mood || null,
+        scent_profile: form.scentProfile || null,
+        hook: form.hook || null,
+        story: form.story || null,
+        meaning: form.meaning || null,
+        key_notes: csv(form.keyNotes),
+        occasion: form.occasion || null,
+        intensity: form.intensity || null,
+        longevity: form.longevity || null,
+        volume_label: form.volume || null,
+        format_label: form.format || null,
+        country_of_origin: form.country || null,
+        faqs: form.faqs.filter((faq) => faq.question.trim() && faq.answer.trim()),
+        short_description: form.hook.slice(0, 280),
+        description: form.story,
         price_inr: Number(form.price),
         sale_price_inr: form.sale ? Number(form.sale) : null,
         sku: form.sku || null,
         stock_quantity: Number(form.stock),
         category: "attars",
         category_id: form.collection,
-        tags: [form.collection, "Unisex"],
+        tags: csv(form.tags),
         cover_image_url: form.cover || null,
-        images: form.images,
+        images: form.images.filter((image) => image !== form.cover),
         size_options: ["6 ml roll-on"],
         option_types: [{ name: "Size", values: ["6 ml roll-on"] }],
         badge: form.badge || null,
+        sort_order: form.sortOrder ? Number(form.sortOrder) : null,
+        seo_title: form.seoTitle || null,
+        seo_description: form.seoDescription || null,
+        seo_keywords: csv(form.seoKeywords),
+        og_image_url: form.socialImage || null,
         is_active: form.active,
-        is_featured: true,
-        show_in_category_section: true,
+        is_featured: form.featured,
+        show_in_category_section: form.collectionVisible,
+        is_new_arrival: form.newArrival,
+        is_bestseller: form.bestseller,
         is_on_sale: Boolean(form.sale),
       };
       if (form.id) await updateProduct({ id: form.id, patch: payload });
@@ -203,6 +326,28 @@ function AdminPage() {
     void uploadFiles(Array.from(event.dataTransfer.files));
   }
 
+  function moveImage(index: number, direction: -1 | 1) {
+    setForm((current) => {
+      const destination = index + direction;
+      if (destination < 0 || destination >= current.images.length) return current;
+      const images = [...current.images];
+      [images[index], images[destination]] = [images[destination], images[index]];
+      return { ...current, images };
+    });
+  }
+
+  function removeImage(url: string) {
+    setForm((current) => {
+      const images = current.images.filter((image) => image !== url);
+      return {
+        ...current,
+        images,
+        cover: current.cover === url ? images[0] || "" : current.cover,
+        socialImage: current.socialImage === url ? "" : current.socialImage,
+      };
+    });
+  }
+
   return (
     <StoreShell>
       <main className="min-h-screen bg-[#eeeae2] pb-24 pt-28">
@@ -243,132 +388,338 @@ function AdminPage() {
             <p className="mt-4 border border-foreground/20 bg-background p-4 text-sm">{message}</p>
           ) : null}
           {tab === "products" ? (
-            <section className="mt-5 grid gap-5 lg:grid-cols-[400px_minmax(0,1fr)]">
+            <section className="mt-5 grid gap-5 xl:grid-cols-[560px_minmax(0,1fr)]">
               <form
                 onSubmit={saveProduct}
                 onPaste={onPaste}
                 onDrop={onDrop}
                 onDragOver={(event) => event.preventDefault()}
-                className="bg-background p-4 sm:p-6 lg:sticky lg:top-24 lg:self-start"
+                className="bg-background p-4 sm:p-6"
               >
                 <h2 className="font-display text-3xl">
                   {form.id ? "Edit product" : "New product"}
                 </h2>
-                <div className="mt-5 grid gap-3">
-                  <AdminInput
-                    label="Name"
-                    value={form.name}
-                    onChange={(name) => setForm((item) => ({ ...item, name }))}
-                  />
-                  <AdminInput
-                    label="Slug (optional)"
-                    required={false}
-                    value={form.slug}
-                    onChange={(slug) => setForm((item) => ({ ...item, slug }))}
-                  />
-                  <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
-                    Description
-                    <textarea
-                      required
-                      value={form.description}
-                      onChange={(event) =>
-                        setForm((item) => ({ ...item, description: event.target.value }))
-                      }
-                      rows={5}
-                      className="border border-foreground/20 p-3 text-sm font-normal normal-case tracking-normal outline-none"
-                    />
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <AdminInput
-                      label="Regular price ₹"
-                      type="number"
-                      value={form.price}
-                      onChange={(price) => setForm((item) => ({ ...item, price }))}
-                    />
-                    <AdminInput
-                      label="Sale price ₹"
-                      type="number"
-                      required={false}
-                      value={form.sale}
-                      onChange={(sale) => setForm((item) => ({ ...item, sale }))}
-                    />
-                    <AdminInput
-                      label="Stock"
-                      type="number"
-                      value={form.stock}
-                      onChange={(stock) => setForm((item) => ({ ...item, stock }))}
-                    />
-                    <AdminInput
-                      label="SKU"
-                      required={false}
-                      value={form.sku}
-                      onChange={(sku) => setForm((item) => ({ ...item, sku }))}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <AdminInput
-                      label="Badge"
-                      required={false}
-                      value={form.badge}
-                      onChange={(badge) => setForm((item) => ({ ...item, badge }))}
-                    />
-                    <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
-                      Collection
-                      <select
-                        value={form.collection}
-                        onChange={(event) =>
-                          setForm((item) => ({ ...item, collection: event.target.value }))
-                        }
-                        className="h-11 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal"
-                      >
-                        <option value="oud">Oud</option>
-                        <option value="fresh">Fresh</option>
-                        <option value="fruity">Fruity</option>
-                        <option value="gourmand">Gourmand</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={form.active}
-                      onChange={(event) =>
-                        setForm((item) => ({ ...item, active: event.target.checked }))
-                      }
-                    />{" "}
-                    Active on storefront
-                  </label>
-                  <label className="grid cursor-pointer place-items-center border border-dashed border-foreground/35 p-6 text-center">
-                    <ImagePlus className="h-6 w-6" />
-                    <span className="mt-2 text-xs">Paste, drag/drop, or select product media</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*,video/mp4,video/webm"
-                      className="sr-only"
-                      onChange={(event) => void uploadFiles(Array.from(event.target.files || []))}
-                    />
-                  </label>
-                  {form.images.length ? (
-                    <div className="grid grid-cols-4 gap-2">
-                      {form.images.map((url) => (
-                        <button
-                          type="button"
-                          key={url}
-                          onClick={() => setForm((item) => ({ ...item, cover: url }))}
-                          className={`aspect-square border p-1 ${form.cover === url ? "border-foreground border-2" : "border-foreground/15"}`}
+                <div className="mt-6 grid gap-7">
+                  <AdminSection title="Product identity">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <AdminInput
+                        label="Name"
+                        value={form.name}
+                        onChange={(name) => setForm((item) => ({ ...item, name }))}
+                      />
+                      <AdminInput
+                        label="Slug (optional)"
+                        required={false}
+                        value={form.slug}
+                        onChange={(slug) => setForm((item) => ({ ...item, slug }))}
+                      />
+                      <AdminInput
+                        label="Product type"
+                        value={form.productType}
+                        onChange={(productType) => setForm((item) => ({ ...item, productType }))}
+                      />
+                      <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
+                        Collection
+                        <select
+                          value={form.collection}
+                          onChange={(event) =>
+                            setForm((item) => ({ ...item, collection: event.target.value }))
+                          }
+                          className="h-11 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal"
                         >
-                          <img
-                            src={url}
-                            alt=""
-                            className="h-full w-full object-contain"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        </button>
-                      ))}
+                          <option value="oud">Oud</option>
+                          <option value="fresh">Fresh</option>
+                          <option value="fruity">Fruity</option>
+                          <option value="gourmand">Gourmand</option>
+                        </select>
+                      </label>
+                      <AdminInput
+                        label="Badge (optional)"
+                        required={false}
+                        value={form.badge}
+                        onChange={(badge) => setForm((item) => ({ ...item, badge }))}
+                      />
+                      <AdminInput
+                        label="Display order"
+                        type="number"
+                        required={false}
+                        value={form.sortOrder}
+                        onChange={(sortOrder) => setForm((item) => ({ ...item, sortOrder }))}
+                      />
                     </div>
-                  ) : null}
+                  </AdminSection>
+
+                  <AdminSection title="Product page copy">
+                    <AdminInput
+                      label="Mood line"
+                      value={form.mood}
+                      onChange={(mood) => setForm((item) => ({ ...item, mood }))}
+                    />
+                    <AdminInput
+                      label="Scent profile"
+                      value={form.scentProfile}
+                      onChange={(scentProfile) => setForm((item) => ({ ...item, scentProfile }))}
+                    />
+                    <AdminTextarea
+                      label="It smells like… hook"
+                      value={form.hook}
+                      rows={2}
+                      onChange={(hook) => setForm((item) => ({ ...item, hook }))}
+                    />
+                    <AdminInput
+                      label="Name meaning (optional)"
+                      required={false}
+                      value={form.meaning}
+                      onChange={(meaning) => setForm((item) => ({ ...item, meaning }))}
+                    />
+                    <AdminTextarea
+                      label="Short story"
+                      value={form.story}
+                      rows={5}
+                      onChange={(story) => setForm((item) => ({ ...item, story }))}
+                    />
+                    <AdminInput
+                      label="Key notes (comma separated)"
+                      value={form.keyNotes}
+                      onChange={(keyNotes) => setForm((item) => ({ ...item, keyNotes }))}
+                    />
+                  </AdminSection>
+
+                  <AdminSection title="Wear details">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <AdminInput
+                        label="Best occasions"
+                        value={form.occasion}
+                        onChange={(occasion) => setForm((item) => ({ ...item, occasion }))}
+                      />
+                      <AdminInput
+                        label="Intensity"
+                        value={form.intensity}
+                        onChange={(intensity) => setForm((item) => ({ ...item, intensity }))}
+                      />
+                      <AdminInput
+                        label="Longevity"
+                        value={form.longevity}
+                        onChange={(longevity) => setForm((item) => ({ ...item, longevity }))}
+                      />
+                      <AdminInput
+                        label="Volume"
+                        value={form.volume}
+                        onChange={(volume) => setForm((item) => ({ ...item, volume }))}
+                      />
+                      <AdminInput
+                        label="Format"
+                        value={form.format}
+                        onChange={(format) => setForm((item) => ({ ...item, format }))}
+                      />
+                      <AdminInput
+                        label="Country of origin"
+                        value={form.country}
+                        onChange={(country) => setForm((item) => ({ ...item, country }))}
+                      />
+                    </div>
+                  </AdminSection>
+
+                  <AdminSection title="Three product FAQs">
+                    {form.faqs.map((faq, index) => (
+                      <div key={index} className="grid gap-2 bg-[#f5f2eb] p-3">
+                        <AdminInput
+                          label={`Question ${index + 1}`}
+                          value={faq.question}
+                          onChange={(question) =>
+                            setForm((item) => ({
+                              ...item,
+                              faqs: item.faqs.map((current, currentIndex) =>
+                                currentIndex === index ? { ...current, question } : current,
+                              ),
+                            }))
+                          }
+                        />
+                        <AdminTextarea
+                          label={`Answer ${index + 1}`}
+                          value={faq.answer}
+                          rows={3}
+                          onChange={(answer) =>
+                            setForm((item) => ({
+                              ...item,
+                              faqs: item.faqs.map((current, currentIndex) =>
+                                currentIndex === index ? { ...current, answer } : current,
+                              ),
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </AdminSection>
+
+                  <AdminSection title="Price and inventory">
+                    <div className="grid grid-cols-2 gap-3">
+                      <AdminInput
+                        label="Regular price ₹"
+                        type="number"
+                        value={form.price}
+                        onChange={(price) => setForm((item) => ({ ...item, price }))}
+                      />
+                      <AdminInput
+                        label="Sale price ₹"
+                        type="number"
+                        required={false}
+                        value={form.sale}
+                        onChange={(sale) => setForm((item) => ({ ...item, sale }))}
+                      />
+                      <AdminInput
+                        label="Stock"
+                        type="number"
+                        value={form.stock}
+                        onChange={(stock) => setForm((item) => ({ ...item, stock }))}
+                      />
+                      <AdminInput
+                        label="SKU (admin only)"
+                        required={false}
+                        value={form.sku}
+                        onChange={(sku) => setForm((item) => ({ ...item, sku }))}
+                      />
+                    </div>
+                    <AdminInput
+                      label="Tags (comma separated)"
+                      required={false}
+                      value={form.tags}
+                      onChange={(tags) => setForm((item) => ({ ...item, tags }))}
+                    />
+                  </AdminSection>
+
+                  <AdminSection title="Storefront placement">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <AdminToggle
+                        label="Active on storefront"
+                        checked={form.active}
+                        onChange={(active) => setForm((item) => ({ ...item, active }))}
+                      />
+                      <AdminToggle
+                        label="Homepage featured"
+                        checked={form.featured}
+                        onChange={(featured) => setForm((item) => ({ ...item, featured }))}
+                      />
+                      <AdminToggle
+                        label="Show in collection"
+                        checked={form.collectionVisible}
+                        onChange={(collectionVisible) =>
+                          setForm((item) => ({ ...item, collectionVisible }))
+                        }
+                      />
+                      <AdminToggle
+                        label="New arrival"
+                        checked={form.newArrival}
+                        onChange={(newArrival) => setForm((item) => ({ ...item, newArrival }))}
+                      />
+                      <AdminToggle
+                        label="Bestseller"
+                        checked={form.bestseller}
+                        onChange={(bestseller) => setForm((item) => ({ ...item, bestseller }))}
+                      />
+                    </div>
+                  </AdminSection>
+
+                  <AdminSection title="Search and sharing">
+                    <AdminInput
+                      label="SEO title"
+                      required={false}
+                      value={form.seoTitle}
+                      onChange={(seoTitle) => setForm((item) => ({ ...item, seoTitle }))}
+                    />
+                    <AdminTextarea
+                      label="SEO description"
+                      required={false}
+                      value={form.seoDescription}
+                      rows={3}
+                      onChange={(seoDescription) =>
+                        setForm((item) => ({ ...item, seoDescription }))
+                      }
+                    />
+                    <AdminInput
+                      label="SEO keywords (comma separated)"
+                      required={false}
+                      value={form.seoKeywords}
+                      onChange={(seoKeywords) => setForm((item) => ({ ...item, seoKeywords }))}
+                    />
+                    <AdminInput
+                      label="Social share image URL (optional)"
+                      required={false}
+                      value={form.socialImage}
+                      onChange={(socialImage) => setForm((item) => ({ ...item, socialImage }))}
+                    />
+                  </AdminSection>
+
+                  <AdminSection title="Product media">
+                    <label className="grid cursor-pointer place-items-center border border-dashed border-foreground/35 p-6 text-center">
+                      <ImagePlus className="h-6 w-6" />
+                      <span className="mt-2 text-xs">Paste, drag/drop, or select images</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => void uploadFiles(Array.from(event.target.files || []))}
+                      />
+                    </label>
+                    {form.images.length ? (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {form.images.map((url, index) => (
+                          <div
+                            key={url}
+                            className={`relative bg-[#f5f2eb] p-2 ${form.cover === url ? "ring-2 ring-foreground" : ""}`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setForm((item) => ({ ...item, cover: url }))}
+                              className="block aspect-square w-full"
+                            >
+                              <img
+                                src={url}
+                                alt=""
+                                className="h-full w-full object-contain"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                              <span className="sr-only">Set as cover</span>
+                            </button>
+                            <div className="mt-2 grid grid-cols-3 gap-1">
+                              <button
+                                type="button"
+                                aria-label="Move image earlier"
+                                disabled={index === 0}
+                                onClick={() => moveImage(index, -1)}
+                                className="grid h-9 place-items-center bg-white disabled:opacity-30"
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Move image later"
+                                disabled={index === form.images.length - 1}
+                                onClick={() => moveImage(index, 1)}
+                                className="grid h-9 place-items-center bg-white disabled:opacity-30"
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Remove image"
+                                onClick={() => removeImage(url)}
+                                className="grid h-9 place-items-center bg-white text-red-700"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <p className="mt-2 text-center text-[9px] uppercase tracking-[0.12em] text-foreground/50">
+                              {form.cover === url ? "Cover image" : "Gallery image"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </AdminSection>
+
                   <button
                     disabled={busy}
                     className="flex items-center justify-center gap-2 bg-foreground py-4 text-xs font-semibold uppercase tracking-[0.16em] text-background disabled:opacity-50"
@@ -595,6 +946,63 @@ function AdminInput({
         onChange={(event) => onChange(event.target.value)}
         className="h-11 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal outline-none"
       />
+    </label>
+  );
+}
+
+function AdminTextarea({
+  label,
+  value,
+  onChange,
+  rows = 4,
+  required = true,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  rows?: number;
+  required?: boolean;
+}) {
+  return (
+    <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
+      {label}
+      <textarea
+        required={required}
+        value={value}
+        rows={rows}
+        onChange={(event) => onChange(event.target.value)}
+        className="border border-foreground/20 bg-transparent p-3 text-sm font-normal normal-case leading-6 tracking-normal outline-none"
+      />
+    </label>
+  );
+}
+
+function AdminSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <fieldset className="grid gap-3 border-t border-foreground/12 pt-5">
+      <legend className="pr-3 font-display text-xl">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+function AdminToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex min-h-11 items-center gap-3 bg-[#f5f2eb] px-3 text-xs">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      {label}
     </label>
   );
 }

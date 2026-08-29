@@ -12,3 +12,10 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /checkout
+Disallow: /order-confirmation
+Disallow: /wishlist
+
+Sitemap: https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/sitemap.xml

@@ -15,7 +15,21 @@ export const Route = createFileRoute("/shop")({
   head: () => ({
     meta: [
       { title: "Shop all attars — BADR" },
-      { name: "description", content: "Shop the live BADR attar collection." },
+      {
+        name: "description",
+        content:
+          "Shop BADR's unisex 6 ml attars: oud, floral, fruity, fresh aquatic and gourmand perfume oils made in India.",
+      },
+      {
+        name: "keywords",
+        content: "shop attar online, unisex attar India, oud perfume oil, BADR attar collection",
+      },
+    ],
+    links: [
+      {
+        rel: "canonical",
+        href: "https://badr-boutique-studio-v2.thebestofgaming2008.workers.dev/shop",
+      },
     ],
   }),
   component: ShopPage,
@@ -111,7 +125,7 @@ function ShopPage() {
                     </div>
                     <div className="flex flex-1 flex-col p-5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        {product.category_id || "Attar"}
+                        {product.product_type || product.category_id || "Attar"}
                       </p>
                       <Link
                         to="/product/$id"
@@ -183,12 +197,19 @@ function ShopPage() {
                 slug: quickViewProduct.slug || quickViewProduct.id,
                 name: quickViewProduct.name,
                 image: quickViewProduct.cover_image_url || "",
-                category: quickViewProduct.category || quickViewProduct.category_id || "BADR attar",
+                category:
+                  quickViewProduct.product_type ||
+                  quickViewProduct.category ||
+                  quickViewProduct.category_id ||
+                  "BADR attar",
                 description:
+                  quickViewProduct.hook ||
                   quickViewProduct.short_description ||
                   quickViewProduct.description ||
                   "A BADR signature attar.",
-                notes: quickViewProduct.tags || [],
+                notes: quickViewProduct.key_notes?.length
+                  ? quickViewProduct.key_notes
+                  : quickViewProduct.tags || [],
                 price:
                   quickViewProduct.sale_price_inr ??
                   quickViewProduct.sale_price ??

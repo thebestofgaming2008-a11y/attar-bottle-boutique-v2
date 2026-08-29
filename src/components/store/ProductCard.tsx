@@ -39,10 +39,12 @@ export function ProductCard({ product }: { product: Product }) {
           </p>
           <p className="mt-3 text-sm">{inr(product.price)}</p>
           <button
+            type="button"
+            disabled={product.inStock === false}
             onClick={() => cart.add(product.id)}
-            className="motion-button mt-5 w-full bg-foreground py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:shadow-lg"
+            className="motion-button mt-5 w-full bg-foreground py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Add to bag
+            {product.inStock === false ? "Sold out" : "Add to bag"}
           </button>
         </div>
       </article>
@@ -58,6 +60,7 @@ export function ProductCard({ product }: { product: Product }) {
           notes: product.notes,
           price: product.price,
           mrp: product.mrp,
+          inStock: product.inStock,
         }}
         open={quickViewOpen}
         onOpenChange={setQuickViewOpen}

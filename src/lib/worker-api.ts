@@ -43,6 +43,61 @@ function json(body: unknown, status = 200, cacheControl = "no-store") {
   });
 }
 
+function xml(value: string, cacheControl = "public, max-age=3600, stale-while-revalidate=86400") {
+  return new Response(value, {
+    headers: {
+      "cache-control": cacheControl,
+      "content-type": "application/xml; charset=utf-8",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
+
+function xmlText(value: string) {
+  return value.replace(/[<>&'"]/g, (character) => {
+    const entities: Record<string, string> = {
+      "<": "&lt;",
+      ">": "&gt;",
+      "&": "&amp;",
+      "'": "&apos;",
+      '"': "&quot;",
+    };
+    return entities[character];
+  });
+}
+
+async function sitemapResponse(request: Request, env: Env) {
+  const origin = (env.PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, "");
+  let slugs = ["oud-zafar", "oud-gulaab", "fitoor", "dariya", "ulfat"];
+  try {
+    const client = new ConvexHttpClient(env.VITE_CONVEX_URL);
+    const products = (await client.query(api.products.listActiveProducts, {})) as Array<{
+      slug?: string | null;
+    }>;
+    const liveSlugs = products.map((product) => product.slug).filter(Boolean) as string[];
+    if (liveSlugs.length) slugs = Array.from(new Set(liveSlugs));
+  } catch {
+    // The core catalog remains discoverable if Convex is temporarily unavailable.
+  }
+  const urls = [
+    { location: origin, priority: "1.0", frequency: "weekly" },
+    { location: `${origin}/shop`, priority: "0.9", frequency: "daily" },
+    ...slugs.map((slug) => ({
+      location: `${origin}/product/${encodeURIComponent(slug)}`,
+      priority: "0.8",
+      frequency: "weekly",
+    })),
+  ];
+  return xml(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+      .map(
+        ({ location, priority, frequency }) =>
+          `  <url><loc>${xmlText(location)}</loc><changefreq>${frequency}</changefreq><priority>${priority}</priority></url>`,
+      )
+      .join("\n")}\n</urlset>`,
+  );
+}
+
 async function constantTimeEqual(left: string, right: string) {
   const encoder = new TextEncoder();
   const [leftHash, rightHash] = await Promise.all([
@@ -176,8 +231,13 @@ export async function handleWorkerApi(request: Request, env: Env): Promise<Respo
   if (url.pathname === "/api/rates" && request.method === "GET") {
     return await ratesResponse(request, env);
   }
+  if (url.pathname === "/sitemap.xml" && request.method === "GET") {
+    return await sitemapResponse(request, env);
+  }
   if (url.pathname === "/api/media/upload" && request.method === "POST") {
     return await uploadResponse(request, env);
   }
   return null;
 }
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../convex/_generated/api";

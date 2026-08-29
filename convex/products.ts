@@ -13,6 +13,27 @@ import {
 const productInput = {
   name: v.string(),
   slug: v.optional(v.union(v.string(), v.null())),
+  product_type: v.optional(v.union(v.string(), v.null())),
+  mood: v.optional(v.union(v.string(), v.null())),
+  scent_profile: v.optional(v.union(v.string(), v.null())),
+  hook: v.optional(v.union(v.string(), v.null())),
+  story: v.optional(v.union(v.string(), v.null())),
+  meaning: v.optional(v.union(v.string(), v.null())),
+  key_notes: v.optional(v.union(v.array(v.string()), v.null())),
+  occasion: v.optional(v.union(v.string(), v.null())),
+  intensity: v.optional(v.union(v.string(), v.null())),
+  longevity: v.optional(v.union(v.string(), v.null())),
+  volume_label: v.optional(v.union(v.string(), v.null())),
+  format_label: v.optional(v.union(v.string(), v.null())),
+  country_of_origin: v.optional(v.union(v.string(), v.null())),
+  faqs: v.optional(
+    v.union(v.array(v.object({ question: v.string(), answer: v.string() })), v.null()),
+  ),
+  seo_title: v.optional(v.union(v.string(), v.null())),
+  seo_description: v.optional(v.union(v.string(), v.null())),
+  seo_keywords: v.optional(v.union(v.array(v.string()), v.null())),
+  og_image_url: v.optional(v.union(v.string(), v.null())),
+  sort_order: v.optional(v.union(v.number(), v.null())),
   short_description: v.optional(v.union(v.string(), v.null())),
   description: v.optional(v.union(v.string(), v.null())),
   author: v.optional(v.union(v.string(), v.null())),
@@ -60,6 +81,27 @@ const productInput = {
 const productPatch = {
   name: v.optional(v.string()),
   slug: v.optional(v.union(v.string(), v.null())),
+  product_type: v.optional(v.union(v.string(), v.null())),
+  mood: v.optional(v.union(v.string(), v.null())),
+  scent_profile: v.optional(v.union(v.string(), v.null())),
+  hook: v.optional(v.union(v.string(), v.null())),
+  story: v.optional(v.union(v.string(), v.null())),
+  meaning: v.optional(v.union(v.string(), v.null())),
+  key_notes: v.optional(v.union(v.array(v.string()), v.null())),
+  occasion: v.optional(v.union(v.string(), v.null())),
+  intensity: v.optional(v.union(v.string(), v.null())),
+  longevity: v.optional(v.union(v.string(), v.null())),
+  volume_label: v.optional(v.union(v.string(), v.null())),
+  format_label: v.optional(v.union(v.string(), v.null())),
+  country_of_origin: v.optional(v.union(v.string(), v.null())),
+  faqs: v.optional(
+    v.union(v.array(v.object({ question: v.string(), answer: v.string() })), v.null()),
+  ),
+  seo_title: v.optional(v.union(v.string(), v.null())),
+  seo_description: v.optional(v.union(v.string(), v.null())),
+  seo_keywords: v.optional(v.union(v.array(v.string()), v.null())),
+  og_image_url: v.optional(v.union(v.string(), v.null())),
+  sort_order: v.optional(v.union(v.number(), v.null())),
   short_description: v.optional(v.union(v.string(), v.null())),
   description: v.optional(v.union(v.string(), v.null())),
   author: v.optional(v.union(v.string(), v.null())),
@@ -243,6 +285,20 @@ function normalize(input: any, isPatch = false, existingPrice?: number) {
   }
 
   const stringFields: Array<[string, number]> = [
+    ["product_type", 120],
+    ["mood", 240],
+    ["scent_profile", 160],
+    ["hook", 320],
+    ["story", 5000],
+    ["meaning", 500],
+    ["occasion", 80],
+    ["intensity", 80],
+    ["longevity", 80],
+    ["volume_label", 40],
+    ["format_label", 80],
+    ["country_of_origin", 80],
+    ["seo_title", 70],
+    ["seo_description", 180],
     ["short_description", 280],
     ["description", 5000],
     ["author", 120],
@@ -273,6 +329,35 @@ function normalize(input: any, isPatch = false, existingPrice?: number) {
   }
   if (input.cover_image_url !== undefined || !isPatch)
     output.cover_image_url = cleanUrl(input.cover_image_url);
+  if (input.og_image_url !== undefined || !isPatch)
+    output.og_image_url = cleanUrl(input.og_image_url);
+  for (const field of ["key_notes", "seo_keywords"]) {
+    if (input[field] !== undefined || !isPatch) {
+      output[field] = Array.isArray(input[field])
+        ? Array.from(
+            new Set(input[field].map((value: string) => cleanText(value, 80)).filter(Boolean)),
+          ).slice(0, field === "key_notes" ? 12 : 20)
+        : [];
+    }
+  }
+  if (input.faqs !== undefined || !isPatch) {
+    output.faqs = Array.isArray(input.faqs)
+      ? input.faqs
+          .map((faq: { question?: string; answer?: string }) => ({
+            question: cleanText(faq?.question, 240),
+            answer: cleanText(faq?.answer, 1200),
+          }))
+          .filter((faq: { question: string; answer: string }) => faq.question && faq.answer)
+          .slice(0, 6)
+      : [];
+  }
+  if (input.sort_order !== undefined || !isPatch) {
+    const sortOrder = input.sort_order == null ? null : Math.floor(Number(input.sort_order));
+    if (sortOrder != null && !Number.isFinite(sortOrder)) {
+      throw new Error("Sort order must be a whole number.");
+    }
+    output.sort_order = sortOrder;
+  }
   if (input.tags !== undefined || !isPatch) {
     output.tags = Array.isArray(input.tags)
       ? input.tags
@@ -713,10 +798,15 @@ export const listActiveProducts = query({
     const rows = await ctx.db
       .query("products")
       .withIndex("by_active", (q) => q.eq("is_active", true))
-      .collect();
+      .take(500);
     return rows
       .filter(isLaunchReady)
-      .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")))
+      .sort(
+        (a, b) =>
+          Number(a.sort_order ?? Number.MAX_SAFE_INTEGER) -
+            Number(b.sort_order ?? Number.MAX_SAFE_INTEGER) ||
+          String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")),
+      )
       .map(publicProductCard);
   },
 });
@@ -725,7 +815,7 @@ export const listAllProducts = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const rows = await ctx.db.query("products").collect();
+    const rows = await ctx.db.query("products").take(1000);
     return rows
       .map(publicProduct)
       .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
@@ -757,7 +847,7 @@ export const listByCategory = query({
   args: { category: v.string() },
   handler: async (ctx, args) => {
     const requested = args.category === "essentials" ? "children" : args.category;
-    const rows = await ctx.db.query("products").collect();
+    const rows = await ctx.db.query("products").take(500);
     return rows
       .filter(
         (p) => p.is_active !== false && isLaunchReady(p) && topCategoryForProduct(p) === requested,
