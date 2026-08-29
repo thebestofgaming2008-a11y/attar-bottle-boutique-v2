@@ -343,6 +343,37 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
   return await convex.mutation(api.admin.saveStoreSettings, { settings });
 }
 
+export interface AdminCategory {
+  id: string;
+  slug: string;
+  name: string;
+  type: string;
+  parent_slug?: string | null;
+  sort_order?: number | null;
+  is_active?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export async function listCategories(type?: string): Promise<AdminCategory[]> {
+  return (await convex.query(api.admin.listCategories, { type })) as AdminCategory[];
+}
+
+export async function upsertCategory(input: {
+  slug?: string | null;
+  name: string;
+  type?: string;
+  parent_slug?: string | null;
+  sort_order?: number | null;
+  is_active?: boolean;
+}): Promise<AdminCategory | null> {
+  return (await convex.mutation(api.admin.upsertCategory, input)) as AdminCategory | null;
+}
+
+export async function seedDefaultCategories(): Promise<boolean> {
+  return await convex.mutation(api.admin.seedDefaultCategories, {});
+}
+
 export async function listAdminNotifications(): Promise<AdminNotification[]> {
   return (await convex.query(api.admin.notifications, {})) as AdminNotification[];
 }
