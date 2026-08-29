@@ -40,7 +40,7 @@ export function CartDrawer() {
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
-        className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-background transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "visible translate-x-0 shadow-[-24px_0_70px_rgba(0,0,0,0.16)]" : "invisible translate-x-full shadow-none"}`}
+        className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-background transition-[translate,box-shadow,visibility] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${open ? "visible translate-x-0 shadow-[-24px_0_70px_rgba(0,0,0,0.16)]" : "invisible translate-x-full shadow-none"}`}
       >
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border px-5 py-5">
           <h2 className="truncate text-sm font-semibold tracking-[0.18em] uppercase">

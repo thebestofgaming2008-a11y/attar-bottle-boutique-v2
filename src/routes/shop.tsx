@@ -8,6 +8,7 @@ import { useCart } from "@/components/store/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
 import { useAuth } from "@/contexts/AuthContext";
+import { ProductQuickView } from "@/components/store/ProductQuickView";
 
 export const Route = createFileRoute("/shop")({
   loader: async () => ({ products: await listActiveProducts() }),
@@ -29,6 +30,7 @@ function ShopPage() {
   const { format } = useCurrency();
   const [search, setSearch] = useState("");
   const [collection, setCollection] = useState("all");
+  const [quickViewId, setQuickViewId] = useState<string | null>(null);
   const collections = useMemo(
     () =>
       Array.from(
@@ -44,6 +46,7 @@ function ShopPage() {
       .toLowerCase();
     return matchesCollection && haystack.includes(search.trim().toLowerCase());
   });
+  const quickViewProduct = products.find((product) => product.id === quickViewId) ?? null;
 
   return (
     <StoreShell>
@@ -84,22 +87,28 @@ function ShopPage() {
                     key={product.id}
                     className="motion-card group flex h-full flex-col bg-background"
                   >
-                    <Link
-                      to="/product/$id"
-                      params={{ id: product.slug || product.id }}
-                      className="relative block aspect-square overflow-hidden bg-white p-5"
-                    >
-                      <img
-                        src={product.cover_image_url || ""}
-                        alt={product.name}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
-                      />
-                      <span className="product-preview absolute inset-x-4 bottom-4 translate-y-3 bg-foreground px-4 py-3 text-center text-[9px] font-semibold uppercase tracking-[0.2em] text-background opacity-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                        View scent
-                      </span>
-                    </Link>
+                    <div className="relative aspect-square overflow-hidden bg-white p-5">
+                      <Link
+                        to="/product/$id"
+                        params={{ id: product.slug || product.id }}
+                        className="block h-full"
+                      >
+                        <img
+                          src={product.cover_image_url || ""}
+                          alt={product.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
+                        />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setQuickViewId(product.id)}
+                        className="product-preview absolute inset-x-4 bottom-4 translate-y-0 bg-foreground px-4 py-3 text-center text-[9px] font-semibold uppercase tracking-[0.2em] text-background opacity-100 transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:translate-y-3 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100"
+                      >
+                        Quick view
+                      </button>
+                    </div>
                     <div className="flex flex-1 flex-col p-5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         {product.category_id || "Attar"}
@@ -166,6 +175,51 @@ function ShopPage() {
           )}
         </div>
       </main>
+      <ProductQuickView
+        product={
+          quickViewProduct
+            ? {
+                id: quickViewProduct.id,
+                slug: quickViewProduct.slug || quickViewProduct.id,
+                name: quickViewProduct.name,
+                image: quickViewProduct.cover_image_url || "",
+                category: quickViewProduct.category || quickViewProduct.category_id || "BADR attar",
+                description:
+                  quickViewProduct.short_description ||
+                  quickViewProduct.description ||
+                  "A BADR signature attar.",
+                notes: quickViewProduct.tags || [],
+                price:
+                  quickViewProduct.sale_price_inr ??
+                  quickViewProduct.sale_price ??
+                  quickViewProduct.price_inr,
+                mrp: quickViewProduct.price_inr,
+                inStock:
+                  Boolean(quickViewProduct.in_stock) && (quickViewProduct.stock_quantity ?? 0) > 0,
+              }
+            : null
+        }
+        open={Boolean(quickViewProduct)}
+        onOpenChange={(open) => {
+          if (!open) setQuickViewId(null);
+        }}
+        onAdd={() => {
+          if (!quickViewProduct) return;
+          const price =
+            quickViewProduct.sale_price_inr ??
+            quickViewProduct.sale_price ??
+            quickViewProduct.price_inr;
+          cart.addProduct({
+            productId: quickViewProduct.id,
+            slug: quickViewProduct.slug || quickViewProduct.id,
+            name: quickViewProduct.name,
+            image: quickViewProduct.cover_image_url || "",
+            price,
+            mrp: quickViewProduct.price_inr,
+            selectedSize: quickViewProduct.size_options?.[0] || null,
+          });
+        }}
+      />
       <SiteFooter />
     </StoreShell>
   );

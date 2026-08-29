@@ -45,9 +45,9 @@ function Index() {
 
       <VideoBand />
 
-      {PRODUCTS.map((p, i) => (
-        <div id={i === 0 ? "shop" : undefined} key={p.id}>
-          <ScentChapter product={p} index={i} />
+      {PRODUCTS.map((p, index) => (
+        <div id={index === 0 ? "shop" : undefined} key={p.id}>
+          <ScentChapter product={p} />
         </div>
       ))}
 

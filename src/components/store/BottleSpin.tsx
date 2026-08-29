@@ -33,7 +33,7 @@ export function BottleSpin({ className = "" }: { className?: string }) {
             <Link
               to="/product/$id"
               params={{ id: b.id }}
-              aria-label={`Quick view ${b.name}`}
+              aria-label={`View ${b.name}`}
               tabIndex={i >= SPIN_BOTTLES.length ? -1 : 0}
               className="absolute right-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-background/30 bg-background/10 text-background backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
             >

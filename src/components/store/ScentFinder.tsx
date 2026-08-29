@@ -31,7 +31,7 @@ export function ScentFinder() {
   return (
     <div className="mx-auto max-w-xl">
       <p className="text-[11px] uppercase tracking-[0.24em] text-background/50">
-        01 — When are you wearing it?
+        When are you wearing it?
       </p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         {OCCASIONS.map((o) => (
@@ -51,7 +51,7 @@ export function ScentFinder() {
       <div
         className={`transition-all duration-500 ${occasion ? "mt-10 opacity-100" : "pointer-events-none max-h-0 overflow-hidden opacity-0"}`}
       >
-        <p className="text-[11px] uppercase tracking-[0.24em] text-background/50">02 — How loud?</p>
+        <p className="text-[11px] uppercase tracking-[0.24em] text-background/50">How loud?</p>
         <div className="mt-4 grid grid-cols-2 gap-3">
           {(["bold", "soft"] as const).map((i) => (
             <button key={i} onClick={() => setIntensity(i)} className={chip(intensity === i)}>

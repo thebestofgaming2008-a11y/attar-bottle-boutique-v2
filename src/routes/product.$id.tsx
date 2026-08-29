@@ -305,11 +305,8 @@ function ProductPage() {
               </p>
             </div>
             <ol className="divide-y divide-border border-y border-border">
-              {product.notes.map((note, index) => (
-                <li key={note} className="grid grid-cols-[3rem_minmax(0,1fr)] items-center py-6">
-                  <span className="text-xs text-muted-foreground">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
+              {product.notes.map((note) => (
+                <li key={note} className="py-6">
                   <span className="font-display text-2xl sm:text-3xl">{note}</span>
                 </li>
               ))}
