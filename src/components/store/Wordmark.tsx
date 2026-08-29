@@ -1,4 +1,4 @@
-/** Typographic BADR wordmark — used in the header, hero and footer. */
+/** Tight BADR wordmark matching the condensed mark printed on every bottle. */
 export function Wordmark({
   size = "md",
   estd = false,
@@ -8,12 +8,10 @@ export function Wordmark({
   estd?: boolean;
   className?: string;
 }) {
-  const s = size === "sm" ? "text-base" : size === "lg" ? "text-3xl" : "text-xl";
+  const s = size === "sm" ? "text-xl" : size === "lg" ? "text-4xl" : "text-2xl";
   return (
     <span className={`inline-block text-center leading-none ${className}`}>
-      <span className={`font-display ${s}`} style={{ letterSpacing: "0.3em" }}>
-        BADR
-      </span>
+      <span className={`badr-wordmark ${s}`}>BADR</span>
       {estd && (
         <span className="mt-2 block text-[9px] uppercase tracking-[0.34em] opacity-60">
           Estd 1448 AH

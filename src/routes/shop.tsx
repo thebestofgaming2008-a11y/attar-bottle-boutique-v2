@@ -82,12 +82,12 @@ function ShopPage() {
                 return (
                   <article
                     key={product.id}
-                    className="motion-card flex h-full flex-col bg-background"
+                    className="motion-card group flex h-full flex-col bg-background"
                   >
                     <Link
                       to="/product/$id"
                       params={{ id: product.slug || product.id }}
-                      className="block aspect-square overflow-hidden bg-white p-5"
+                      className="relative block aspect-square overflow-hidden bg-white p-5"
                     >
                       <img
                         src={product.cover_image_url || ""}
@@ -96,6 +96,9 @@ function ShopPage() {
                         decoding="async"
                         className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
                       />
+                      <span className="product-preview absolute inset-x-4 bottom-4 translate-y-3 bg-foreground px-4 py-3 text-center text-[9px] font-semibold uppercase tracking-[0.2em] text-background opacity-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                        View scent
+                      </span>
                     </Link>
                     <div className="flex flex-1 flex-col p-5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
