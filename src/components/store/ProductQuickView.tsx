@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ShoppingBag } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { inr } from "@/lib/products";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export type QuickViewProduct = {
   id: string;
@@ -27,6 +27,8 @@ export function ProductQuickView({
   onOpenChange: (open: boolean) => void;
   onAdd: () => void;
 }) {
+  const { format } = useCurrency();
+
   if (!product) return null;
 
   const canAdd = product.inStock !== false;
@@ -70,9 +72,11 @@ export function ProductQuickView({
             ) : null}
 
             <div className="mt-8 flex items-baseline gap-3 border-y border-foreground/15 py-5">
-              <span className="font-display text-3xl">{inr(product.price)}</span>
+              <span className="font-display text-3xl">{format(product.price)}</span>
               {product.mrp && product.mrp > product.price ? (
-                <span className="text-sm text-foreground/40 line-through">{inr(product.mrp)}</span>
+                <span className="text-sm text-foreground/40 line-through">
+                  {format(product.mrp)}
+                </span>
               ) : null}
             </div>
 

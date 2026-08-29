@@ -1,11 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useEffect } from "react";
-import { PRODUCTS, inr } from "@/lib/products";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { PRODUCTS } from "@/lib/products";
 import { useCart } from "./CartContext";
 
 export function CartDrawer() {
   const { open, setOpen, lines, subtotal, setQty, add } = useCart();
+  const { format } = useCurrency();
   const onClose = () => setOpen(false);
   const inCart = new Set(lines.map((l) => l.id));
   const suggestions = PRODUCTS.filter((p) => !inCart.has(p.id)).slice(0, 3);
@@ -104,7 +106,7 @@ export function CartDrawer() {
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-sm font-semibold">{inr(line.price * line.qty)}</p>
+                    <p className="text-sm font-semibold">{format(line.price * line.qty)}</p>
                   </div>
                 </li>
               ))}
@@ -128,7 +130,7 @@ export function CartDrawer() {
                       decoding="async"
                     />
                     <p className="mt-2 truncate text-xs font-semibold uppercase">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{inr(p.price)}</p>
+                    <p className="text-xs text-muted-foreground">{format(p.price)}</p>
                     <button
                       onClick={() => add(p.id)}
                       className="motion-button mt-2 w-full border border-foreground py-1.5 text-[11px] font-semibold uppercase tracking-widest hover:bg-foreground hover:text-background"
@@ -146,7 +148,7 @@ export function CartDrawer() {
           <footer className="border-t border-border bg-secondary px-5 pb-6 pt-5">
             <div className="flex items-center justify-between text-sm">
               <span className="uppercase tracking-widest">Subtotal</span>
-              <span className="text-lg font-semibold">{inr(subtotal)}</span>
+              <span className="text-lg font-semibold">{format(subtotal)}</span>
             </div>
             <Link
               to="/checkout"

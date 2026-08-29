@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { PRODUCTS, inr, type Occasion } from "@/lib/products";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { PRODUCTS, type Occasion } from "@/lib/products";
 import { useCart } from "./CartContext";
 
 const OCCASIONS: { key: Occasion; label: string }[] = [
@@ -12,6 +13,7 @@ const OCCASIONS: { key: Occasion; label: string }[] = [
 
 export function ScentFinder() {
   const cart = useCart();
+  const { format } = useCurrency();
   const [occasion, setOccasion] = useState<Occasion | null>(null);
   const [intensity, setIntensity] = useState<"bold" | "soft" | null>(null);
 
@@ -76,7 +78,7 @@ export function ScentFinder() {
               {result.mood}
             </p>
             <p className="mt-3 text-sm text-background/70">{result.hook}</p>
-            <p className="mt-3 text-sm">{inr(result.price)}</p>
+            <p className="mt-3 text-sm">{format(result.price)}</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
                 onClick={() => cart.add(result.id)}

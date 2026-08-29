@@ -23,6 +23,7 @@ import {
 import { getProductBySlug, listActiveProducts } from "@/services/productService";
 import { listPublishedReviews, type ProductReview } from "@/services/reviewService";
 import { SearchSelect } from "@/components/ui/search-select";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 const SITE_ORIGIN =
   import.meta.env.VITE_PUBLIC_SITE_URL ||
@@ -113,6 +114,7 @@ export const Route = createFileRoute("/product/$id")({
 function ProductPage() {
   const { product, related, reviews } = Route.useLoaderData();
   const cart = useCart();
+  const { format } = useCurrency();
   const [qty, setQty] = useState(1);
   const [selectedColor, setSelectedColor] = useState(product.colorOptions?.[0] || "");
   const [selectedSize, setSelectedSize] = useState(
@@ -235,7 +237,7 @@ function ProductPage() {
           <p className="truncate text-xs text-black/55">
             {product.name} · {product.volume || "6 ml"}
           </p>
-          <p className="mt-1 text-sm">{inr(product.price)}</p>
+          <p className="mt-1 text-sm">{format(product.price)}</p>
         </div>
         <button
           type="button"
@@ -287,6 +289,8 @@ function ProductInformation({
   onAdd: () => void;
   added: boolean;
 }) {
+  const { detectedCountry, format } = useCurrency();
+
   return (
     <div className="min-w-0 px-5 py-8 sm:px-10 sm:py-10 lg:sticky lg:top-13 lg:self-start lg:px-12 lg:py-10 xl:px-16">
       <div className="flex items-center justify-between gap-5">
@@ -311,15 +315,15 @@ function ProductInformation({
 
       <div className="mt-7 flex items-end justify-between gap-5">
         <div className="flex items-baseline gap-3">
-          <span className="text-2xl">{inr(product.price)}</span>
+          <span className="text-2xl">{format(product.price)}</span>
           {product.mrp > product.price ? (
-            <span className="text-sm text-black/35 line-through">{inr(product.mrp)}</span>
+            <span className="text-sm text-black/35 line-through">{format(product.mrp)}</span>
           ) : null}
         </div>
         <p className="text-right text-[9px] leading-4 text-black/48">
           Incl. of all taxes
           <br />
-          India delivery included
+          {detectedCountry === "IN" ? "India delivery included" : "Shipping confirmed at checkout"}
         </p>
       </div>
 
@@ -421,7 +425,7 @@ function ProductInformation({
             </>
           ) : (
             <>
-              <ShoppingBag className="h-4 w-4" /> Add to bag · {inr(product.price * quantity)}
+              <ShoppingBag className="h-4 w-4" /> Add to bag · {format(product.price * quantity)}
             </>
           )}
         </button>

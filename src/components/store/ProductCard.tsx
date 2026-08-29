@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { inr, type Product } from "@/lib/products";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { type Product } from "@/lib/products";
 import { useCart } from "./CartContext";
 
 export function ProductCard({
@@ -12,6 +13,7 @@ export function ProductCard({
   showType?: boolean;
 }) {
   const cart = useCart();
+  const { format } = useCurrency();
 
   return (
     <article
@@ -50,10 +52,10 @@ export function ProductCard({
           </p>
         ) : null}
         <div className="mt-3 flex items-baseline justify-center gap-2 text-xs sm:text-sm">
-          <span>{inr(product.price)}</span>
+          <span>{format(product.price)}</span>
           {product.mrp > product.price ? (
             <span className={dark ? "text-white/40 line-through" : "text-black/35 line-through"}>
-              {inr(product.mrp)}
+              {format(product.mrp)}
             </span>
           ) : null}
         </div>
