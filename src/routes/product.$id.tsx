@@ -5,6 +5,7 @@ import {
   BOTTLE_IMAGES,
   PRODUCTS,
   SCENE_IMAGES,
+  SCENT_PROFILE_IMAGES,
   inr,
   resolveStoreProduct,
   storefrontProductFromSource,
@@ -408,28 +409,65 @@ function ProductGallery({ product }: { product: Product }) {
 }
 
 function ScentComposition({ product }: { product: Product }) {
+  const scentImage = SCENT_PROFILE_IMAGES[product.id] || product.socialImage || product.image;
+
   return (
-    <section className="bg-white px-5 py-16 sm:px-8 sm:py-24">
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.68fr_1.32fr] lg:gap-24">
-        <div>
-          <p className="text-xs text-black/48">Fragrance notes</p>
-          <h2 className="mt-3 max-w-md font-display text-4xl leading-[0.94] sm:text-5xl">
-            Scent profile
-          </h2>
-          <p className="mt-5 max-w-sm text-sm leading-7 text-black/62">
-            {product.category} · {product.intensity} intensity
-          </p>
+    <section className="bg-white px-3 py-16 sm:px-6 sm:py-24">
+      <div className="mx-auto max-w-[1500px]">
+        <header className="px-2 sm:px-0">
+          <p className="text-xs text-black/48">Inside {product.name}</p>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+            <h2 className="font-display text-4xl leading-[0.94] sm:text-5xl">Scent profile</h2>
+            <p className="pb-1 text-sm text-black/58">
+              {product.category} · {product.intensity} intensity
+            </p>
+          </div>
+        </header>
+
+        <div className="mt-9 grid gap-2 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.55fr)] lg:gap-3">
+          <figure className="aspect-[4/3] overflow-hidden bg-[#e9e2d7] lg:aspect-auto lg:min-h-[690px]">
+            <img
+              src={scentImage}
+              alt={`${product.name} fragrance notes: ${product.notes.join(", ")}`}
+              className="h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.02]"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-3">
+            <figure className="aspect-square overflow-hidden bg-[#e9e2d7] lg:aspect-auto">
+              <img
+                src={scentImage}
+                alt=""
+                aria-hidden="true"
+                className="h-full w-full origin-left scale-[1.32] object-cover object-left transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.38]"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+            <figure className="aspect-square overflow-hidden bg-[#e9e2d7] lg:aspect-auto">
+              <img
+                src={scentImage}
+                alt=""
+                aria-hidden="true"
+                className="h-full w-full origin-right scale-[1.32] object-cover object-right transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.38]"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+          </div>
         </div>
 
-        <div className="self-end">
-          <ul className="grid gap-x-10 gap-y-4 sm:grid-cols-2">
+        <div className="grid gap-8 px-2 pt-9 lg:grid-cols-[1.45fr_0.55fr] lg:px-0 lg:pt-11">
+          <ul className="flex flex-wrap gap-x-8 gap-y-3" aria-label="Fragrance notes">
             {(product.notes.length ? product.notes : [product.tag]).map((note) => (
-              <li key={note} className="text-xl font-medium leading-7 sm:text-2xl">
+              <li key={note} className="text-lg font-medium sm:text-xl">
                 {note}
               </li>
             ))}
           </ul>
-          <dl className="mt-9 grid gap-6 sm:grid-cols-3">
+          <dl className="grid grid-cols-3 gap-4 lg:grid-cols-1">
             <CompositionDetail label="Best worn" value={product.occasion} />
             <CompositionDetail label="Wear time" value={product.longevity} />
             <CompositionDetail label="Format" value={product.format || "Roll-on attar"} />
