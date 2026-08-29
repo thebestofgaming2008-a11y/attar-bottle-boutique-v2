@@ -50,6 +50,10 @@ type TurnstileApi = {
   remove: (widgetId: string) => void;
 };
 
+type StorefrontConfigResponse = {
+  whatsappOrderNumber?: string;
+};
+
 declare global {
   interface Window {
     Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
@@ -122,10 +126,28 @@ function countryIsIndia(country: string) {
   return ["india", "in", "bharat"].includes(country.trim().toLowerCase());
 }
 
-const WHATSAPP_ORDER_NUMBER = String(import.meta.env.VITE_WHATSAPP_ORDER_NUMBER ?? "").replace(
-  /\D/g,
-  "",
-);
+function validateCheckoutCustomer(customer: CheckoutCustomer) {
+  if (!customer.name.trim()) throw new Error("Enter your full name.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email.trim())) {
+    throw new Error("Enter a valid email address.");
+  }
+  const phoneDigits = customer.phone.replace(/\D/g, "");
+  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    throw new Error("Enter a valid WhatsApp number with country code.");
+  }
+  if (
+    !customer.country.trim() ||
+    !customer.address_line_1.trim() ||
+    !customer.city.trim() ||
+    !customer.postal_code.trim()
+  ) {
+    throw new Error("Complete your shipping address.");
+  }
+}
+
+const BUILD_WHATSAPP_ORDER_NUMBER = String(
+  import.meta.env.VITE_WHATSAPP_ORDER_NUMBER ?? "",
+).replace(/\D/g, "");
 const TURNSTILE_SITE_KEY = String(import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "").trim();
 
 function CheckoutPage() {
@@ -149,6 +171,8 @@ function CheckoutPage() {
   const [savedAddressId, setSavedAddressId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [whatsappOrderNumber, setWhatsappOrderNumber] = useState(BUILD_WHATSAPP_ORDER_NUMBER);
+  const [whatsappConfigLoading, setWhatsappConfigLoading] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [checkoutAttemptId, setCheckoutAttemptId] = useState(() => crypto.randomUUID());
   const turnstileHostRef = useRef<HTMLDivElement>(null);
@@ -157,6 +181,33 @@ function CheckoutPage() {
 
   useEffect(() => {
     void loadRazorpay().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/storefront-config", {
+      headers: { accept: "application/json" },
+      cache: "no-store",
+    })
+      .then((response) =>
+        response.ok
+          ? (response.json() as Promise<StorefrontConfigResponse>)
+          : Promise.reject(new Error(`Storefront configuration failed (${response.status})`)),
+      )
+      .then((data) => {
+        if (cancelled) return;
+        const digits = String(data.whatsappOrderNumber ?? "").replace(/\D/g, "");
+        setWhatsappOrderNumber(digits.length >= 7 && digits.length <= 15 ? digits : "");
+      })
+      .catch(() => {
+        if (!cancelled) setWhatsappOrderNumber(BUILD_WHATSAPP_ORDER_NUMBER);
+      })
+      .finally(() => {
+        if (!cancelled) setWhatsappConfigLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -326,7 +377,7 @@ function CheckoutPage() {
   }
 
   function submitInternational() {
-    if (!WHATSAPP_ORDER_NUMBER) {
+    if (!whatsappOrderNumber) {
       throw new Error("International checkout is not configured yet. Contact the store directly.");
     }
     const reserved = window.open("about:blank", "_blank");
@@ -341,7 +392,7 @@ function CheckoutPage() {
       .join("\n\n");
     const text = `Assalamu alaikum. I would like to order to ${customer.country}.\n\nName: ${customer.name}\nEmail: ${customer.email}\nWhatsApp number: ${customer.phone}\n\nCountry: ${customer.country}\nAddress: ${customer.address_line_1}${customer.address_line_2 ? `, ${customer.address_line_2}` : ""}\nCity: ${customer.city}\nState / province / region: ${customer.state || "-"}\nPostal code: ${customer.postal_code}\n\n${itemText}\n\nProduct subtotal: ${totalLabel}\nPlease confirm availability, international shipping, and payment details.`;
     reserved.opener = null;
-    reserved.location.href = `https://wa.me/${WHATSAPP_ORDER_NUMBER}?text=${encodeURIComponent(text)}`;
+    reserved.location.href = `https://wa.me/${whatsappOrderNumber}?text=${encodeURIComponent(text)}`;
     setSuccess("WhatsApp order message opened");
   }
 
@@ -351,6 +402,7 @@ function CheckoutPage() {
     setBusy(true);
     setMessage(null);
     try {
+      validateCheckoutCustomer(customer);
       if (isIndia) await submitIndia();
       else submitInternational();
     } catch (error) {
@@ -494,6 +546,7 @@ function CheckoutPage() {
                 disabled={
                   busy ||
                   cart.lines.length === 0 ||
+                  (!isIndia && whatsappConfigLoading) ||
                   (isIndia && (!TURNSTILE_SITE_KEY || !turnstileToken))
                 }
                 className="motion-button mt-7 flex w-full items-center justify-center gap-2 bg-foreground px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-background disabled:cursor-not-allowed disabled:opacity-40"
@@ -507,9 +560,11 @@ function CheckoutPage() {
                 )}
                 {busy
                   ? "Please wait"
-                  : isIndia
-                    ? `Pay ${inr(cart.subtotal)} with Razorpay`
-                    : "Continue on WhatsApp"}
+                  : !isIndia && whatsappConfigLoading
+                    ? "Preparing WhatsApp"
+                    : isIndia
+                      ? `Pay ${inr(cart.subtotal)} with Razorpay`
+                      : "Continue on WhatsApp"}
               </button>
             </form>
 

@@ -36,6 +36,21 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+function withSecurityHeaders(response: Response) {
+  const headers = new Headers(response.headers);
+  headers.set("strict-transport-security", "max-age=31536000");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  headers.set("cross-origin-opener-policy", "same-origin-allow-popups");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function isH3SwallowedErrorBody(body: string): boolean {
   try {
     const payload = JSON.parse(body) as { unhandled?: unknown; message?: unknown };
@@ -52,16 +67,18 @@ export default {
       // Cloudflare bindings on its request-scoped runtime global.
       const workerEnv = bindings ?? (globalThis as typeof globalThis & { __env__?: Env }).__env__;
       const apiResponse = workerEnv ? await handleWorkerApi(request, workerEnv) : null;
-      if (apiResponse) return apiResponse;
+      if (apiResponse) return withSecurityHeaders(apiResponse);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, bindings, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return withSecurityHeaders(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };

@@ -16,7 +16,7 @@ The application code and staging deployment can be verified without production c
   - `payment.refunded`
 - Create real Cloudflare Turnstile keys, restrict them to the production hostname, and replace the development/test keys.
 - Set `EXCHANGE_RATE_API_KEY` for live international currency conversion. Without it the store safely falls back to INR.
-- Set `VITE_WHATSAPP_ORDER_NUMBER` before the production build. International checkout is intentionally blocked when it is missing.
+- Set the Cloudflare Worker runtime variable `WHATSAPP_ORDER_NUMBER` to the store's international-format number (digits only). `/api/storefront-config` supplies it to checkout at runtime; `VITE_WHATSAPP_ORDER_NUMBER` remains an optional local-build fallback. International checkout is intentionally blocked when neither value is configured.
 - Set `RESEND_API_KEY` and `AUTH_EMAIL_FROM` using a verified sender domain so password-reset emails work.
 - Confirm `ADMIN_EMAILS`, the R2 binding, and the R2 public media URL in the production environment.
 

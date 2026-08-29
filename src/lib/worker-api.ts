@@ -218,6 +218,20 @@ async function uploadResponse(request: Request, env: Env) {
   return json({ url: `${base}/${key}` }, 201);
 }
 
+function storefrontConfigResponse(env: Env) {
+  const whatsappOrderNumber = String(env.WHATSAPP_ORDER_NUMBER ?? "").replace(/\D/g, "");
+  return json(
+    {
+      whatsappOrderNumber:
+        whatsappOrderNumber.length >= 7 && whatsappOrderNumber.length <= 15
+          ? whatsappOrderNumber
+          : "",
+    },
+    200,
+    "public, max-age=300, stale-while-revalidate=3600",
+  );
+}
+
 export async function handleWorkerApi(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname === "/api/geo" && request.method === "GET") {
@@ -230,6 +244,9 @@ export async function handleWorkerApi(request: Request, env: Env): Promise<Respo
   }
   if (url.pathname === "/api/rates" && request.method === "GET") {
     return await ratesResponse(request, env);
+  }
+  if (url.pathname === "/api/storefront-config" && request.method === "GET") {
+    return storefrontConfigResponse(env);
   }
   if (url.pathname === "/sitemap.xml" && request.method === "GET") {
     return await sitemapResponse(request, env);

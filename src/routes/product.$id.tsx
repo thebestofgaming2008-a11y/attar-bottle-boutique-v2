@@ -12,7 +12,6 @@ import {
 } from "@/lib/products";
 import { useCart } from "@/components/store/CartContext";
 import { ProductCard } from "@/components/store/ProductCard";
-import { ProductScentMap } from "@/components/store/ProductScentMap";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import {
   Accordion,
@@ -209,7 +208,6 @@ function ProductPage() {
           </div>
         </section>
 
-        <ProductScentMap product={product} />
         <ProductStory product={product} />
         {product.faqs.length ? <ProductFaqs product={product} /> : null}
 
