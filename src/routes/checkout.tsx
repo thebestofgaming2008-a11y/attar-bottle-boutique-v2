@@ -329,6 +329,7 @@ function CheckoutPage() {
     try {
       response = await new Promise<RazorpaySuccess>((resolve, reject) => {
         let settled = false;
+        let lastFailureMessage = "";
         const finish = (callback: () => void) => {
           if (settled) return;
           settled = true;
@@ -342,18 +343,30 @@ function CheckoutPage() {
           name: "BADR",
           description: "BADR attar order",
           prefill: { name: customer.name, email: customer.email, contact: customer.phone },
+          remember_customer: false,
           theme: { color: "#171717" },
-          handler: (result: RazorpaySuccess) => finish(() => resolve(result)),
+          handler: (result: RazorpaySuccess) =>
+            finish(() => {
+              setMessage("");
+              resolve(result);
+            }),
           modal: {
             ondismiss: () =>
-              finish(() => reject(new Error("Payment was cancelled. No order was placed."))),
+              finish(() =>
+                reject(
+                  new Error(
+                    lastFailureMessage
+                      ? `${lastFailureMessage} No order was placed.`
+                      : "Payment was cancelled. No order was placed.",
+                  ),
+                ),
+              ),
           },
         });
-        checkout.on("payment.failed", (result) =>
-          finish(() =>
-            reject(new Error(result.error?.description || "Payment failed. No order was placed.")),
-          ),
-        );
+        checkout.on("payment.failed", (result) => {
+          lastFailureMessage = result.error?.description || "Payment failed.";
+          setMessage(`${lastFailureMessage} Retry in Razorpay or close the payment window.`);
+        });
         checkout.open();
       });
     } catch (error) {
