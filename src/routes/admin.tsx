@@ -3730,3 +3730,5 @@ function Toggle({
     </label>
   );
 }
+
+export default Admin;
