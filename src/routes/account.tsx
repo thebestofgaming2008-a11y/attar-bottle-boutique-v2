@@ -9,6 +9,10 @@ import { inr } from "@/lib/products";
 import { SearchSelect } from "@/components/ui/search-select";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
 
+function countryIsIndia(country: string) {
+  return ["india", "in", "bharat"].includes(country.trim().toLowerCase());
+}
+
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [{ title: "Your account — BADR" }, { name: "robots", content: "noindex" }],
@@ -44,6 +48,7 @@ function AccountPage() {
     postal_code: "",
     country: "India",
   });
+  const addressIsIndia = countryIsIndia(address.country);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -418,12 +423,14 @@ function AccountPage() {
                       onChange={(value) => setAddress((item) => ({ ...item, city: value }))}
                     />
                     <AccountInput
-                      label="State / region"
+                      label={addressIsIndia ? "State" : "State / province / region (optional)"}
+                      required={addressIsIndia}
                       value={address.state}
                       onChange={(value) => setAddress((item) => ({ ...item, state: value }))}
                     />
                     <AccountInput
-                      label="Postal code"
+                      label={addressIsIndia ? "PIN code" : "Postal code (optional)"}
+                      required={addressIsIndia}
                       value={address.postal_code}
                       onChange={(value) => setAddress((item) => ({ ...item, postal_code: value }))}
                     />

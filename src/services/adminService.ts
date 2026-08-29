@@ -1,7 +1,7 @@
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { convex } from "@/integrations/convex/client";
-import type { Product } from "./productService";
+import { clearProductListCache, type Product } from "./productService";
 
 export const PRODUCT_BUCKET = "product-images";
 
@@ -116,6 +116,7 @@ export async function deleteProduct(id: string): Promise<boolean> {
 
 export async function refreshPublicCatalog(product?: Pick<Product, "id" | "slug"> | null) {
   if (typeof window === "undefined") return;
+  clearProductListCache();
   const version = Date.now().toString();
   const requests = [`/api/catalog/products?refresh=${encodeURIComponent(version)}`];
   if (product?.id)

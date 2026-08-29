@@ -139,7 +139,7 @@ function validateCheckoutCustomer(customer: CheckoutCustomer) {
     !customer.country.trim() ||
     !customer.address_line_1.trim() ||
     !customer.city.trim() ||
-    !customer.postal_code.trim()
+    (countryIsIndia(customer.country) && (!customer.state?.trim() || !customer.postal_code.trim()))
   ) {
     throw new Error("Complete your shipping address.");
   }
@@ -524,11 +524,13 @@ function CheckoutPage() {
                 />
                 <Field
                   label={isIndia ? "State" : "State / province / region"}
+                  required={isIndia}
                   value={customer.state || ""}
                   onChange={(value) => update("state", value)}
                 />
                 <Field
                   label={isIndia ? "PIN code" : "Postal code"}
+                  required={isIndia}
                   value={customer.postal_code}
                   onChange={(value) => update("postal_code", value)}
                 />

@@ -232,6 +232,64 @@ function storefrontConfigResponse(env: Env) {
   );
 }
 
+async function catalogProductsResponse(request: Request, env: Env) {
+  const cache = await caches.open("badr-catalog-v1");
+  const cacheKey = new Request(new URL("/api/catalog/products", request.url), { method: "GET" });
+  const refresh = new URL(request.url).searchParams.has("refresh");
+  const cached = await cache.match(cacheKey);
+  if (cached && !refresh) return cached;
+
+  try {
+    const client = new ConvexHttpClient(env.VITE_CONVEX_URL);
+    const products = await client.query(api.products.listActiveProducts, {});
+    const response = json(products, 200, "public, max-age=300, stale-while-revalidate=3600");
+    await cache.put(cacheKey, response.clone());
+    return response;
+  } catch (error) {
+    if (cached) return cached;
+    return json(
+      {
+        error:
+          error instanceof Error ? error.message : "Product catalog is temporarily unavailable.",
+      },
+      503,
+    );
+  }
+}
+
+async function catalogProductResponse(request: Request, env: Env) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id")?.trim() ?? "";
+  const slug = url.searchParams.get("slug")?.trim() ?? "";
+  if (!id && !slug) return json({ error: "Product id or slug is required." }, 400);
+
+  const cache = await caches.open("badr-catalog-v1");
+  const canonical = new URL("/api/catalog/product", request.url);
+  if (id) canonical.searchParams.set("id", id);
+  else canonical.searchParams.set("slug", slug);
+  const cacheKey = new Request(canonical, { method: "GET" });
+  const refresh = url.searchParams.has("refresh");
+  const cached = await cache.match(cacheKey);
+  if (cached && !refresh) return cached;
+
+  try {
+    const client = new ConvexHttpClient(env.VITE_CONVEX_URL);
+    const product = id
+      ? await client.query(api.products.getProductById, { id })
+      : await client.query(api.products.getProductBySlug, { slug });
+    if (!product) return json({ error: "Product not found." }, 404);
+    const response = json(product, 200, "public, max-age=300, stale-while-revalidate=3600");
+    await cache.put(cacheKey, response.clone());
+    return response;
+  } catch (error) {
+    if (cached) return cached;
+    return json(
+      { error: error instanceof Error ? error.message : "Product is temporarily unavailable." },
+      503,
+    );
+  }
+}
+
 export async function handleWorkerApi(request: Request, env: Env): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname === "/api/geo" && request.method === "GET") {
@@ -247,6 +305,12 @@ export async function handleWorkerApi(request: Request, env: Env): Promise<Respo
   }
   if (url.pathname === "/api/storefront-config" && request.method === "GET") {
     return storefrontConfigResponse(env);
+  }
+  if (url.pathname === "/api/catalog/products" && request.method === "GET") {
+    return await catalogProductsResponse(request, env);
+  }
+  if (url.pathname === "/api/catalog/product" && request.method === "GET") {
+    return await catalogProductResponse(request, env);
   }
   if (url.pathname === "/sitemap.xml" && request.method === "GET") {
     return await sitemapResponse(request, env);

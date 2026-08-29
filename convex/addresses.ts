@@ -52,13 +52,15 @@ function normalizeAddress(
     postal_code: cleanNullable(source.postal_code, 24),
     country: cleanNullable(source.country, 80),
   };
+  const isIndia = ["india", "in", "bharat"].includes(
+    String(normalized.country ?? "").toLowerCase(),
+  );
   if (
     !normalized.full_name ||
     !normalized.address_line_1 ||
     !normalized.city ||
-    !normalized.state ||
-    !normalized.postal_code ||
-    !normalized.country
+    !normalized.country ||
+    (isIndia && (!normalized.state || !normalized.postal_code))
   ) {
     throw new Error("Complete address details are required.");
   }

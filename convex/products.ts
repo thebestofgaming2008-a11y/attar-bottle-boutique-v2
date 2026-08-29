@@ -1002,9 +1002,15 @@ export const deleteProduct = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const current = (await ctx.db.get(args.id as any)) as any;
-    await ctx.db.delete(args.id as any);
+    if (!current) throw new Error("Product not found.");
+    const timestamp = nowIso();
+    await ctx.db.patch(args.id as any, {
+      is_active: false,
+      in_stock: false,
+      updated_at: timestamp,
+    });
     await writeAuditLog(ctx, {
-      action: "product.delete",
+      action: "product.archive",
       entityType: "product",
       entityId: args.id,
       summary: current?.name ?? null,
