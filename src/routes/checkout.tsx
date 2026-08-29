@@ -15,6 +15,8 @@ import {
 } from "@/services/orderService";
 import { inr } from "@/lib/products";
 import { useAuth } from "@/contexts/AuthContext";
+import { SearchSelect } from "@/components/ui/search-select";
+import { COUNTRY_OPTIONS, countryNameFromCode } from "@/lib/countries";
 import { api } from "../../convex/_generated/api";
 
 type RazorpaySuccess = {
@@ -54,27 +56,6 @@ declare global {
     turnstile?: TurnstileApi;
   }
 }
-
-const COUNTRY_OPTIONS = [
-  ["IN", "🇮🇳 India"],
-  ["AE", "🇦🇪 United Arab Emirates"],
-  ["SA", "🇸🇦 Saudi Arabia"],
-  ["GB", "🇬🇧 United Kingdom"],
-  ["US", "🇺🇸 United States"],
-  ["CA", "🇨🇦 Canada"],
-  ["AU", "🇦🇺 Australia"],
-  ["BE", "🇧🇪 Belgium"],
-  ["NL", "🇳🇱 Netherlands"],
-  ["DE", "🇩🇪 Germany"],
-  ["FR", "🇫🇷 France"],
-  ["MY", "🇲🇾 Malaysia"],
-  ["SG", "🇸🇬 Singapore"],
-  ["ZA", "🇿🇦 South Africa"],
-] as const;
-
-const COUNTRY_BY_CODE = new Map<string, string>(
-  COUNTRY_OPTIONS.map(([code, label]) => [code, label.replace(/^\S+\s/, "")]),
-);
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -165,6 +146,7 @@ function CheckoutPage() {
     postal_code: "",
   });
   const [busy, setBusy] = useState(false);
+  const [savedAddressId, setSavedAddressId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -217,9 +199,23 @@ function CheckoutPage() {
 
   useEffect(() => {
     if (!detectedCountry) return;
-    const detected = COUNTRY_BY_CODE.get(detectedCountry);
+    const detected = countryNameFromCode(detectedCountry);
     if (detected) setCustomer((current) => ({ ...current, country: detected }));
   }, [detectedCountry]);
+
+  const savedAddressOptions = useMemo(
+    () => [
+      { value: "", label: "Enter a new address", keywords: "new blank" },
+      ...(addresses || []).map((item) => ({
+        value: item.id,
+        label: `${item.full_name || "Saved address"} — ${item.city || item.country || ""}`,
+        keywords: [item.address_line_1, item.state, item.postal_code, item.country]
+          .filter(Boolean)
+          .join(" "),
+      })),
+    ],
+    [addresses],
+  );
 
   const totalLabel = useMemo(
     () => (isIndia || rateSource === "fallback" ? inr(cart.subtotal) : format(cart.subtotal)),
@@ -323,7 +319,10 @@ function CheckoutPage() {
     const orderNumber = String(order?.order_number ?? "");
     cart.clear();
     setSuccess(orderNumber || "Payment verified");
-    await navigate({ to: "/order-confirmation", search: { order: orderNumber } });
+    await navigate({
+      to: "/order-confirmation",
+      search: { order: orderNumber, email: customer.email },
+    });
   }
 
   function submitInternational() {
@@ -383,35 +382,30 @@ function CheckoutPage() {
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {addresses?.length ? (
-                  <label className="grid gap-2 text-xs font-semibold uppercase tracking-[0.13em] sm:col-span-2">
-                    Saved address
-                    <select
-                      defaultValue=""
-                      onChange={(event) => {
-                        const saved = addresses.find((item) => item.id === event.target.value);
-                        if (!saved) return;
-                        setCustomer((current) => ({
-                          ...current,
-                          name: saved.full_name || current.name,
-                          phone: saved.phone || current.phone,
-                          address_line_1: saved.address_line_1 || "",
-                          address_line_2: saved.address_line_2 || "",
-                          city: saved.city || "",
-                          state: saved.state || "",
-                          postal_code: saved.postal_code || "",
-                          country: saved.country || "India",
-                        }));
-                      }}
-                      className="h-12 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal"
-                    >
-                      <option value="">Enter a new address</option>
-                      {addresses.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.full_name} — {item.city}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <SearchSelect
+                    label="Saved address"
+                    value={savedAddressId}
+                    options={savedAddressOptions}
+                    searchPlaceholder="Search saved addresses…"
+                    className="sm:col-span-2"
+                    onValueChange={(id) => {
+                      setSavedAddressId(id);
+                      if (!id) return;
+                      const saved = addresses.find((item) => item.id === id);
+                      if (!saved) return;
+                      setCustomer((current) => ({
+                        ...current,
+                        name: saved.full_name || current.name,
+                        phone: saved.phone || current.phone,
+                        address_line_1: saved.address_line_1 || "",
+                        address_line_2: saved.address_line_2 || "",
+                        city: saved.city || "",
+                        state: saved.state || "",
+                        postal_code: saved.postal_code || "",
+                        country: saved.country || "India",
+                      }));
+                    }}
+                  />
                 ) : null}
                 <Field
                   label="Full name"
@@ -430,23 +424,15 @@ function CheckoutPage() {
                   value={customer.phone}
                   onChange={(value) => update("phone", value)}
                 />
-                <label className="grid gap-2 text-xs font-semibold uppercase tracking-[0.13em]">
-                  Country
-                  <input
-                    required
-                    list="checkout-countries"
-                    value={customer.country}
-                    onChange={(event) => update("country", event.target.value)}
-                    className="h-12 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal outline-none transition focus:border-foreground"
-                  />
-                  <datalist id="checkout-countries">
-                    {COUNTRY_OPTIONS.map(([code, label]) => (
-                      <option key={code} value={label.replace(/^\S+\s/, "")}>
-                        {label}
-                      </option>
-                    ))}
-                  </datalist>
-                </label>
+                <SearchSelect
+                  label="Country"
+                  name="country"
+                  value={customer.country}
+                  options={COUNTRY_OPTIONS}
+                  searchPlaceholder="Type a country or code…"
+                  emptyText="No country found."
+                  onValueChange={(value) => update("country", value)}
+                />
                 <div className="sm:col-span-2">
                   <Field
                     label="Address"
@@ -545,7 +531,11 @@ function CheckoutPage() {
                         Qty {line.qty} · {line.selectedSize || "Standard"}
                       </p>
                     </div>
-                    <p className="text-sm">{inr(line.price * line.qty)}</p>
+                    <p className="text-sm">
+                      {isIndia || rateSource === "fallback"
+                        ? inr(line.price * line.qty)
+                        : format(line.price * line.qty)}
+                    </p>
                   </li>
                 ))}
               </ul>

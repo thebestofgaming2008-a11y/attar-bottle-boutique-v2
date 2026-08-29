@@ -5,6 +5,24 @@ import { PRODUCTS } from "@/lib/products";
 import { Wordmark } from "./Wordmark";
 import { useCart } from "./CartContext";
 import { CartDrawer } from "./CartDrawer";
+import { SearchSelect } from "@/components/ui/search-select";
+import { useCurrency } from "@/contexts/CurrencyContext";
+
+const CURRENCY_NAMES: Record<string, string> = {
+  INR: "Indian rupee",
+  USD: "US dollar",
+  EUR: "Euro",
+  GBP: "British pound",
+  AED: "UAE dirham",
+  SAR: "Saudi riyal",
+  CAD: "Canadian dollar",
+  AUD: "Australian dollar",
+  SGD: "Singapore dollar",
+  MYR: "Malaysian ringgit",
+  QAR: "Qatari riyal",
+  KWD: "Kuwaiti dinar",
+  ZAR: "South African rand",
+};
 
 export function StoreShell({ children }: { children: ReactNode }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -82,6 +100,7 @@ export function StoreShell({ children }: { children: ReactNode }) {
 
 function SiteHeader() {
   const cart = useCart();
+  const { currency, currencies, rateSource, setCurrency } = useCurrency();
   const pathname = useLocation({ select: (location) => location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
   const darkHeader = pathname === "/";
@@ -169,7 +188,7 @@ function SiteHeader() {
         />
         <aside
           aria-label="Main navigation"
-          className={`absolute inset-y-0 left-0 flex w-[calc(100%-16px)] max-w-[395px] flex-col bg-white text-black transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`absolute inset-y-0 left-0 flex w-[calc(100%-16px)] max-w-[395px] flex-col overflow-y-auto bg-white text-black transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -221,9 +240,27 @@ function SiteHeader() {
           </nav>
 
           <div className="mt-auto px-7 pb-8">
-            <div className="grid grid-cols-2 gap-4">
+            <SearchSelect
+              label="Display currency"
+              value={currency}
+              options={currencies.map((code) => ({
+                value: code,
+                label: `${code} — ${CURRENCY_NAMES[code] || code}`,
+                keywords: CURRENCY_NAMES[code],
+              }))}
+              searchPlaceholder="Search currencies…"
+              onValueChange={setCurrency}
+              triggerClassName="h-11 bg-white"
+            />
+            <p className="mt-2 text-[9px] leading-4 text-black/42">
+              {rateSource === "exchangerate-api.com"
+                ? "Converted from INR using live rates."
+                : "Showing INR while live rates are unavailable."}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-4">
               <Link
                 to="/track-order"
+                search={{ order: undefined, email: undefined }}
                 onClick={closeMenu}
                 className="flex min-h-12 items-center justify-center gap-2 border border-black/15 text-[10px] font-semibold uppercase tracking-[0.08em] hover:bg-black hover:text-white"
               >
@@ -261,7 +298,9 @@ export function SiteFooter() {
       <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-[9px] font-semibold uppercase tracking-[0.13em] text-white/55">
         <Link to="/shop">Shop</Link>
         <Link to="/account">Account</Link>
-        <Link to="/track-order">Track order</Link>
+        <Link to="/track-order" search={{ order: undefined, email: undefined }}>
+          Track order
+        </Link>
       </div>
       <p className="mt-10 text-[10px] text-white/40">ESTD 1448 AH · Made in India</p>
     </footer>

@@ -3,7 +3,10 @@ import { CheckCircle2 } from "lucide-react";
 import { StoreShell } from "@/components/store/StoreShell";
 
 export const Route = createFileRoute("/order-confirmation")({
-  validateSearch: (search: Record<string, unknown>) => ({ order: String(search["order"] ?? "") }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    order: search["order"] ? String(search["order"]) : undefined,
+    email: search["email"] ? String(search["email"]) : undefined,
+  }),
   head: () => ({
     meta: [{ title: "Order confirmed — BADR" }, { name: "robots", content: "noindex" }],
   }),
@@ -11,7 +14,7 @@ export const Route = createFileRoute("/order-confirmation")({
 });
 
 function OrderConfirmation() {
-  const { order } = Route.useSearch();
+  const { order, email } = Route.useSearch();
   return (
     <StoreShell>
       <main className="grid min-h-screen place-items-center bg-[#f5f2ec] px-5 py-32 text-center">
@@ -30,6 +33,7 @@ function OrderConfirmation() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               to="/track-order"
+              search={{ order: order || undefined, email: email || undefined }}
               className="bg-foreground px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-background"
             >
               Track order

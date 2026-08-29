@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, Star } from "lucide-react";
 import {
   BOTTLE_IMAGES,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/accordion";
 import { getProductBySlug, listActiveProducts } from "@/services/productService";
 import { listPublishedReviews, type ProductReview } from "@/services/reviewService";
+import { SearchSelect } from "@/components/ui/search-select";
 
 const SITE_ORIGIN =
   import.meta.env.VITE_PUBLIC_SITE_URL ||
@@ -113,6 +114,31 @@ function ProductPage() {
   const { product, related, reviews } = Route.useLoaderData();
   const cart = useCart();
   const [qty, setQty] = useState(1);
+  const [selectedColor, setSelectedColor] = useState(product.colorOptions?.[0] || "");
+  const [selectedSize, setSelectedSize] = useState(
+    product.sizeOptions?.[0] || `${product.volume || "6 ml"} roll-on`,
+  );
+
+  useEffect(() => {
+    setQty(1);
+    setSelectedColor(product.colorOptions?.[0] || "");
+    setSelectedSize(product.sizeOptions?.[0] || `${product.volume || "6 ml"} roll-on`);
+  }, [product.id, product.colorOptions, product.sizeOptions, product.volume]);
+
+  const addCurrentProduct = () =>
+    cart.addProduct(
+      {
+        productId: product.backendId,
+        slug: product.id,
+        name: product.name,
+        image: product.image,
+        price: product.price,
+        mrp: product.mrp,
+        selectedColor: selectedColor || null,
+        selectedSize: selectedSize || null,
+      },
+      qty,
+    );
   const socialImage = product.socialImage || SCENE_IMAGES[product.id] || product.image;
   const productSchema = {
     "@context": "https://schema.org",
@@ -159,9 +185,13 @@ function ProductPage() {
               product={product}
               related={related}
               quantity={qty}
+              selectedColor={selectedColor}
+              selectedSize={selectedSize}
+              onColorChange={setSelectedColor}
+              onSizeChange={setSelectedSize}
               onDecrease={() => setQty((value) => Math.max(1, value - 1))}
               onIncrease={() => setQty((value) => value + 1)}
-              onAdd={() => cart.add(product.id, qty)}
+              onAdd={addCurrentProduct}
             />
           </div>
         </section>
@@ -199,7 +229,7 @@ function ProductPage() {
         <button
           type="button"
           disabled={product.inStock === false}
-          onClick={() => cart.add(product.id, qty)}
+          onClick={addCurrentProduct}
           className="min-h-12 min-w-40 bg-black px-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#292929] disabled:opacity-40"
         >
           {product.inStock === false ? "Sold out" : "Add to cart"}
@@ -213,6 +243,10 @@ function ProductInformation({
   product,
   related,
   quantity,
+  selectedColor,
+  selectedSize,
+  onColorChange,
+  onSizeChange,
   onDecrease,
   onIncrease,
   onAdd,
@@ -220,6 +254,10 @@ function ProductInformation({
   product: Product;
   related: Product[];
   quantity: number;
+  selectedColor: string;
+  selectedSize: string;
+  onColorChange: (value: string) => void;
+  onSizeChange: (value: string) => void;
   onDecrease: () => void;
   onIncrease: () => void;
   onAdd: () => void;
@@ -303,6 +341,31 @@ function ProductInformation({
             ))}
           </div>
         </section>
+      ) : null}
+
+      {product.sizeOptions?.length || product.colorOptions?.length ? (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {product.sizeOptions?.length ? (
+            <SearchSelect
+              label="Size / format"
+              value={selectedSize}
+              options={product.sizeOptions.map((value) => ({ value, label: value }))}
+              searchPlaceholder="Search sizes…"
+              onValueChange={onSizeChange}
+              triggerClassName="bg-transparent"
+            />
+          ) : null}
+          {product.colorOptions?.length ? (
+            <SearchSelect
+              label="Variant"
+              value={selectedColor}
+              options={product.colorOptions.map((value) => ({ value, label: value }))}
+              searchPlaceholder="Search variants…"
+              onValueChange={onColorChange}
+              triggerClassName="bg-transparent"
+            />
+          ) : null}
+        </div>
       ) : null}
 
       <div className="mt-7 grid grid-cols-[104px_minmax(0,1fr)] gap-2">

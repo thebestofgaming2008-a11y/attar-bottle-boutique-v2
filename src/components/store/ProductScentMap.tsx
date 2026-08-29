@@ -1,6 +1,11 @@
 import realBergamot from "@/assets/real-bergamot.jpg";
 import realMandarin from "@/assets/real-mandarin.jpg";
 import realVetiver from "@/assets/real-vetiver.jpg";
+import notesDariya from "@/assets/notes-dariya.webp";
+import notesFitoor from "@/assets/notes-fitoor.webp";
+import notesOudGulaab from "@/assets/notes-oud-gulaab.webp";
+import notesOudZafar from "@/assets/notes-oud-zafar.webp";
+import notesUlfat from "@/assets/notes-ulfat.webp";
 import { BOTTLE_IMAGES, type Product } from "@/lib/products";
 
 type ScentCallout = {
@@ -41,6 +46,16 @@ const DARIYA_PHOTOS: VerifiedPhoto[] = [
     position: "52% 50%",
   },
 ];
+
+const NOTE_IMAGES: Record<string, string> = {
+  dariya: notesDariya,
+  fitoor: notesFitoor,
+  "oud-gulaab": notesOudGulaab,
+  "oud-zafar": notesOudZafar,
+  ulfat: notesUlfat,
+};
+
+const NOTE_IMAGE_POSITIONS = ["18% 50%", "50% 50%", "82% 50%"];
 
 function joinNotes(notes: string[]) {
   return notes.filter(Boolean).join(" & ");
@@ -100,6 +115,7 @@ export function ProductScentMap({ product }: { product: Product }) {
   const callouts = scentCallouts(product);
   const bottle = BOTTLE_IMAGES[product.id] || product.image;
   const verifiedPhotos = product.id === "dariya" ? DARIYA_PHOTOS : [];
+  const noteImage = NOTE_IMAGES[product.id];
 
   return (
     <section className="overflow-hidden border-t border-black/10 bg-white py-14 sm:py-20 lg:py-24">
@@ -145,26 +161,25 @@ export function ProductScentMap({ product }: { product: Product }) {
 
           {callouts.map((callout, index) => {
             const photo = verifiedPhotos[index];
+            const image = photo?.src || noteImage;
             return (
               <article
                 key={callout.index}
                 className="relative min-w-0 overflow-hidden border-l border-black/20 bg-white"
               >
-                {photo ? (
+                {image ? (
                   <figure className="absolute inset-x-0 top-0 h-[62%] overflow-hidden bg-[#f3f3f1]">
                     <img
-                      src={photo.src}
-                      alt={photo.alt}
+                      src={image}
+                      alt={photo?.alt || `${callout.title} ingredients in ${product.name}`}
                       className="h-full w-full object-cover"
-                      style={{ objectPosition: photo.position }}
+                      style={{ objectPosition: photo?.position || NOTE_IMAGE_POSITIONS[index] }}
                       loading="lazy"
                       decoding="async"
                     />
                   </figure>
                 ) : (
-                  <div className="absolute inset-x-0 top-0 grid h-[62%] place-items-center bg-white">
-                    <span className="font-display text-8xl text-black/[0.06]">{callout.index}</span>
-                  </div>
+                  <div className="absolute inset-x-0 top-0 h-[62%] bg-[#f3f3f1]" />
                 )}
 
                 <span className="absolute left-1/2 top-[55%] h-[19%] w-px -translate-x-1/2 bg-black/75">
@@ -172,12 +187,9 @@ export function ProductScentMap({ product }: { product: Product }) {
                 </span>
 
                 <div className="absolute inset-x-4 bottom-5 lg:inset-x-7 lg:bottom-8">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-semibold text-black/42">{callout.index}</span>
-                    <p className="text-[8px] font-semibold uppercase tracking-[0.13em] text-black/55">
-                      {callout.label}
-                    </p>
-                  </div>
+                  <p className="text-[8px] font-semibold uppercase tracking-[0.13em] text-black/55">
+                    {callout.label}
+                  </p>
                   <h3 className="mt-2 font-display text-xl leading-none tracking-[-0.02em] lg:text-3xl">
                     {callout.title}
                   </h3>

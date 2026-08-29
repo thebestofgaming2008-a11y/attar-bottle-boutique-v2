@@ -36,6 +36,7 @@ export type Occasion = "evening" | "everyday" | "morning" | "close";
 
 export type Product = {
   id: string;
+  backendId?: string;
   name: string;
   category: string;
   tag: string;
@@ -69,6 +70,8 @@ export type Product = {
   seoDescription?: string;
   seoKeywords?: string[];
   socialImage?: string;
+  colorOptions?: string[];
+  sizeOptions?: string[];
 };
 
 export const PRODUCTS: Product[] = [
@@ -298,6 +301,7 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
 
   return {
     id: slug,
+    backendId: text(source.id),
     name: text(source.name) || fallback?.name || "BADR Attar",
     category:
       text(source.product_type) || fallback?.category || text(source.category) || "Unisex Attar",
@@ -349,6 +353,8 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
       ? strings(source.seo_keywords)
       : fallback?.seoKeywords,
     socialImage: text(source.og_image_url) || fallback?.socialImage || gallery[1] || cover,
+    colorOptions: strings(source.color_options),
+    sizeOptions: strings(source.size_options),
   };
 }
 

@@ -91,17 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(
     async (email: string, password: string, fullName?: string) => {
+      const pendingName = fullName?.trim();
       try {
+        if (pendingName) window.localStorage.setItem("badr_pending_full_name", pendingName);
         await convexSignIn("password", {
           email: email.trim().toLowerCase(),
           password,
           flow: "signUp",
         });
-        if (fullName?.trim()) {
-          window.localStorage.setItem("badr_pending_full_name", fullName.trim());
-        }
         return { error: null };
       } catch (err) {
+        if (pendingName) window.localStorage.removeItem("badr_pending_full_name");
         return { error: err instanceof Error ? err : new Error("Unable to create account.") };
       }
     },

@@ -5,6 +5,12 @@ import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
 import { trackOrder } from "@/services/orderService";
 import { submitOrderReview } from "@/services/reviewService";
 import { inr } from "@/lib/products";
+import { SearchSelect } from "@/components/ui/search-select";
+
+const RATING_OPTIONS = [5, 4, 3, 2, 1].map((rating) => ({
+  value: String(rating),
+  label: `${rating} star${rating === 1 ? "" : "s"}`,
+}));
 
 type TrackedOrder = {
   id: string;
@@ -26,15 +32,26 @@ type TrackedOrder = {
 };
 
 export const Route = createFileRoute("/track-order")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    order: search["order"] ? String(search["order"]) : undefined,
+    email: search["email"] ? String(search["email"]) : undefined,
+  }),
   head: () => ({ meta: [{ title: "Track order — BADR" }, { name: "robots", content: "noindex" }] }),
   component: TrackOrderPage,
 });
 
 function TrackOrderPage() {
-  const [form, setForm] = useState({ order: "", email: "" });
+  const search = Route.useSearch();
+  const [form, setForm] = useState({ order: search.order || "", email: search.email || "" });
   const [result, setResult] = useState<TrackedOrder | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [reviewed, setReviewed] = useState<Set<string>>(new Set());
+  const [reviewDraft, setReviewDraft] = useState<{
+    productId: string;
+    itemName: string;
+    rating: string;
+    body: string;
+  } | null>(null);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setMessage(null);
@@ -42,17 +59,24 @@ function TrackOrderPage() {
     setResult(order);
     if (!order) setMessage("No matching order was found. Check the order number and email.");
   }
-  async function review(productId: string, itemName: string) {
-    const body = window.prompt(`Share a short text review for ${itemName}`);
-    if (!body?.trim()) return;
-    await submitOrderReview({
-      orderNumber: result!.order_number,
-      email: form.email,
-      productId,
-      rating: 5,
-      body: body.trim(),
-    });
-    setReviewed((items) => new Set(items).add(productId));
+  async function review(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reviewDraft || !result) return;
+    setMessage(null);
+    try {
+      await submitOrderReview({
+        orderNumber: result.order_number,
+        email: form.email,
+        productId: reviewDraft.productId,
+        rating: Number(reviewDraft.rating),
+        body: reviewDraft.body.trim(),
+      });
+      setReviewed((items) => new Set(items).add(reviewDraft.productId));
+      setReviewDraft(null);
+      setMessage("Thank you. Your verified review was sent for approval.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Review could not be submitted.");
+    }
   }
   return (
     <StoreShell>
@@ -141,7 +165,12 @@ function TrackOrderPage() {
                         <button
                           disabled={reviewed.has(item.product_id)}
                           onClick={() =>
-                            void review(item.product_id!, item.product_name || "product")
+                            setReviewDraft({
+                              productId: item.product_id!,
+                              itemName: item.product_name || "Product",
+                              rating: "5",
+                              body: "",
+                            })
                           }
                           className="mt-2 text-xs underline disabled:opacity-50"
                         >
@@ -155,6 +184,53 @@ function TrackOrderPage() {
                   </li>
                 ))}
               </ul>
+              {reviewDraft ? (
+                <form onSubmit={review} className="mt-6 bg-[#f5f2ec] p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Verified purchase review</p>
+                      <h3 className="mt-1 font-medium">{reviewDraft.itemName}</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReviewDraft(null)}
+                      className="text-xs underline"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                    <SearchSelect
+                      label="Rating"
+                      value={reviewDraft.rating}
+                      options={RATING_OPTIONS}
+                      searchPlaceholder="Choose a rating…"
+                      onValueChange={(rating) =>
+                        setReviewDraft((draft) => (draft ? { ...draft, rating } : null))
+                      }
+                    />
+                    <label className="grid gap-2 text-xs font-semibold uppercase tracking-[0.13em]">
+                      Your review
+                      <textarea
+                        required
+                        minLength={8}
+                        maxLength={1600}
+                        rows={4}
+                        value={reviewDraft.body}
+                        onChange={(event) =>
+                          setReviewDraft((draft) =>
+                            draft ? { ...draft, body: event.target.value } : null,
+                          )
+                        }
+                        className="min-h-28 resize-y border border-foreground/20 bg-background p-3 text-sm font-normal normal-case leading-6 tracking-normal outline-none focus:border-foreground"
+                      />
+                    </label>
+                  </div>
+                  <button className="mt-3 bg-foreground px-5 py-3 text-xs font-semibold uppercase tracking-[0.13em] text-background">
+                    Submit review
+                  </button>
+                </form>
+              ) : null}
             </section>
           ) : null}
         </div>

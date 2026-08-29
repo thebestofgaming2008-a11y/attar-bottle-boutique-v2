@@ -6,6 +6,8 @@ import { api } from "../../convex/_generated/api";
 import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { inr } from "@/lib/products";
+import { SearchSelect } from "@/components/ui/search-select";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
@@ -35,6 +37,7 @@ function AccountPage() {
     full_name: "",
     phone: "",
     address_line_1: "",
+    address_line_2: "",
     city: "",
     state: "",
     postal_code: "",
@@ -99,6 +102,7 @@ function AccountPage() {
         full_name: "",
         phone: "",
         address_line_1: "",
+        address_line_2: "",
         city: "",
         state: "",
         postal_code: "",
@@ -315,6 +319,10 @@ function AccountPage() {
                           </ul>
                           <Link
                             to="/track-order"
+                            search={{
+                              order: order.order_number || "",
+                              email: auth.user?.email || "",
+                            }}
                             className="mt-4 inline-block text-xs font-semibold uppercase tracking-[0.12em] underline"
                           >
                             Track this order
@@ -343,7 +351,9 @@ function AccountPage() {
                           </span>
                         ) : null}
                         <br />
-                        {item.address_line_1}, {item.city}, {item.state} {item.postal_code}
+                        {item.address_line_1}
+                        {item.address_line_2 ? `, ${item.address_line_2}` : ""}, {item.city},{" "}
+                        {item.state} {item.postal_code}
                         <br />
                         {item.country} · {item.phone}
                         <button
@@ -385,6 +395,16 @@ function AccountPage() {
                         }
                       />
                     </div>
+                    <div className="sm:col-span-2">
+                      <AccountInput
+                        label="Apartment, suite, etc. (optional)"
+                        required={false}
+                        value={address.address_line_2}
+                        onChange={(value) =>
+                          setAddress((item) => ({ ...item, address_line_2: value }))
+                        }
+                      />
+                    </div>
                     <AccountInput
                       label="City"
                       value={address.city}
@@ -400,10 +420,13 @@ function AccountPage() {
                       value={address.postal_code}
                       onChange={(value) => setAddress((item) => ({ ...item, postal_code: value }))}
                     />
-                    <AccountInput
+                    <SearchSelect
                       label="Country"
                       value={address.country}
-                      onChange={(value) => setAddress((item) => ({ ...item, country: value }))}
+                      options={COUNTRY_OPTIONS}
+                      searchPlaceholder="Type a country or code…"
+                      emptyText="No country found."
+                      onValueChange={(value) => setAddress((item) => ({ ...item, country: value }))}
                     />
                     {message ? (
                       <p role="alert" className="text-sm text-red-700 sm:col-span-2">
@@ -431,18 +454,20 @@ function AccountInput({
   onChange,
   type = "text",
   inputMode,
+  required = true,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   inputMode?: "text" | "numeric" | "email" | "tel";
+  required?: boolean;
 }) {
   return (
     <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
       {label}
       <input
-        required
+        required={required}
         type={type}
         inputMode={inputMode}
         value={value}

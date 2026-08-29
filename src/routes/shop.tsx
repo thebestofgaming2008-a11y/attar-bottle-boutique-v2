@@ -9,6 +9,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
 import { useAuth } from "@/contexts/AuthContext";
 import { BOTTLE_IMAGES } from "@/lib/products";
+import { SearchSelect } from "@/components/ui/search-select";
 
 export const Route = createFileRoute("/shop")({
   loader: async () => ({ products: await listActiveProducts() }),
@@ -51,6 +52,19 @@ function ShopPage() {
       ) as string[],
     [products],
   );
+  const collectionOptions = useMemo(
+    () => [
+      { value: "all", label: "All collections" },
+      ...collections.map((value) => ({
+        value,
+        label: value.replace(
+          /(^|-)([a-z])/g,
+          (_, separator, letter) => `${separator === "-" ? " " : ""}${letter.toUpperCase()}`,
+        ),
+      })),
+    ],
+    [collections],
+  );
   const filtered = products.filter((product) => {
     const matchesCollection = collection === "all" || product.category_id === collection;
     const haystack = [product.name, product.category, product.category_id, ...(product.tags || [])]
@@ -74,18 +88,12 @@ function ShopPage() {
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none"
               />
             </label>
-            <select
+            <SearchSelect
               value={collection}
-              onChange={(event) => setCollection(event.target.value)}
-              className="h-12 border border-foreground/20 bg-background px-4 text-sm capitalize outline-none"
-            >
-              <option value="all">All collections</option>
-              {collections.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
+              onValueChange={setCollection}
+              options={collectionOptions}
+              searchPlaceholder="Search collections…"
+            />
           </div>
 
           {filtered.length ? (

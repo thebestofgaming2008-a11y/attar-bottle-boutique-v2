@@ -28,6 +28,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/services/adminService";
 import { clearProductListCache } from "@/services/productService";
 import { inr, PRODUCTS } from "@/lib/products";
+import { SearchSelect, type SearchSelectOption } from "@/components/ui/search-select";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 
 type Tab = "products" | "orders" | "reviews" | "customers" | "health";
 type ProductForm = {
@@ -46,6 +48,8 @@ type ProductForm = {
   longevity: string;
   volume: string;
   format: string;
+  colors: string;
+  sizes: string;
   country: string;
   faqs: Array<{ question: string; answer: string }>;
   price: string;
@@ -71,6 +75,21 @@ type ProductForm = {
 
 const blankFaqs = () => Array.from({ length: 3 }, () => ({ question: "", answer: "" }));
 
+const COLLECTION_OPTIONS: SearchSelectOption[] = [
+  { value: "oud", label: "Oud" },
+  { value: "fresh", label: "Fresh" },
+  { value: "fruity", label: "Fruity" },
+  { value: "gourmand", label: "Gourmand" },
+];
+
+const FULFILLMENT_OPTIONS: SearchSelectOption[] = [
+  { value: "processing", label: "Processing" },
+  { value: "shipped", label: "Shipped" },
+  { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "returned", label: "Returned" },
+];
+
 const emptyProduct: ProductForm = {
   id: "",
   name: "",
@@ -87,6 +106,8 @@ const emptyProduct: ProductForm = {
   longevity: "",
   volume: "6 ml",
   format: "Roll-on attar",
+  colors: "",
+  sizes: "6 ml roll-on",
   country: "India",
   faqs: blankFaqs(),
   price: "",
@@ -208,6 +229,8 @@ function AdminPage() {
       longevity: current.longevity || fallback?.longevity || "",
       volume: current.volume_label || "6 ml",
       format: current.format_label || "Roll-on attar",
+      colors: (current.color_options || []).join(", "),
+      sizes: (current.size_options || ["6 ml roll-on"]).join(", "),
       country: current.country_of_origin || "India",
       faqs: [...currentFaqs, ...blankFaqs()].slice(0, 3),
       price: String(current.price_inr),
@@ -267,8 +290,12 @@ function AdminPage() {
         tags: csv(form.tags),
         cover_image_url: form.cover || null,
         images: form.images.filter((image) => image !== form.cover),
-        size_options: ["6 ml roll-on"],
-        option_types: [{ name: "Size", values: ["6 ml roll-on"] }],
+        color_options: csv(form.colors),
+        size_options: csv(form.sizes),
+        option_types: [
+          ...(csv(form.colors).length ? [{ name: "Colour", values: csv(form.colors) }] : []),
+          ...(csv(form.sizes).length ? [{ name: "Size", values: csv(form.sizes) }] : []),
+        ],
         badge: form.badge || null,
         sort_order: form.sortOrder ? Number(form.sortOrder) : null,
         seo_title: form.seoTitle || null,
@@ -418,21 +445,14 @@ function AdminPage() {
                         value={form.productType}
                         onChange={(productType) => setForm((item) => ({ ...item, productType }))}
                       />
-                      <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
-                        Collection
-                        <select
-                          value={form.collection}
-                          onChange={(event) =>
-                            setForm((item) => ({ ...item, collection: event.target.value }))
-                          }
-                          className="h-11 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal"
-                        >
-                          <option value="oud">Oud</option>
-                          <option value="fresh">Fresh</option>
-                          <option value="fruity">Fruity</option>
-                          <option value="gourmand">Gourmand</option>
-                        </select>
-                      </label>
+                      <SearchSelect
+                        label="Collection"
+                        value={form.collection}
+                        options={COLLECTION_OPTIONS}
+                        triggerClassName="h-11 bg-transparent"
+                        searchPlaceholder="Search collections…"
+                        onValueChange={(collection) => setForm((item) => ({ ...item, collection }))}
+                      />
                       <AdminInput
                         label="Badge (optional)"
                         required={false}
@@ -445,6 +465,17 @@ function AdminPage() {
                         required={false}
                         value={form.sortOrder}
                         onChange={(sortOrder) => setForm((item) => ({ ...item, sortOrder }))}
+                      />
+                      <AdminInput
+                        label="Sizes / formats (comma separated)"
+                        value={form.sizes}
+                        onChange={(sizes) => setForm((item) => ({ ...item, sizes }))}
+                      />
+                      <AdminInput
+                        label="Colours / variants (comma separated, optional)"
+                        required={false}
+                        value={form.colors}
+                        onChange={(colors) => setForm((item) => ({ ...item, colors }))}
                       />
                     </div>
                   </AdminSection>
@@ -512,10 +543,13 @@ function AdminPage() {
                         value={form.format}
                         onChange={(format) => setForm((item) => ({ ...item, format }))}
                       />
-                      <AdminInput
+                      <SearchSelect
                         label="Country of origin"
                         value={form.country}
-                        onChange={(country) => setForm((item) => ({ ...item, country }))}
+                        options={COUNTRY_OPTIONS}
+                        triggerClassName="h-11 bg-transparent"
+                        searchPlaceholder="Type a country or code…"
+                        onValueChange={(country) => setForm((item) => ({ ...item, country }))}
                       />
                     </div>
                   </AdminSection>
@@ -1029,6 +1063,10 @@ function OrderAdminCard({
   const [url, setUrl] = useState(order.tracking_url || "");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [operation, setOperation] = useState<"cancelled" | "returned" | "refund" | null>(null);
+  const [operationReason, setOperationReason] = useState("");
+  const [restock, setRestock] = useState(true);
+  const [refundAmount, setRefundAmount] = useState("");
   const currentStatus = String(order.status || "processing");
   const remainingRefund = Math.max(
     0,
@@ -1041,52 +1079,53 @@ function OrderAdminCard({
     try {
       await task();
       setNotice(success);
+      return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Operation failed.");
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  function requestClose(outcome: "cancelled" | "returned") {
-    const reason = window.prompt(
-      outcome === "cancelled"
-        ? "Why is this order being cancelled?"
-        : "Why was this order returned?",
-    );
-    if (!reason?.trim()) return;
-    const restock = window.confirm("Return every item in this order to product stock?");
-    if (
-      !window.confirm(
-        `${outcome === "cancelled" ? "Cancel" : "Return"} this order now? Payment is not automatically refunded.`,
-      )
-    )
-      return;
-    void run(
-      () => onClose(outcome, restock, reason),
-      restock ? "Order updated and inventory restocked." : "Order updated without restocking.",
-    );
+  function openCloseOperation(outcome: "cancelled" | "returned") {
+    setOperation(outcome);
+    setOperationReason("");
+    setRestock(true);
+    setNotice(null);
   }
 
-  function requestRefund() {
-    const rawAmount = window.prompt(
-      `Refund amount in INR (maximum ₹${remainingRefund.toFixed(2)}):`,
-      remainingRefund.toFixed(2),
-    );
-    if (rawAmount == null) return;
-    const amount = Number(rawAmount);
+  function openRefundOperation() {
+    setOperation("refund");
+    setRefundAmount(remainingRefund.toFixed(2));
+    setOperationReason("");
+    setNotice(null);
+  }
+
+  async function submitOperation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const reason = operationReason.trim();
+    if (!operation || !reason) return;
+    if (operation !== "refund") {
+      const completed = await run(
+        () => onClose(operation, restock, reason),
+        restock ? "Order updated and inventory restocked." : "Order updated without restocking.",
+      );
+      if (completed) setOperation(null);
+      return;
+    }
+
+    const amount = Number(refundAmount);
     if (!Number.isFinite(amount) || amount < 1 || amount > remainingRefund) {
       setNotice(`Enter an amount between ₹1 and ₹${remainingRefund.toFixed(2)}.`);
       return;
     }
-    const reason = window.prompt("Refund reason (saved to the audit trail):");
-    if (!reason?.trim()) return;
-    if (!window.confirm(`Refund ₹${amount.toFixed(2)} through Razorpay? This cannot be undone.`))
-      return;
-    void run(
+
+    const completed = await run(
       () => onRefund(amount, reason),
       "Refund submitted to Razorpay. Its webhook will confirm the final status.",
     );
+    if (completed) setOperation(null);
   }
   return (
     <article className="bg-background p-4 sm:p-6">
@@ -1146,20 +1185,19 @@ function OrderAdminCard({
         </ul>
       </div>
       <div className="mt-5 grid gap-2 sm:grid-cols-4">
-        <select
+        <SearchSelect
           value={currentStatus}
           disabled={busy || ["cancelled", "returned", "delivered"].includes(currentStatus)}
-          onChange={(event) =>
-            void run(() => onStatus(event.target.value), "Fulfillment status updated.")
+          onValueChange={(status) =>
+            void run(() => onStatus(status), "Fulfillment status updated.")
           }
-          className="h-11 border border-foreground/20 bg-transparent px-3 text-sm"
-        >
-          <option value="processing">Processing</option>
-          <option value="shipped">Shipped</option>
-          <option value="delivered">Delivered</option>
-          {currentStatus === "cancelled" ? <option value="cancelled">Cancelled</option> : null}
-          {currentStatus === "returned" ? <option value="returned">Returned</option> : null}
-        </select>
+          options={FULFILLMENT_OPTIONS.filter(
+            (option) =>
+              !["cancelled", "returned"].includes(option.value) || option.value === currentStatus,
+          )}
+          triggerClassName="h-11 bg-transparent"
+          searchPlaceholder="Search statuses…"
+        />
         <input
           value={carrier}
           onChange={(event) => setCarrier(event.target.value)}
@@ -1195,7 +1233,7 @@ function OrderAdminCard({
         {currentStatus === "processing" ? (
           <button
             disabled={busy}
-            onClick={() => requestClose("cancelled")}
+            onClick={() => openCloseOperation("cancelled")}
             className="border border-red-300 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-40"
           >
             Cancel order
@@ -1204,7 +1242,7 @@ function OrderAdminCard({
         {["shipped", "delivered", "returned"].includes(currentStatus) ? (
           <button
             disabled={busy}
-            onClick={() => requestClose("returned")}
+            onClick={() => openCloseOperation("returned")}
             className="border border-amber-400 px-3 py-2 text-xs font-semibold disabled:opacity-40"
           >
             {currentStatus === "returned" && !order.inventory_restocked_at
@@ -1215,7 +1253,7 @@ function OrderAdminCard({
         {remainingRefund >= 1 && ["paid", "partially_refunded"].includes(order.payment_status) ? (
           <button
             disabled={busy || order.refund_status === "pending"}
-            onClick={requestRefund}
+            onClick={openRefundOperation}
             className="border border-foreground px-3 py-2 text-xs font-semibold disabled:opacity-40"
           >
             Refund via Razorpay
@@ -1225,6 +1263,81 @@ function OrderAdminCard({
           <span className="self-center text-xs text-emerald-700">Inventory restocked once</span>
         ) : null}
       </div>
+      {operation ? (
+        <form onSubmit={submitOperation} className="mt-3 bg-[#f5f2eb] p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+                {operation === "refund" ? "Razorpay refund" : "Fulfillment operation"}
+              </p>
+              <h3 className="mt-1 font-display text-2xl">
+                {operation === "refund"
+                  ? "Confirm refund"
+                  : operation === "cancelled"
+                    ? "Cancel order"
+                    : "Mark order returned"}
+              </h3>
+            </div>
+            <button
+              type="button"
+              aria-label="Close operation form"
+              onClick={() => setOperation(null)}
+              className="grid h-9 w-9 place-items-center border border-foreground/20"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {operation === "refund" ? (
+              <label className="grid gap-2 text-xs font-semibold uppercase tracking-[0.12em]">
+                Amount in INR
+                <input
+                  required
+                  type="number"
+                  min="1"
+                  max={remainingRefund}
+                  step="0.01"
+                  value={refundAmount}
+                  onChange={(event) => setRefundAmount(event.target.value)}
+                  className="h-11 border border-foreground/20 bg-background px-3 text-sm font-normal normal-case tracking-normal"
+                />
+              </label>
+            ) : (
+              <label className="flex min-h-11 items-center gap-3 self-end bg-background px-3 text-xs">
+                <input
+                  type="checkbox"
+                  checked={restock}
+                  onChange={(event) => setRestock(event.target.checked)}
+                />
+                Return items to stock
+              </label>
+            )}
+            <label className="grid gap-2 text-xs font-semibold uppercase tracking-[0.12em] sm:col-span-2">
+              Reason (saved to audit trail)
+              <textarea
+                required
+                minLength={3}
+                maxLength={500}
+                rows={3}
+                value={operationReason}
+                onChange={(event) => setOperationReason(event.target.value)}
+                className="resize-y border border-foreground/20 bg-background p-3 text-sm font-normal normal-case tracking-normal"
+              />
+            </label>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">
+            {operation === "refund"
+              ? `This sends an irreversible Razorpay refund of up to ${inr(remainingRefund)}.`
+              : "Changing fulfillment does not automatically refund the payment."}
+          </p>
+          <button
+            disabled={busy || !operationReason.trim()}
+            className="mt-3 bg-foreground px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-background disabled:opacity-40"
+          >
+            {busy ? "Working…" : operation === "refund" ? "Issue refund" : "Confirm update"}
+          </button>
+        </form>
+      ) : null}
       {order.refund_error ? (
         <p className="mt-3 border border-red-200 bg-red-50 p-3 text-xs text-red-800">
           Refund attention: {order.refund_error}
