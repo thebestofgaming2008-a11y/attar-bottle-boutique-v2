@@ -151,8 +151,8 @@ function ProductPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
       />
 
-      <main className="pb-18 sm:pb-0">
-        <section className="bg-[#f3efe7]">
+      <main className="bg-white pb-18 sm:pb-0">
+        <section className="bg-white">
           <div className="grid min-w-0 lg:grid-cols-[minmax(0,1.08fr)_minmax(410px,0.92fr)]">
             <ProductGallery product={product} />
             <ProductInformation
@@ -170,7 +170,7 @@ function ProductPage() {
         <ProductStory product={product} />
         {product.faqs.length ? <ProductFaqs product={product} /> : null}
 
-        <section className="bg-[#f3efe7] px-3 py-16 sm:px-6 sm:py-24">
+        <section className="border-t border-black/10 bg-white px-3 py-16 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-7xl">
             <p className="text-center text-xs text-black/48">The BADR collection</p>
             <h2 className="mt-2 text-center font-display text-3xl sm:text-5xl">
@@ -189,7 +189,7 @@ function ProductPage() {
 
       <SiteFooter />
 
-      <div className="fixed inset-x-0 bottom-0 z-40 grid h-18 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-black/10 bg-[#f3efe7] px-5 sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 grid h-18 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-black/10 bg-white px-5 sm:hidden">
         <div className="min-w-0">
           <p className="truncate text-xs text-black/55">
             {product.name} · {product.volume || "6 ml"}
@@ -387,8 +387,8 @@ function ProductGallery({ product }: { product: Product }) {
   const [featuredImage, ...supportingImages] = images;
 
   return (
-    <div className="min-w-0 bg-[#e8e2d7] lg:p-3">
-      <figure className="relative aspect-[1/1.05] overflow-hidden bg-[#f8f6f1] p-10 sm:p-14 lg:aspect-[1.16/1] lg:p-16">
+    <div className="min-w-0 bg-white lg:border-r lg:border-black/10 lg:p-3">
+      <figure className="relative aspect-[1/1.05] overflow-hidden bg-white p-10 sm:p-14 lg:aspect-[1.16/1] lg:p-16">
         <img
           src={featuredImage || product.image}
           alt={`${product.name} attar`}
@@ -403,7 +403,10 @@ function ProductGallery({ product }: { product: Product }) {
       {supportingImages.length ? (
         <div className="hidden grid-cols-2 gap-3 pt-3 lg:grid">
           {supportingImages.slice(0, 4).map((image, index) => (
-            <figure key={image} className="aspect-[4/5] overflow-hidden bg-[#d8d1c5]">
+            <figure
+              key={image}
+              className="aspect-[4/5] overflow-hidden border border-black/10 bg-white"
+            >
               <img
                 src={image}
                 alt={`${product.name} ${index === 0 ? "campaign" : "detail"}`}
@@ -423,14 +426,14 @@ function ProductStory({ product }: { product: Product }) {
   const scene = product.socialImage || SCENE_IMAGES[product.id] || product.image;
 
   return (
-    <section className="overflow-hidden bg-black text-white">
+    <section className="overflow-hidden border-t border-black/10 bg-white text-black">
       <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[0.92fr_1.08fr]">
         <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-24 lg:px-16">
-          <p className="text-xs text-white/48">About {product.name}</p>
+          <p className="text-xs text-black/48">About {product.name}</p>
           <h2 className="mt-3 max-w-xl font-display text-4xl leading-[0.94] sm:text-5xl">
             The story
           </h2>
-          <p className="mt-6 max-w-xl text-sm leading-7 text-white/68 sm:text-base sm:leading-8">
+          <p className="mt-6 max-w-xl text-sm leading-7 text-black/68 sm:text-base sm:leading-8">
             {product.meaning ? `${product.meaning} ` : ""}
             {product.story}
           </p>
@@ -460,7 +463,7 @@ function ProductStory({ product }: { product: Product }) {
 function ProductStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] text-white/45">{label}</dt>
+      <dt className="text-[10px] text-black/45">{label}</dt>
       <dd className="mt-2 text-sm font-medium capitalize leading-5 sm:text-base">{value}</dd>
     </div>
   );
@@ -468,7 +471,7 @@ function ProductStat({ label, value }: { label: string; value: string }) {
 
 function ProductFaqs({ product }: { product: Product }) {
   return (
-    <section className="bg-[#f8f6f1] px-5 py-16 sm:px-8 sm:py-24">
+    <section className="border-t border-black/10 bg-white px-5 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.55fr_1.45fr] lg:gap-20">
         <div>
           <p className="text-xs text-black/48">Product information</p>

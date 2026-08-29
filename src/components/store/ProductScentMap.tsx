@@ -1,175 +1,196 @@
-import { BOTTLE_IMAGES, type Product } from "@/lib/products";
+import { BOTTLE_IMAGES, SCENT_PROFILE_IMAGES, type Product } from "@/lib/products";
 
-type ScentLayer = {
+type ScentCallout = {
   index: string;
   label: string;
   title: string;
-  detail: string;
-  placement: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  target: [number, number];
 };
+
+const TARGETS: Record<string, [number, number][]> = {
+  dariya: [
+    [710, 415],
+    [965, 405],
+    [1195, 420],
+  ],
+  fitoor: [
+    [690, 385],
+    [1130, 430],
+    [885, 500],
+  ],
+  "oud-gulaab": [
+    [800, 355],
+    [585, 425],
+    [1160, 455],
+  ],
+  "oud-zafar": [
+    [575, 420],
+    [885, 450],
+    [1170, 420],
+  ],
+  ulfat: [
+    [625, 375],
+    [915, 475],
+    [1180, 435],
+  ],
+};
+
+const CALLOUT_STARTS: [number, number][] = [
+  [585, 151],
+  [855, 151],
+  [1115, 151],
+];
 
 function joinNotes(notes: string[]) {
   return notes.filter(Boolean).join(" & ");
 }
 
-function scentLayers(product: Product): ScentLayer[] {
-  const notes = product.notes.length ? product.notes : [product.tag];
-  const openingCount = notes.length >= 4 ? 2 : 1;
-  const opening = notes.slice(0, openingCount);
-  const remaining = notes.slice(openingCount);
-  const drydownCount = remaining.length >= 3 ? 2 : 1;
-  const heart = remaining.slice(0, Math.max(1, remaining.length - drydownCount));
-  const drydown = remaining.slice(Math.max(1, remaining.length - drydownCount));
+function layerLabel(notes: string[], layer: number) {
+  const value = notes.join(" ").toLowerCase();
 
-  return [
-    {
-      index: "01",
-      label: "First impression",
-      title: joinNotes(opening) || product.tag,
-      detail: "The notes you notice first, bright on the initial roll.",
-      placement: "top-left",
-    },
-    {
-      index: "02",
-      label: "At the heart",
-      title: joinNotes(heart) || product.tag,
-      detail: "The character at the centre of the composition.",
-      placement: "top-right",
-    },
-    {
-      index: "03",
-      label: "The drydown",
-      title: joinNotes(drydown) || product.notes.at(-1) || product.tag,
-      detail: "The trace that settles closest and stays on skin.",
-      placement: "bottom-left",
-    },
-    {
-      index: "04",
-      label: "On skin",
-      title: product.longevity,
-      detail: `${product.intensity} intensity · ${product.format || "Roll-on attar"}`,
-      placement: "bottom-right",
-    },
-  ];
+  if (/(bergamot|mandarin|lemon|lime|orange|citrus)/.test(value)) {
+    return layer === 2 ? "Citrus base" : "Citrus opening";
+  }
+  if (/(pineapple|apple|pear|fruit)/.test(value)) {
+    return layer === 0 ? "Juicy opening" : "Crisp fruit";
+  }
+  if (/(rose|jasmine|flower|floral)/.test(value)) return "Floral heart";
+  if (/(saffron|spice)/.test(value)) return "Spiced warmth";
+  if (/(lavender|herb|aromatic)/.test(value)) return "Aromatic opening";
+  if (/(vetiver)/.test(value)) return "Earthy base";
+  if (/(oud|sandalwood|wood)/.test(value)) return layer === 2 ? "Woody base" : "Woody depth";
+  if (/(vanilla|amber|musk)/.test(value)) return layer === 2 ? "Warm drydown" : "Soft warmth";
+  return layer === 0 ? "First impression" : layer === 1 ? "At the heart" : "The drydown";
 }
 
-const placementClasses: Record<ScentLayer["placement"], string> = {
-  "top-left": "left-[1.5%] top-[8%] text-left",
-  "top-right": "right-[1.5%] top-[18%] text-right",
-  "bottom-left": "bottom-[13%] left-[1.5%] text-left",
-  "bottom-right": "bottom-[5%] right-[1.5%] text-right",
-};
+function scentGroups(product: Product) {
+  const notes = product.notes.length ? product.notes : [product.tag];
+
+  if (notes.length <= 3) return notes.map((note) => [note]);
+  if (notes.length === 4) return [[notes[0]], [notes[1]], notes.slice(2)];
+  return [notes.slice(0, 2), notes.slice(2, 3), notes.slice(3)];
+}
+
+function scentCallouts(product: Product): ScentCallout[] {
+  const groups = scentGroups(product);
+  const fallbackTargets: [number, number][] = [
+    [700, 410],
+    [930, 430],
+    [1160, 420],
+  ];
+  const targets = TARGETS[product.id] || fallbackTargets;
+
+  return groups.slice(0, 3).map((notes, index) => ({
+    index: `0${index + 1}`,
+    label: layerLabel(notes, index),
+    title: joinNotes(notes),
+    target: targets[index] || fallbackTargets[index],
+  }));
+}
 
 export function ProductScentMap({ product }: { product: Product }) {
-  const layers = scentLayers(product);
+  const callouts = scentCallouts(product);
   const bottle = BOTTLE_IMAGES[product.id] || product.image;
+  const ingredients = SCENT_PROFILE_IMAGES[product.id] || product.image;
 
   return (
-    <section className="overflow-hidden bg-[#eee8de] px-4 py-16 sm:px-7 sm:py-24">
-      <div className="mx-auto max-w-[1380px]">
-        <header className="mx-auto max-w-3xl text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/45">
-            The scent, unfolded
-          </p>
-          <h2 className="mt-4 font-display text-4xl leading-[0.92] sm:text-6xl">
-            How {product.name} moves on skin.
+    <section className="overflow-hidden border-t border-black/10 bg-white py-14 sm:py-20 lg:py-24">
+      <header className="mx-auto max-w-[1380px] px-5 sm:px-8">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">
+          Inside {product.name}
+        </p>
+        <div className="mt-3 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+          <h2 className="max-w-3xl font-display text-4xl leading-[0.94] sm:text-6xl">
+            The scent, ingredient by ingredient.
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-black/58 sm:text-base">
-            From the first roll to the final trace, every layer has a part to play.
+          <p className="max-w-md text-sm leading-6 text-black/58 sm:text-base sm:leading-7">
+            Follow the composition from its first bright note to the trace that stays on skin.
           </p>
-        </header>
+        </div>
+      </header>
 
-        <div className="relative mx-auto mt-10 hidden aspect-[12/7.4] max-w-[1200px] lg:block">
-          <div className="absolute bottom-[4%] left-1/2 top-[3%] w-[31%] -translate-x-1/2">
-            <span className="absolute inset-x-[18%] bottom-[2%] h-[6%] rounded-[50%] bg-black/12 blur-xl" />
+      <div className="no-scrollbar mt-9 overflow-x-auto px-5 sm:mt-12 sm:px-8">
+        <div className="relative mx-auto aspect-[1360/610] min-w-[690px] max-w-[1380px] overflow-hidden border border-black/15 bg-white">
+          <img
+            src={ingredients}
+            alt={`${product.name} perfume ingredients: ${product.notes.join(", ")}`}
+            className="absolute inset-y-0 right-0 h-full w-[70%] object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+          <div className="absolute inset-y-0 left-[26%] w-[20%] bg-gradient-to-r from-white via-white/92 to-transparent" />
+
+          <div className="absolute bottom-[8%] left-[2.5%] top-[7%] w-[31%] bg-white">
+            <div className="absolute left-0 top-0 z-10 max-w-[250px]">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-black/42">
+                Scent anatomy
+              </p>
+              <p className="mt-2 font-display text-[34px] leading-[0.92]">{product.name}</p>
+              <p className="mt-3 max-w-[210px] text-[11px] leading-5 text-black/55">
+                {product.tag}
+              </p>
+            </div>
             <img
               src={bottle}
-              alt={`${product.name} attar bottle with scent profile callouts`}
-              className="relative h-full w-full object-contain drop-shadow-[0_28px_24px_rgba(0,0,0,0.12)]"
+              alt={`${product.name} BADR attar bottle`}
+              className="absolute -bottom-[4%] left-[20%] h-[83%] w-[76%] object-contain drop-shadow-[0_24px_20px_rgba(0,0,0,0.14)]"
               loading="lazy"
               decoding="async"
             />
+            <p className="absolute bottom-0 left-0 text-[9px] font-medium uppercase tracking-[0.1em] text-black/45">
+              {product.volume || "6 ml"} · {product.longevity}
+            </p>
           </div>
 
           <svg
-            viewBox="0 0 1200 740"
+            viewBox="0 0 1360 610"
+            preserveAspectRatio="none"
             className="pointer-events-none absolute inset-0 h-full w-full"
             aria-hidden="true"
           >
-            <g fill="none" stroke="currentColor" strokeWidth="1.15" className="text-black/42">
-              <path d="M268 158 H422 L526 226" />
-              <path d="M932 234 H782 L672 294" />
-              <path d="M268 535 H430 L534 474" />
-              <path d="M932 604 H776 L660 574" />
+            <g fill="none" stroke="currentColor" strokeWidth="1.2" className="text-black/65">
+              {callouts.map((callout, index) => {
+                const [startX, startY] = CALLOUT_STARTS[index];
+                const [targetX, targetY] = callout.target;
+                const middleY = Math.max(startY + 50, targetY - 72);
+                return (
+                  <path
+                    key={callout.index}
+                    d={`M ${startX} ${startY} V ${middleY} L ${targetX} ${targetY}`}
+                  />
+                );
+              })}
             </g>
-            <g fill="currentColor" className="text-black">
-              <circle cx="526" cy="226" r="4" />
-              <circle cx="672" cy="294" r="4" />
-              <circle cx="534" cy="474" r="4" />
-              <circle cx="660" cy="574" r="4" />
+            <g fill="white" stroke="currentColor" strokeWidth="2" className="text-black">
+              {callouts.map((callout) => (
+                <circle key={callout.index} cx={callout.target[0]} cy={callout.target[1]} r="5" />
+              ))}
             </g>
           </svg>
 
-          {layers.map((layer) => (
-            <article
-              key={layer.index}
-              className={`group absolute w-[25%] ${placementClasses[layer.placement]}`}
-            >
-              <div
-                className={`mb-4 flex items-center gap-3 ${layer.placement.endsWith("right") ? "flex-row-reverse" : ""}`}
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-black/25 text-[9px] font-semibold transition-colors duration-500 group-hover:border-black group-hover:bg-black group-hover:text-white">
-                  {layer.index}
-                </span>
-                <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-black/45">
-                  {layer.label}
-                </span>
-              </div>
-              <h3 className="font-display text-3xl leading-none xl:text-[2.15rem]">
-                {layer.title}
-              </h3>
-              <p
-                className={`mt-3 max-w-[270px] text-xs leading-5 text-black/52 ${layer.placement.endsWith("right") ? "ml-auto" : ""}`}
-              >
-                {layer.detail}
-              </p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-10 lg:hidden">
-          <figure className="relative mx-auto aspect-[4/5] max-w-[420px]">
-            <span className="absolute inset-x-[24%] bottom-[5%] h-[5%] rounded-[50%] bg-black/12 blur-lg" />
-            <img
-              src={bottle}
-              alt={`${product.name} attar bottle`}
-              className="relative h-full w-full object-contain px-10 drop-shadow-[0_22px_20px_rgba(0,0,0,0.12)]"
-              loading="lazy"
-              decoding="async"
-            />
-          </figure>
-
-          <div className="grid gap-px overflow-hidden border border-black/15 bg-black/15 sm:grid-cols-2">
-            {layers.map((layer) => (
-              <article key={layer.index} className="bg-[#eee8de] p-5 sm:min-h-48 sm:p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-black/42">
-                    {layer.label}
+          <div className="absolute left-[39%] right-[2.5%] top-[6%] grid grid-cols-3 gap-[4%]">
+            {callouts.map((callout) => (
+              <article key={callout.index} className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full border border-black/40 bg-white text-[7px] font-semibold">
+                    {callout.index}
                   </span>
-                  <span className="text-[9px] text-black/35">{layer.index}</span>
+                  <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-black/55">
+                    {callout.label}
+                  </p>
                 </div>
-                <h3 className="mt-5 font-display text-2xl leading-none">{layer.title}</h3>
-                <p className="mt-3 text-xs leading-5 text-black/55">{layer.detail}</p>
+                <h3 className="mt-2 max-w-[220px] font-display text-[18px] leading-[0.95] tracking-[-0.02em] lg:text-[25px]">
+                  {callout.title}
+                </h3>
               </article>
             ))}
           </div>
         </div>
-
-        <p className="mt-8 text-center text-[9px] uppercase tracking-[0.12em] text-black/38">
-          {product.volume || "6 ml"} concentrated perfume oil · Made in{" "}
-          {product.countryOfOrigin || "India"}
-        </p>
       </div>
+
+      <p className="mt-3 px-5 text-right text-[9px] uppercase tracking-[0.12em] text-black/42 sm:hidden">
+        Swipe to follow the notes →
+      </p>
     </section>
   );
 }
