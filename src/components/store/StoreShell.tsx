@@ -1,9 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Heart, Menu, PackageSearch, ShoppingBag, UserRound, X } from "lucide-react";
+import { Menu, ShoppingBag, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SearchSelect } from "@/components/ui/search-select";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { PRODUCTS } from "@/lib/products";
 import { CartDrawer } from "./CartDrawer";
 import { useCart } from "./CartContext";
 import { Wordmark } from "./Wordmark";
@@ -200,141 +199,68 @@ function SiteHeader() {
       <div
         aria-hidden={!menuOpen}
         inert={!menuOpen}
-        className={`fixed inset-0 z-40 overflow-x-hidden overflow-y-auto bg-[#080808] px-5 pb-10 pt-26 text-white transition-[opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-8 sm:pt-32 ${
+        className={`fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-[#080808] px-6 pb-8 pt-24 text-white transition-[opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           menuOpen ? "visible opacity-100" : "invisible pointer-events-none opacity-0"
         }`}
       >
-        <nav
-          aria-label="Main navigation"
-          className={`store-menu-links mx-auto grid w-full max-w-6xl gap-12 transition-[opacity,translate] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 ${
-            menuOpen ? "menu-open translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+        <div
+          className={`flex w-full max-w-sm flex-col items-center text-center transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            menuOpen ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
           }`}
         >
-          <section>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/40">
-              Explore BADR
+          <nav aria-label="Main navigation" className="grid w-full gap-1">
+            <Link to="/" onClick={closeMenu} className="menu-center-link">
+              Home
+            </Link>
+            <Link to="/shop" onClick={closeMenu} className="menu-center-link">
+              Shop
+            </Link>
+            <Link to="/account" onClick={closeMenu} className="menu-center-link">
+              Account
+            </Link>
+            <Link to="/wishlist" onClick={closeMenu} className="menu-center-link">
+              Wishlist
+            </Link>
+            <Link
+              to="/track-order"
+              search={{ order: undefined, email: undefined }}
+              onClick={closeMenu}
+              className="menu-center-link"
+            >
+              Track order
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                closeMenu();
+                cart.setOpen(true);
+              }}
+              className="menu-center-link"
+            >
+              Bag{cart.count ? ` (${cart.count})` : ""}
+            </button>
+          </nav>
+
+          <div className="mt-10 w-full max-w-60 text-left text-black">
+            <SearchSelect
+              label="Display currency"
+              value={currency}
+              options={currencies.map((code) => ({
+                value: code,
+                label: `${code} — ${CURRENCY_NAMES[code] || code}`,
+                keywords: CURRENCY_NAMES[code],
+              }))}
+              searchPlaceholder="Search currencies…"
+              onValueChange={setCurrency}
+              triggerClassName="h-10 border-white/25 bg-white text-[10px]"
+            />
+            <p className="mt-2 text-center text-[8px] leading-4 text-white/35">
+              {rateSource === "exchangerate-api.com"
+                ? "Converted from INR using live rates."
+                : "Showing INR while live rates are unavailable."}
             </p>
-            <div className="mt-5 divide-y divide-white/15 border-y border-white/15">
-              <Link
-                to="/shop"
-                onClick={closeMenu}
-                className="menu-feature-link group flex items-center justify-between gap-5 py-5 sm:py-7"
-              >
-                <span className="min-w-0">
-                  <strong className="block font-display text-4xl leading-none sm:text-6xl">
-                    Shop collection
-                  </strong>
-                  <small className="mt-2 block text-xs text-white/45">
-                    Browse every scent, note and mood.
-                  </small>
-                </span>
-                <ArrowUpRight className="h-5 w-5 shrink-0 transition-[translate,rotate] duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:rotate-6 sm:h-6 sm:w-6" />
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  closeMenu();
-                  cart.setOpen(true);
-                }}
-                className="menu-feature-link group flex w-full items-center justify-between gap-5 py-5 text-left sm:py-7"
-              >
-                <span className="min-w-0">
-                  <strong className="block font-display text-4xl leading-none sm:text-6xl">
-                    Your bag
-                  </strong>
-                  <small className="mt-2 block text-xs text-white/45">
-                    {cart.count
-                      ? `${cart.count} item${cart.count === 1 ? "" : "s"} waiting.`
-                      : "Your bag is ready when you are."}
-                  </small>
-                </span>
-                <ShoppingBag className="h-6 w-6 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              </button>
-            </div>
-
-            <div className="mt-7 grid grid-cols-3 gap-3 text-center text-[9px] font-semibold uppercase tracking-[0.14em] text-white/65">
-              <Link
-                to="/account"
-                onClick={closeMenu}
-                className="menu-utility-link flex flex-col items-center gap-2 py-3 hover:text-white"
-              >
-                <UserRound className="h-4 w-4" /> Account
-              </Link>
-              <Link
-                to="/wishlist"
-                onClick={closeMenu}
-                className="menu-utility-link flex flex-col items-center gap-2 py-3 hover:text-white"
-              >
-                <Heart className="h-4 w-4" /> Wishlist
-              </Link>
-              <Link
-                to="/track-order"
-                search={{ order: undefined, email: undefined }}
-                onClick={closeMenu}
-                className="menu-utility-link flex flex-col items-center gap-2 py-3 hover:text-white"
-              >
-                <PackageSearch className="h-4 w-4" /> Track
-              </Link>
-            </div>
-
-            <div className="mt-8 max-w-md bg-white p-4 text-black">
-              <SearchSelect
-                label="Display currency"
-                value={currency}
-                options={currencies.map((code) => ({
-                  value: code,
-                  label: `${code} — ${CURRENCY_NAMES[code] || code}`,
-                  keywords: CURRENCY_NAMES[code],
-                }))}
-                searchPlaceholder="Search currencies…"
-                onValueChange={setCurrency}
-                triggerClassName="h-11 bg-white"
-              />
-              <p className="mt-2 text-[9px] leading-4 text-black/48">
-                {rateSource === "exchangerate-api.com"
-                  ? "Converted from INR using live rates."
-                  : "Showing INR while live rates are unavailable."}
-              </p>
-            </div>
-          </section>
-
-          <section className="lg:border-l lg:border-white/15 lg:pl-16">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/40">
-                  Five signatures
-                </p>
-                <h2 className="mt-3 font-display text-3xl sm:text-4xl">Choose your mood.</h2>
-              </div>
-              <Link
-                to="/"
-                onClick={closeMenu}
-                className="motion-link text-[9px] font-semibold uppercase tracking-[0.18em] text-white/45 hover:text-white"
-              >
-                Home
-              </Link>
-            </div>
-            <div className="mt-6 divide-y divide-white/12">
-              {PRODUCTS.map((product) => (
-                <Link
-                  key={product.id}
-                  to="/product/$id"
-                  params={{ id: product.id }}
-                  onClick={closeMenu}
-                  className="group flex items-center justify-between gap-5 py-4 sm:py-5"
-                >
-                  <span>
-                    <strong className="font-display text-2xl sm:text-4xl">{product.name}</strong>
-                    <small className="mt-1 block text-[9px] uppercase tracking-[0.14em] text-white/35">
-                      {product.tag}
-                    </small>
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-white/35 transition-[translate,color] duration-300 group-hover:translate-x-1 group-hover:text-white" />
-                </Link>
-              ))}
-            </div>
-          </section>
-        </nav>
+          </div>
+        </div>
       </div>
     </>
   );
