@@ -80,9 +80,16 @@ import {
   type AdminReview,
   type AdminCategory,
   type ShippingRate,
+  getHomepageFilmConfig,
+  saveHomepageFilmConfig,
 } from "@/services/adminService";
 import type { Product } from "@/services/productService";
 import { PRODUCTS as storefrontCatalog } from "@/lib/products";
+import {
+  DEFAULT_HOMEPAGE_FILM_CONFIG,
+  HOMEPAGE_FILM_PLACEMENTS,
+  type HomepageFilmConfig,
+} from "@/lib/homepageFilm";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -2518,10 +2525,98 @@ function HomepageAdminPanel({
   onEdit: (product: Product) => void;
   onPatch: (product: Product, patch: Partial<ProductInput>) => Promise<void>;
 }) {
+  const [filmConfig, setFilmConfig] = useState<HomepageFilmConfig>(DEFAULT_HOMEPAGE_FILM_CONFIG);
+  const [filmLoading, setFilmLoading] = useState(true);
+  const [filmSaving, setFilmSaving] = useState(false);
+  const [filmUploading, setFilmUploading] = useState<"poster" | "video" | null>(null);
   const featured = products.filter((product) => product.is_featured);
   const newArrivals = products.filter((product) => product.is_new_arrival);
   const bestsellers = products.filter((product) => product.is_bestseller);
   const rows = products.filter((product) => product.is_active !== false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getHomepageFilmConfig()
+      .then((config) => {
+        if (!cancelled) setFilmConfig(config);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          notify({
+            title: "Could not load the campaign film settings",
+            description: error instanceof Error ? error.message : "Try refreshing the admin page.",
+            variant: "destructive",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFilmLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const uploadFilmMedia = async (file: File, kind: "poster" | "video") => {
+    const isImage =
+      file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|webp)$/i.test(file.name);
+    const isWebm = file.type === "video/webm" || /\.webm$/i.test(file.name);
+    const isMp4 = file.type === "video/mp4" || /\.mp4$/i.test(file.name);
+    if (kind === "poster" && !isImage) {
+      notify({ title: "Choose an image for the poster", variant: "destructive" });
+      return;
+    }
+    if (kind === "video" && !isWebm && !isMp4) {
+      notify({ title: "Choose an MP4 or WebM film", variant: "destructive" });
+      return;
+    }
+    setFilmUploading(kind);
+    try {
+      const url = await uploadProductImage(file);
+      if (!url) throw new Error("Upload finished without a public media URL.");
+      setFilmConfig((current) =>
+        kind === "poster"
+          ? { ...current, posterUrl: url }
+          : isWebm
+            ? { ...current, videoWebmUrl: url }
+            : { ...current, videoMp4Url: url },
+      );
+      notify({
+        title: kind === "poster" ? "Poster uploaded" : "Film uploaded",
+        description: "Press Save film settings to publish it.",
+      });
+    } catch (error) {
+      notify({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Could not upload this file.",
+        variant: "destructive",
+      });
+    } finally {
+      setFilmUploading(null);
+    }
+  };
+
+  const saveFilm = async () => {
+    setFilmSaving(true);
+    try {
+      const saved = await saveHomepageFilmConfig(filmConfig);
+      setFilmConfig(saved);
+      notify({
+        title: "Campaign film published",
+        description: "The storefront updates automatically for visitors.",
+      });
+    } catch (error) {
+      notify({
+        title: "Could not save the film",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFilmSaving(false);
+    }
+  };
+
+  const previewMobileFit = filmConfig.mobileFit === "contain" ? "object-contain" : "object-cover";
 
   return (
     <div className="space-y-6">
@@ -2546,6 +2641,200 @@ function HomepageAdminPanel({
           Icon={TrendingUp}
         />
       </div>
+
+      <Section
+        title="Vertical campaign film"
+        subtitle="Replace the poster or film and place the section anywhere on the homepage."
+      >
+        <div className="grid gap-6 lg:grid-cols-[minmax(220px,320px)_1fr]">
+          <div className="overflow-hidden bg-black">
+            <video
+              key={`${filmConfig.videoWebmUrl ?? ""}|${filmConfig.videoMp4Url ?? ""}`}
+              className={`aspect-[9/16] max-h-[560px] w-full ${previewMobileFit}`}
+              style={{ objectPosition: `center ${filmConfig.focalPosition}` }}
+              poster={filmConfig.posterUrl}
+              muted
+              loop
+              playsInline
+              controls
+              preload="metadata"
+            >
+              {filmConfig.videoWebmUrl && (
+                <source src={filmConfig.videoWebmUrl} type="video/webm" />
+              )}
+              {filmConfig.videoMp4Url && <source src={filmConfig.videoMp4Url} type="video/mp4" />}
+            </video>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-[rgb(var(--vibe-border))] p-3">
+              <div>
+                <p className="text-sm font-medium">Show on storefront</p>
+                <p className="text-xs text-[rgb(var(--vibe-muted))]">
+                  Hide it temporarily without losing the uploaded media.
+                </p>
+              </div>
+              <ToggleButton
+                active={filmConfig.enabled}
+                onClick={() =>
+                  setFilmConfig((current) => ({ ...current, enabled: !current.enabled }))
+                }
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AdminField label="Homepage position">
+                <select
+                  className="admin-input"
+                  value={filmConfig.placement}
+                  onChange={(event) =>
+                    setFilmConfig((current) => ({
+                      ...current,
+                      placement: event.target.value as HomepageFilmConfig["placement"],
+                    }))
+                  }
+                  data-testid="admin-film-placement-select"
+                >
+                  {HOMEPAGE_FILM_PLACEMENTS.map((placement) => (
+                    <option key={placement.value} value={placement.value}>
+                      {placement.label}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
+              <AdminField label="Vertical focus">
+                <select
+                  className="admin-input"
+                  value={filmConfig.focalPosition}
+                  onChange={(event) =>
+                    setFilmConfig((current) => ({
+                      ...current,
+                      focalPosition: event.target.value as HomepageFilmConfig["focalPosition"],
+                    }))
+                  }
+                  data-testid="admin-film-focus-select"
+                >
+                  <option value="top">Top</option>
+                  <option value="center">Centre</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+              </AdminField>
+              <AdminField label="Phone fit">
+                <select
+                  className="admin-input"
+                  value={filmConfig.mobileFit}
+                  onChange={(event) =>
+                    setFilmConfig((current) => ({
+                      ...current,
+                      mobileFit: event.target.value as HomepageFilmConfig["mobileFit"],
+                    }))
+                  }
+                >
+                  <option value="cover">Fill screen</option>
+                  <option value="contain">Show full frame</option>
+                </select>
+              </AdminField>
+              <AdminField label="Desktop fit">
+                <select
+                  className="admin-input"
+                  value={filmConfig.desktopFit}
+                  onChange={(event) =>
+                    setFilmConfig((current) => ({
+                      ...current,
+                      desktopFit: event.target.value as HomepageFilmConfig["desktopFit"],
+                    }))
+                  }
+                >
+                  <option value="contain">Show full frame</option>
+                  <option value="cover">Fill screen</option>
+                </select>
+              </AdminField>
+            </div>
+
+            <AdminField label="Poster URL">
+              <input
+                className="admin-input"
+                type="url"
+                value={filmConfig.posterUrl}
+                onChange={(event) =>
+                  setFilmConfig((current) => ({ ...current, posterUrl: event.target.value }))
+                }
+                data-testid="admin-film-poster-url-input"
+              />
+            </AdminField>
+            <AdminField label="WebM URL (recommended)">
+              <input
+                className="admin-input"
+                type="url"
+                value={filmConfig.videoWebmUrl ?? ""}
+                onChange={(event) =>
+                  setFilmConfig((current) => ({
+                    ...current,
+                    videoWebmUrl: event.target.value || null,
+                  }))
+                }
+              />
+            </AdminField>
+            <AdminField label="MP4 fallback URL">
+              <input
+                className="admin-input"
+                type="url"
+                value={filmConfig.videoMp4Url ?? ""}
+                onChange={(event) =>
+                  setFilmConfig((current) => ({
+                    ...current,
+                    videoMp4Url: event.target.value || null,
+                  }))
+                }
+              />
+            </AdminField>
+
+            <div className="flex flex-wrap gap-2">
+              <label className="admin-button admin-button-secondary cursor-pointer">
+                <ImageIcon className="h-4 w-4" />
+                {filmUploading === "poster" ? "Uploading poster…" : "Upload poster"}
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                  disabled={filmUploading !== null}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadFilmMedia(file, "poster");
+                    event.target.value = "";
+                  }}
+                  data-testid="admin-film-poster-file-input"
+                />
+              </label>
+              <label className="admin-button admin-button-secondary cursor-pointer">
+                <Upload className="h-4 w-4" />
+                {filmUploading === "video" ? "Uploading film…" : "Upload MP4 / WebM"}
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept="video/mp4,video/webm"
+                  disabled={filmUploading !== null}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadFilmMedia(file, "video");
+                    event.target.value = "";
+                  }}
+                  data-testid="admin-film-video-file-input"
+                />
+              </label>
+              <button
+                type="button"
+                className="admin-button"
+                disabled={filmLoading || filmSaving || filmUploading !== null}
+                onClick={() => void saveFilm()}
+                data-testid="admin-film-save-button"
+              >
+                {filmSaving ? "Publishing…" : "Save film settings"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Section>
 
       <Section
         title="Homepage placement"

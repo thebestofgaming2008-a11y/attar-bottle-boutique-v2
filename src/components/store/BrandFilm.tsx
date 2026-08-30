@@ -1,14 +1,13 @@
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-const MEDIA_BASE = "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/campaign";
+import type { HomepageFilmConfig } from "@/lib/homepageFilm";
 
 /**
  * The Oud Zafar launch film. It fills a phone screen, stays uncropped on wider
  * displays, and pauses whenever it is outside the viewport to avoid wasting
  * bandwidth, battery or GPU time farther down the page.
  */
-export function BrandFilm() {
+export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const manuallyPaused = useRef(false);
   const [paused, setPaused] = useState(false);
@@ -40,7 +39,11 @@ export function BrandFilm() {
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, []);
+  }, [config.videoMp4Url, config.videoWebmUrl]);
+
+  const mobileFit = config.mobileFit === "contain" ? "object-contain" : "object-cover";
+  const desktopFit = config.desktopFit === "cover" ? "sm:object-cover" : "sm:object-contain";
+  const objectPosition = `center ${config.focalPosition}`;
 
   return (
     <section
@@ -48,9 +51,11 @@ export function BrandFilm() {
       className="relative h-[100svh] min-h-[620px] max-h-[1200px] overflow-hidden bg-black"
     >
       <video
+        key={`${config.videoWebmUrl ?? ""}|${config.videoMp4Url ?? ""}`}
         ref={videoRef}
-        className="h-full w-full object-cover sm:object-contain"
-        poster={`${MEDIA_BASE}/oud-zafar-film-v133-poster.webp`}
+        className={`h-full w-full ${mobileFit} ${desktopFit}`}
+        style={{ objectPosition }}
+        poster={config.posterUrl}
         muted
         loop
         playsInline
@@ -59,8 +64,8 @@ export function BrandFilm() {
         disablePictureInPicture
         aria-hidden="true"
       >
-        <source src={`${MEDIA_BASE}/oud-zafar-film-v133.webm`} type="video/webm" />
-        <source src={`${MEDIA_BASE}/oud-zafar-film-v133.mp4`} type="video/mp4" />
+        {config.videoWebmUrl && <source src={config.videoWebmUrl} type="video/webm" />}
+        {config.videoMp4Url && <source src={config.videoMp4Url} type="video/mp4" />}
       </video>
       <button
         type="button"

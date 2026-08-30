@@ -1,4 +1,7 @@
+import { Fragment } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { PRODUCTS, storefrontProductFromSource, type Product } from "@/lib/products";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { Hero } from "@/components/store/Hero";
@@ -6,6 +9,7 @@ import { BrandFilm } from "@/components/store/BrandFilm";
 import { ScentChapter } from "@/components/store/ScentChapter";
 import { ProductCard } from "@/components/store/ProductCard";
 import { listActiveProducts } from "@/services/productService";
+import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmPlacement } from "@/lib/homepageFilm";
 
 const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://houseofbadr.com";
 
@@ -53,24 +57,32 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { collection } = Route.useLoaderData();
+  const filmConfig = useQuery(api.homepage.getFilmConfig, {}) ?? DEFAULT_HOMEPAGE_FILM_CONFIG;
   const collectionById = new Map(collection.map((product) => [product.id, product]));
   const chapterProducts = PRODUCTS.flatMap((product) => {
     const current = collectionById.get(product.id);
     return current ? [current] : [];
   });
+  const filmAt = (placement: HomepageFilmPlacement) =>
+    filmConfig.enabled && filmConfig.placement === placement ? (
+      <BrandFilm config={filmConfig} />
+    ) : null;
   return (
     <StoreShell>
       <Hero products={collection} />
 
-      <BrandFilm />
+      {filmAt("after_hero")}
 
-      {chapterProducts.map((p) => (
-        <div key={p.id}>
+      {chapterProducts.map((p, index) => (
+        <Fragment key={p.id}>
           <ScentChapter product={p} />
-        </div>
+          {filmAt(`after_scent_${index + 1}` as HomepageFilmPlacement)}
+        </Fragment>
       ))}
 
+      {filmAt("before_shop")}
       <CollectionSection products={collection} />
+      {filmAt("after_shop")}
 
       <SiteFooter />
     </StoreShell>

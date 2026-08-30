@@ -2,6 +2,7 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { convex } from "@/integrations/convex/client";
 import { clearProductListCache, type Product } from "./productService";
+import type { HomepageFilmConfig } from "@/lib/homepageFilm";
 
 export const PRODUCT_BUCKET = "product-images";
 
@@ -342,6 +343,16 @@ export async function getStoreSettings(): Promise<Record<string, unknown>> {
 
 export async function saveStoreSettings(settings: Record<string, unknown>): Promise<boolean> {
   return await convex.mutation(api.admin.saveStoreSettings, { settings });
+}
+
+export async function getHomepageFilmConfig(): Promise<HomepageFilmConfig> {
+  return (await convex.query(api.homepage.getFilmConfig, {})) as HomepageFilmConfig;
+}
+
+export async function saveHomepageFilmConfig(
+  config: HomepageFilmConfig,
+): Promise<HomepageFilmConfig> {
+  return (await convex.mutation(api.homepage.saveFilmConfig, { config })) as HomepageFilmConfig;
 }
 
 export interface AdminCategory {

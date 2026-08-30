@@ -12,6 +12,7 @@ import type * as addresses from "../addresses.js";
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as homepage from "../homepage.js";
 import type * as http from "../http.js";
 import type * as lib from "../lib.js";
 import type * as media from "../media.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
   crons: typeof crons;
+  homepage: typeof homepage;
   http: typeof http;
   lib: typeof lib;
   media: typeof media;
