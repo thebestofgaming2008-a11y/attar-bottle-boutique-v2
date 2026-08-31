@@ -831,6 +831,73 @@ const Admin = () => {
 
             {!loading && !adminLoadError && tab === "dash" && (
               <>
+                <section
+                  className="vibe-card overflow-hidden border-black bg-white"
+                  data-testid="admin-manage-store-actions"
+                >
+                  <div className="border-b border-[rgb(var(--vibe-border))] p-4 sm:p-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--vibe-muted))]">
+                      Manage store
+                    </p>
+                    <h2 className="mt-1 text-xl font-semibold text-[#111827]">
+                      What do you want to change?
+                    </h2>
+                    <p className="mt-1 text-sm text-[#6B7280]">
+                      Every editable area is one tap away. Changes publish only after you press its
+                      save button.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 divide-y divide-[rgb(var(--vibe-border))] sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+                    {[
+                      {
+                        key: "homepage" as const,
+                        title: "Edit homepage",
+                        detail: "Poster, film and featured products",
+                        Icon: Store,
+                      },
+                      {
+                        key: "products" as const,
+                        title: "Edit products",
+                        detail: "Photos, copy, price and availability",
+                        Icon: Package,
+                      },
+                      {
+                        key: "orders" as const,
+                        title: "Manage orders",
+                        detail: "Status, tracking and WhatsApp",
+                        Icon: ShoppingBag,
+                      },
+                      {
+                        key: "inventory" as const,
+                        title: "Update stock",
+                        detail: "Quantity and active products",
+                        Icon: Boxes,
+                      },
+                    ].map(({ key, title, detail, Icon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setTab(key)}
+                        className="group flex min-h-24 items-center gap-3 p-4 text-left transition-colors hover:bg-[#F9FAFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black sm:min-h-32 sm:items-start sm:flex-col"
+                        data-testid={`admin-manage-${key}-button`}
+                      >
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#111827] text-white">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1 text-sm font-semibold text-[#111827]">
+                            {title}
+                            <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                          </span>
+                          <span className="mt-0.5 block text-xs leading-relaxed text-[#6B7280]">
+                            {detail}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
                 <section data-testid="admin-needs-attention">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-[12px] font-medium uppercase tracking-widest text-[rgb(var(--vibe-muted))]">
