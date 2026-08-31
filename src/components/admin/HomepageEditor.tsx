@@ -88,6 +88,7 @@ export function HomepageEditor({ products }: { products: AdminProduct[] }) {
   });
   const [device, setDevice] = useState<PreviewDevice>("mobile");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [visualPanelOpen, setVisualPanelOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("loading");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
@@ -282,6 +283,8 @@ export function HomepageEditor({ products }: { products: AdminProduct[] }) {
     toast.success("Promotional banner added to the private draft");
   };
 
+  const closeVisualPanel = useCallback(() => setVisualPanelOpen(false), []);
+
   const performConfirmedAction = async () => {
     if (!confirmAction || !editorState) return;
     setActionBusy(true);
@@ -339,8 +342,8 @@ export function HomepageEditor({ products }: { products: AdminProduct[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="sticky top-0 z-30 border border-[rgb(var(--vibe-border))] bg-white/95 p-3 shadow-sm backdrop-blur sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <div className="sticky top-0 z-30 rounded-xl border border-[rgb(var(--vibe-border))] bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-base font-semibold">Homepage editor</h2>
             <p className="mt-0.5 text-xs text-[rgb(var(--vibe-muted))]">
@@ -355,37 +358,45 @@ export function HomepageEditor({ products }: { products: AdminProduct[] }) {
                       : "Draft saved · unpublished changes"}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="grid flex-1 grid-cols-2 border border-[rgb(var(--vibe-border))] p-1 sm:flex-none">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="grid grid-cols-2 rounded-lg border border-[rgb(var(--vibe-border))] bg-zinc-50 p-1">
               <ModeButton
                 active={mode === "visual"}
-                onClick={() => setModeAndRemember("visual", setMode)}
+                onClick={() => {
+                  setVisualPanelOpen(false);
+                  setModeAndRemember("visual", setMode);
+                }}
               >
-                <Eye className="h-4 w-4" /> Visual
+                <Eye className="h-4 w-4" /> Preview
               </ModeButton>
               <ModeButton
                 active={mode === "form"}
-                onClick={() => setModeAndRemember("form", setMode)}
+                onClick={() => {
+                  setVisualPanelOpen(false);
+                  setModeAndRemember("form", setMode);
+                }}
               >
-                <LayoutList className="h-4 w-4" /> Forms
+                <LayoutList className="h-4 w-4" /> Section list
               </ModeButton>
             </div>
-            <button
-              type="button"
-              className="admin-button admin-button-secondary"
-              disabled={publishedMatchesDraft || actionBusy}
-              onClick={() => setConfirmAction({ type: "discard" })}
-            >
-              Discard
-            </button>
-            <button
-              type="button"
-              className="admin-button"
-              disabled={publishedMatchesDraft || actionBusy || saveStatus === "error"}
-              onClick={() => setConfirmAction({ type: "publish" })}
-            >
-              <Save className="h-4 w-4" /> Publish
-            </button>
+            <div className="grid grid-cols-2 gap-2 border-t border-[rgb(var(--vibe-border))] pt-3 sm:flex sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+              <button
+                type="button"
+                className="admin-button admin-button-secondary"
+                disabled={publishedMatchesDraft || actionBusy}
+                onClick={() => setConfirmAction({ type: "discard" })}
+              >
+                Discard draft
+              </button>
+              <button
+                type="button"
+                className="admin-button"
+                disabled={publishedMatchesDraft || actionBusy || saveStatus === "error"}
+                onClick={() => setConfirmAction({ type: "publish" })}
+              >
+                <Save className="h-4 w-4" /> Publish changes
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -397,10 +408,14 @@ export function HomepageEditor({ products }: { products: AdminProduct[] }) {
           device={device}
           onDeviceChange={setDevice}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={(id) => {
+            setSelectedId(id);
+            setVisualPanelOpen(true);
+          }}
           selectedSection={selectedSection}
           updateSection={updateSection}
-          uploadBusy={actionBusy}
+          panelOpen={visualPanelOpen}
+          onClosePanel={closeVisualPanel}
         />
       ) : (
         <FormEditor
@@ -416,7 +431,7 @@ export function HomepageEditor({ products }: { products: AdminProduct[] }) {
         />
       )}
 
-      <div className="flex flex-col gap-3 border border-dashed border-[rgb(var(--vibe-border))] bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-xl border border-dashed border-[rgb(var(--vibe-border))] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium">Add another homepage banner</p>
           <p className="text-xs text-[rgb(var(--vibe-muted))]">
@@ -428,7 +443,7 @@ export function HomepageEditor({ products }: { products: AdminProduct[] }) {
         </button>
       </div>
 
-      <details className="border border-[rgb(var(--vibe-border))] bg-white">
+      <details className="rounded-xl border border-[rgb(var(--vibe-border))] bg-white">
         <summary className="cursor-pointer list-none p-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
           Published versions ({editorState.revisions.length})
         </summary>
@@ -501,8 +516,10 @@ function ModeButton({
     <button
       type="button"
       className={cn(
-        "inline-flex min-h-9 items-center justify-center gap-2 px-3 text-xs font-medium",
-        active ? "bg-black text-white" : "text-[rgb(var(--vibe-muted))] hover:bg-black/5",
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3.5 text-xs font-semibold transition-colors",
+        active
+          ? "bg-black text-white shadow-sm"
+          : "text-[rgb(var(--vibe-muted))] hover:bg-black/5 hover:text-black",
       )}
       aria-pressed={active}
       onClick={onClick}
@@ -521,6 +538,8 @@ function VisualEditor({
   onSelect,
   selectedSection,
   updateSection,
+  panelOpen,
+  onClosePanel,
 }: {
   layout: HomepageLayout;
   products: ReturnType<typeof storefrontProductFromSource>[];
@@ -530,32 +549,99 @@ function VisualEditor({
   onSelect: (id: string) => void;
   selectedSection: HomepageSection | null;
   updateSection: (id: string, update: (section: HomepageSection) => HomepageSection) => void;
-  uploadBusy: boolean;
+  panelOpen: boolean;
+  onClosePanel: () => void;
 }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <div className="min-w-0 border border-[rgb(var(--vibe-border))] bg-[#e8e8e8] p-3 sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="rounded-xl border border-[rgb(var(--vibe-border))] bg-white p-3 shadow-sm sm:p-5">
+      <div className="rounded-lg bg-[#ededed] p-3 sm:p-5">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium">Click any section to edit it</p>
-            <p className="text-xs text-[rgb(var(--vibe-muted))]">
-              This preview uses the private draft.
+            <p className="text-sm font-semibold">Homepage preview</p>
+            <p className="mt-0.5 text-xs text-[rgb(var(--vibe-muted))]">
+              Click a section and its settings will open. Visitors cannot see this draft.
             </p>
           </div>
-          <div className="grid grid-cols-2 border border-[rgb(var(--vibe-border))] bg-white p-1">
+          <div className="grid grid-cols-2 rounded-lg border border-[rgb(var(--vibe-border))] bg-white p-1">
             <ModeButton active={device === "mobile"} onClick={() => onDeviceChange("mobile")}>
-              <Smartphone className="h-4 w-4" />
+              <Smartphone className="h-4 w-4" /> Phone
             </ModeButton>
             <ModeButton active={device === "desktop"} onClick={() => onDeviceChange("desktop")}>
-              <Monitor className="h-4 w-4" />
+              <Monitor className="h-4 w-4" /> Desktop
             </ModeButton>
           </div>
         </div>
+        <ScaledHomepagePreview
+          layout={layout}
+          products={products}
+          device={device}
+          selectedId={selectedId}
+          onSelect={onSelect}
+        />
+      </div>
+
+      {panelOpen && selectedSection ? (
+        <SectionEditorDrawer
+          section={selectedSection}
+          products={products}
+          onClose={onClosePanel}
+          onChange={(next) => updateSection(selectedSection.id, () => next)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ScaledHomepagePreview({
+  layout,
+  products,
+  device,
+  selectedId,
+  onSelect,
+}: {
+  layout: HomepageLayout;
+  products: ReturnType<typeof storefrontProductFromSource>[];
+  device: PreviewDevice;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [previewSize, setPreviewSize] = useState({ scale: 1, height: 600 });
+  const canvasWidth = device === "mobile" ? 390 : 1280;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const canvas = canvasRef.current;
+    if (!viewport || !canvas) return;
+    const measure = () => {
+      const scale = Math.min(1, viewport.clientWidth / canvasWidth);
+      setPreviewSize({ scale, height: Math.max(480, canvas.scrollHeight * scale) });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [canvasWidth, layout]);
+
+  return (
+    <div
+      ref={viewportRef}
+      className={cn(
+        "mx-auto max-h-[72vh] overflow-auto rounded-md bg-white shadow-xl",
+        device === "mobile" ? "max-w-[390px]" : "w-full",
+      )}
+    >
+      <div className="relative overflow-hidden" style={{ height: previewSize.height }}>
         <div
-          className={cn(
-            "mx-auto max-h-[76vh] overflow-y-auto bg-white shadow-xl transition-[width]",
-            device === "mobile" ? "w-full max-w-[390px]" : "w-full",
-          )}
+          ref={canvasRef}
+          className="absolute left-0 top-0 bg-white"
+          style={{
+            width: canvasWidth,
+            transform: `scale(${previewSize.scale})`,
+            transformOrigin: "top left",
+          }}
         >
           <HomepageLayoutRenderer
             layout={layout}
@@ -564,19 +650,68 @@ function VisualEditor({
           />
         </div>
       </div>
-      <div className="border border-[rgb(var(--vibe-border))] bg-white p-4 xl:max-h-[82vh] xl:overflow-y-auto">
-        {selectedSection ? (
-          <SectionEditor
-            section={selectedSection}
-            products={products}
-            onChange={(next) => updateSection(selectedSection.id, () => next)}
-          />
-        ) : (
-          <div className="grid min-h-48 place-items-center text-center text-sm text-[rgb(var(--vibe-muted))]">
-            Choose a section in the preview.
+    </div>
+  );
+}
+
+function SectionEditorDrawer({
+  section,
+  products,
+  onChange,
+  onClose,
+}: {
+  section: HomepageSection;
+  products: ReturnType<typeof storefrontProductFromSource>[];
+  onChange: (section: HomepageSection) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[80]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit homepage section"
+    >
+      <button
+        type="button"
+        className="admin-drawer-backdrop absolute inset-0 bg-black/35"
+        aria-label="Close section editor"
+        onClick={onClose}
+      />
+      <aside className="admin-drawer-panel absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl sm:max-w-[560px]">
+        <header className="flex min-h-16 items-center justify-between gap-4 border-b border-[rgb(var(--vibe-border))] px-5 sm:px-6">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">Edit {homepageSectionName(section)}</p>
+            <p className="text-xs text-[rgb(var(--vibe-muted))]">
+              Changes save to the private draft
+            </p>
           </div>
-        )}
-      </div>
+          <IconButton label="Close editor" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </IconButton>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
+          <SectionEditor section={section} products={products} onChange={onChange} compactHeading />
+        </div>
+        <footer className="border-t border-[rgb(var(--vibe-border))] bg-white px-5 py-4 sm:px-6">
+          <button type="button" className="admin-button w-full" onClick={onClose}>
+            Done editing
+          </button>
+        </footer>
+      </aside>
     </div>
   );
 }
@@ -603,103 +738,114 @@ function FormEditor({
   moveSectionTo: (id: string, targetId: string) => void;
 }) {
   return (
-    <div className="space-y-2">
-      {layout.sections.map((section, index) => {
-        const open = openId === section.id;
-        const locked = section.type === "hero";
-        return (
-          <article
-            key={section.id}
-            draggable={!locked}
-            onDragStart={() => setDraggedId(section.id)}
-            onDragEnd={() => setDraggedId(null)}
-            onDragOver={(event) => {
-              if (!locked) event.preventDefault();
-            }}
-            onDrop={() => {
-              if (draggedId) moveSectionTo(draggedId, section.id);
-              setDraggedId(null);
-            }}
-            className={cn(
-              "border bg-white",
-              open ? "border-black" : "border-[rgb(var(--vibe-border))]",
-              draggedId === section.id && "opacity-45",
-            )}
-          >
-            <div className="flex items-center gap-2 p-3 sm:p-4">
-              <GripVertical
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  locked ? "opacity-20" : "cursor-grab text-zinc-500",
-                )}
-              />
-              <button
-                type="button"
-                className="min-w-0 flex-1 text-left"
-                onClick={() => onOpen(open ? null : section.id)}
-              >
-                <span className="block truncate text-sm font-medium">
-                  {homepageSectionName(section)}
-                </span>
-                <span className="text-[11px] uppercase tracking-[0.12em] text-[rgb(var(--vibe-muted))]">
-                  {section.type} · {section.visible ? "visible" : "hidden"}
-                </span>
-              </button>
-              {!locked ? (
-                <div className="hidden gap-1 sm:flex">
-                  <IconButton
-                    label="Move up"
-                    disabled={index <= 1}
-                    onClick={() => moveSection(section.id, -1)}
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton
-                    label="Move down"
-                    disabled={index === layout.sections.length - 1}
-                    onClick={() => moveSection(section.id, 1)}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </IconButton>
+    <section className="overflow-hidden rounded-xl border border-[rgb(var(--vibe-border))] bg-white shadow-sm">
+      <div className="border-b border-[rgb(var(--vibe-border))] px-5 py-4 sm:px-6">
+        <h3 className="text-sm font-semibold">Homepage sections</h3>
+        <p className="mt-1 text-xs text-[rgb(var(--vibe-muted))]">
+          Open one section at a time. Drag sections to reorder them; the top section stays fixed.
+        </p>
+      </div>
+      <div className="space-y-3 bg-zinc-50/70 p-3 sm:p-4">
+        {layout.sections.map((section, index) => {
+          const open = openId === section.id;
+          const locked = section.type === "hero";
+          return (
+            <article
+              key={section.id}
+              draggable={!locked}
+              onDragStart={() => setDraggedId(section.id)}
+              onDragEnd={() => setDraggedId(null)}
+              onDragOver={(event) => {
+                if (!locked) event.preventDefault();
+              }}
+              onDrop={() => {
+                if (draggedId) moveSectionTo(draggedId, section.id);
+                setDraggedId(null);
+              }}
+              className={cn(
+                "overflow-hidden rounded-lg border bg-white shadow-sm transition-shadow",
+                open ? "border-black shadow-md" : "border-[rgb(var(--vibe-border))]",
+                draggedId === section.id && "opacity-45",
+              )}
+            >
+              <div className="flex items-center gap-2 p-3 sm:p-4">
+                <GripVertical
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    locked ? "opacity-20" : "cursor-grab text-zinc-500",
+                  )}
+                />
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  aria-expanded={open}
+                  onClick={() => onOpen(open ? null : section.id)}
+                >
+                  <span className="block truncate text-sm font-medium">
+                    {homepageSectionName(section)}
+                  </span>
+                  <span className="text-xs text-[rgb(var(--vibe-muted))]">
+                    {index === 0 ? "Top of homepage" : `Section ${index + 1}`} ·{" "}
+                    {section.visible ? "Shown" : "Hidden"}
+                  </span>
+                </button>
+                {!locked ? (
+                  <div className="hidden gap-1 sm:flex">
+                    <IconButton
+                      label="Move up"
+                      disabled={index <= 1}
+                      onClick={() => moveSection(section.id, -1)}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton
+                      label="Move down"
+                      disabled={index === layout.sections.length - 1}
+                      onClick={() => moveSection(section.id, 1)}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </IconButton>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold",
+                    section.visible
+                      ? "border-black bg-black text-white"
+                      : "border-zinc-300 text-zinc-600",
+                  )}
+                  onClick={() =>
+                    updateSection(section.id, (current) => ({
+                      ...current,
+                      visible: !current.visible,
+                    }))
+                  }
+                >
+                  {section.visible ? (
+                    <Eye className="h-3.5 w-3.5" />
+                  ) : (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  )}
+                  {section.visible ? "Shown" : "Hidden"}
+                </button>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+              </div>
+              {open ? (
+                <div className="border-t border-[rgb(var(--vibe-border))] p-5 sm:p-6">
+                  <SectionEditor
+                    section={section}
+                    products={products}
+                    onChange={(next) => updateSection(section.id, () => next)}
+                    compactHeading
+                  />
                 </div>
               ) : null}
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex h-8 items-center gap-1.5 border px-2.5 text-xs font-medium",
-                  section.visible
-                    ? "border-black bg-black text-white"
-                    : "border-zinc-300 text-zinc-600",
-                )}
-                onClick={() =>
-                  updateSection(section.id, (current) => ({
-                    ...current,
-                    visible: !current.visible,
-                  }))
-                }
-              >
-                {section.visible ? (
-                  <Eye className="h-3.5 w-3.5" />
-                ) : (
-                  <EyeOff className="h-3.5 w-3.5" />
-                )}
-                {section.visible ? "Shown" : "Hidden"}
-              </button>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-            </div>
-            {open ? (
-              <div className="border-t border-[rgb(var(--vibe-border))] p-4 sm:p-5">
-                <SectionEditor
-                  section={section}
-                  products={products}
-                  onChange={(next) => updateSection(section.id, () => next)}
-                />
-              </div>
-            ) : null}
-          </article>
-        );
-      })}
-    </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -707,10 +853,12 @@ function SectionEditor({
   section,
   products,
   onChange,
+  compactHeading = false,
 }: {
   section: HomepageSection;
   products: ReturnType<typeof storefrontProductFromSource>[];
   onChange: (section: HomepageSection) => void;
+  compactHeading?: boolean;
 }) {
   const [cropDevice, setCropDevice] = useState<PreviewDevice>("mobile");
   const [uploading, setUploading] = useState<string | null>(null);
@@ -745,8 +893,8 @@ function SectionEditor({
     }
   };
 
-  const heading = (
-    <div className="mb-5 flex items-start justify-between gap-3">
+  const heading = compactHeading ? null : (
+    <div className="mb-6 flex items-start justify-between gap-4 border-b border-[rgb(var(--vibe-border))] pb-5">
       <div>
         <p className="text-sm font-semibold">{homepageSectionName(section)}</p>
         <p className="mt-1 text-xs text-[rgb(var(--vibe-muted))]">
@@ -758,7 +906,7 @@ function SectionEditor({
       <button
         type="button"
         className={cn(
-          "inline-flex h-8 items-center gap-1.5 border px-2.5 text-xs font-medium",
+          "inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold",
           section.visible ? "border-black bg-black text-white" : "border-zinc-300 text-zinc-600",
         )}
         onClick={() => onChange({ ...section, visible: !section.visible })}
@@ -773,14 +921,14 @@ function SectionEditor({
     return (
       <div>
         {heading}
-        <div className="space-y-4">
+        <div className="space-y-5">
           <TextField
-            label="Eyebrow"
+            label="Small text above the main heading (optional)"
             value={section.eyebrow}
             onChange={(value) => onChange({ ...section, eyebrow: value })}
           />
           <TextField
-            label="Headline"
+            label="Main heading"
             value={section.headline}
             onChange={(value) => onChange({ ...section, headline: value })}
           />
@@ -796,7 +944,7 @@ function SectionEditor({
               onChange={(value) => onChange({ ...section, ctaLabel: value })}
             />
             <TextField
-              label="Button link"
+              label="Where the button goes"
               value={section.ctaHref}
               onChange={(value) => onChange({ ...section, ctaHref: value })}
             />
@@ -805,7 +953,11 @@ function SectionEditor({
             products={products}
             selectedIds={section.productIds}
             onChange={(productIds) => onChange({ ...section, productIds })}
-            label={section.type === "hero" ? "Hero carousel products" : "Collection products"}
+            label={
+              section.type === "hero"
+                ? "Products shown in the top slider"
+                : "Products shown in this collection"
+            }
           />
         </div>
       </div>
@@ -816,7 +968,7 @@ function SectionEditor({
     return (
       <div>
         {heading}
-        <div className="space-y-4">
+        <div className="space-y-5">
           <MediaButtons uploading={uploading} onUpload={upload} video />
           <CropControls
             media={section.poster}
@@ -888,7 +1040,7 @@ function SectionEditor({
   return (
     <div>
       {heading}
-      <div className="space-y-4">
+      <div className="space-y-5">
         <MediaButtons uploading={uploading} onUpload={upload} />
         <CropControls
           media={section.media}
@@ -911,18 +1063,18 @@ function SectionEditor({
           />
         )}
         <TextField
-          label="Eyebrow"
+          label="Small text above the main heading (optional)"
           value={section.eyebrow}
           onChange={(value) => onChange({ ...section, eyebrow: value })}
         />
         <TextField
-          label="Headline override"
+          label="Main heading"
           value={section.headline}
           placeholder={fallbackProduct?.name || "Banner headline"}
           onChange={(value) => onChange({ ...section, headline: value })}
         />
         <TextAreaField
-          label="Supporting text override"
+          label="Description"
           value={section.subtext}
           placeholder={fallbackProduct?.tag || "Optional supporting text"}
           onChange={(value) => onChange({ ...section, subtext: value })}
@@ -934,7 +1086,7 @@ function SectionEditor({
             onChange={(value) => onChange({ ...section, ctaLabel: value })}
           />
           <TextField
-            label="Button or custom link"
+            label="Where the button goes"
             value={section.ctaHref}
             onChange={(value) => onChange({ ...section, ctaHref: value })}
           />
@@ -1024,7 +1176,7 @@ function CropControls({
     onChange({ ...media, [device === "mobile" ? "mobileCrop" : "desktopCrop"]: next });
 
   return (
-    <div className="border border-[rgb(var(--vibe-border))] p-3 sm:p-4">
+    <div className="rounded-lg border border-[rgb(var(--vibe-border))] bg-zinc-50/60 p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold">Crop and position</p>
@@ -1032,7 +1184,7 @@ function CropControls({
             Drag on the preview. Pinch on a phone to zoom.
           </p>
         </div>
-        <div className="grid grid-cols-2 border border-[rgb(var(--vibe-border))] p-1">
+        <div className="grid grid-cols-2 rounded-lg border border-[rgb(var(--vibe-border))] bg-white p-1">
           <ModeButton active={device === "mobile"} onClick={() => onDeviceChange("mobile")}>
             <Smartphone className="h-3.5 w-3.5" />
           </ModeButton>
@@ -1068,7 +1220,7 @@ function CropControls({
       </div>
       <button
         type="button"
-        className="mt-3 inline-flex h-8 items-center gap-1.5 border border-[rgb(var(--vibe-border))] px-2.5 text-xs font-medium hover:bg-zinc-50"
+        className="admin-button admin-button-secondary mt-4"
         onClick={() => setCrop({ x: 50, y: 50, zoom: 100 })}
       >
         <RotateCcw className="h-3.5 w-3.5" /> Reset {device} crop
@@ -1215,8 +1367,11 @@ function ProductSelector({
     return product ? [product] : [];
   });
   return (
-    <div className="border border-[rgb(var(--vibe-border))] p-3">
-      <p className="text-xs font-semibold">{label}</p>
+    <div className="rounded-lg border border-[rgb(var(--vibe-border))] bg-zinc-50/60 p-4">
+      <p className="text-xs font-semibold text-zinc-800">{label}</p>
+      <p className="mt-1 text-xs text-[rgb(var(--vibe-muted))]">
+        Tap products to show or hide them, then use the arrows to change their order.
+      </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {products.map((product) => {
           const active = selectedIds.includes(product.id);
@@ -1226,8 +1381,10 @@ function ProductSelector({
               type="button"
               disabled={active && selectedIds.length === 1}
               className={cn(
-                "border px-3 py-2 text-xs font-medium",
-                active ? "border-black bg-black text-white" : "border-zinc-300 hover:bg-zinc-50",
+                "rounded-md border px-3 py-2 text-xs font-medium",
+                active
+                  ? "border-black bg-black text-white"
+                  : "border-zinc-300 bg-white hover:bg-zinc-100",
                 active && selectedIds.length === 1 && "cursor-not-allowed opacity-60",
               )}
               aria-pressed={active}
@@ -1281,14 +1438,14 @@ function ProductLinkPicker({
 }) {
   return (
     <div>
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[rgb(var(--vibe-muted))]">
-        Optional linked product
+      <p className="mb-2 text-xs font-semibold text-zinc-700">
+        Link this banner to a product (optional)
       </p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           className={cn(
-            "border px-3 py-2 text-xs",
+            "rounded-md border px-3 py-2 text-xs",
             value === null ? "border-black bg-black text-white" : "border-zinc-300",
           )}
           onClick={() => onChange(null)}
@@ -1300,7 +1457,7 @@ function ProductLinkPicker({
             key={product.id}
             type="button"
             className={cn(
-              "border px-3 py-2 text-xs",
+              "rounded-md border px-3 py-2 text-xs",
               value === product.id ? "border-black bg-black text-white" : "border-zinc-300",
             )}
             onClick={() => onChange(product.id)}
@@ -1335,9 +1492,7 @@ function TextField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.12em] text-[rgb(var(--vibe-muted))]">
-        {label}
-      </span>
+      <span className="mb-2 block text-xs font-semibold text-zinc-700">{label}</span>
       <input
         className="admin-input"
         value={value}
@@ -1362,9 +1517,7 @@ function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.12em] text-[rgb(var(--vibe-muted))]">
-        {label}
-      </span>
+      <span className="mb-2 block text-xs font-semibold text-zinc-700">{label}</span>
       <textarea
         className="admin-input min-h-20 resize-y"
         value={value}
@@ -1388,9 +1541,7 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.12em] text-[rgb(var(--vibe-muted))]">
-        {label}
-      </span>
+      <span className="mb-2 block text-xs font-semibold text-zinc-700">{label}</span>
       <select
         className="admin-input capitalize"
         value={value}
@@ -1496,7 +1647,7 @@ function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid h-8 w-8 place-items-center border border-[rgb(var(--vibe-border))] hover:bg-zinc-100 disabled:opacity-25"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-[rgb(var(--vibe-border))] bg-white hover:bg-zinc-100 disabled:opacity-25"
     >
       {children}
     </button>

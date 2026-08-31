@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import type { HomepageLayout, HomepageSection, HomepageVideoSection } from "@/lib/homepageLayout";
+import {
+  homepageSectionName,
+  type HomepageLayout,
+  type HomepageSection,
+  type HomepageVideoSection,
+} from "@/lib/homepageLayout";
 import type { HomepageFilmConfig } from "@/lib/homepageFilm";
 import type { Product } from "@/lib/products";
 import { Hero } from "./Hero";
@@ -34,7 +39,7 @@ function SectionFrame({
       } ${section.visible ? "" : "opacity-45"}`}
       role="button"
       tabIndex={0}
-      aria-label={`Edit ${section.type} section`}
+      aria-label={`Edit ${homepageSectionName(section)}`}
       onClickCapture={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -49,7 +54,7 @@ function SectionFrame({
     >
       {children}
       <span className="pointer-events-none absolute left-3 top-3 z-40 bg-sky-600 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white opacity-0 shadow-lg transition-opacity group-hover/editor:opacity-100">
-        Edit {section.type}
+        Edit {homepageSectionName(section)}
       </span>
     </div>
   );
