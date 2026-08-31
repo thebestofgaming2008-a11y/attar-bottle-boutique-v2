@@ -48,13 +48,19 @@ type FilmConfig = {
 const MEDIA_BASE = "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/campaign";
 const DEFAULT_FILM_CONFIG: FilmConfig = {
   enabled: true,
-  posterUrl: `${MEDIA_BASE}/oud-zafar-film-v133-poster.webp`,
-  videoWebmUrl: `${MEDIA_BASE}/oud-zafar-film-v133.webm`,
-  videoMp4Url: `${MEDIA_BASE}/oud-zafar-film-v133.mp4`,
+  posterUrl: `${MEDIA_BASE}/oud-zafar-film-v134-half-wrap-poster.webp`,
+  videoWebmUrl: `${MEDIA_BASE}/oud-zafar-film-v134-half-wrap.webm`,
+  videoMp4Url: `${MEDIA_BASE}/oud-zafar-film-v134-half-wrap.mp4`,
   placement: "after_hero",
   mobileFit: "cover",
   desktopFit: "contain",
   focalPosition: "center",
+};
+
+const LEGACY_V133_MEDIA = {
+  posterUrl: `${MEDIA_BASE}/oud-zafar-film-v133-poster.webp`,
+  videoWebmUrl: `${MEDIA_BASE}/oud-zafar-film-v133.webm`,
+  videoMp4Url: `${MEDIA_BASE}/oud-zafar-film-v133.mp4`,
 };
 
 function safeHttpsUrl(value: unknown) {
@@ -82,17 +88,27 @@ function normalizeConfig(value: unknown): FilmConfig {
   ]);
   const rawPlacement = input.placement as FilmConfig["placement"];
   const rawFocal = input.focalPosition;
+  const posterUrl = safeHttpsUrl(input.posterUrl);
+  const videoWebmUrl = safeHttpsUrl(input.videoWebmUrl);
+  const videoMp4Url = safeHttpsUrl(input.videoMp4Url);
   return {
     enabled: input.enabled !== false,
-    posterUrl: safeHttpsUrl(input.posterUrl) ?? DEFAULT_FILM_CONFIG.posterUrl,
+    posterUrl:
+      !posterUrl || posterUrl === LEGACY_V133_MEDIA.posterUrl
+        ? DEFAULT_FILM_CONFIG.posterUrl
+        : posterUrl,
     videoWebmUrl:
       input.videoWebmUrl === null
         ? null
-        : (safeHttpsUrl(input.videoWebmUrl) ?? DEFAULT_FILM_CONFIG.videoWebmUrl),
+        : !videoWebmUrl || videoWebmUrl === LEGACY_V133_MEDIA.videoWebmUrl
+          ? DEFAULT_FILM_CONFIG.videoWebmUrl
+          : videoWebmUrl,
     videoMp4Url:
       input.videoMp4Url === null
         ? null
-        : (safeHttpsUrl(input.videoMp4Url) ?? DEFAULT_FILM_CONFIG.videoMp4Url),
+        : !videoMp4Url || videoMp4Url === LEGACY_V133_MEDIA.videoMp4Url
+          ? DEFAULT_FILM_CONFIG.videoMp4Url
+          : videoMp4Url,
     placement: allowedPlacements.has(rawPlacement) ? rawPlacement : DEFAULT_FILM_CONFIG.placement,
     mobileFit: input.mobileFit === "contain" ? "contain" : "cover",
     desktopFit: input.desktopFit === "cover" ? "cover" : "contain",

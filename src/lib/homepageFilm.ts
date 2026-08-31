@@ -23,9 +23,9 @@ const MEDIA_BASE = "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/campaign
 
 export const DEFAULT_HOMEPAGE_FILM_CONFIG: HomepageFilmConfig = {
   enabled: true,
-  posterUrl: `${MEDIA_BASE}/oud-zafar-film-v133-poster.webp`,
-  videoWebmUrl: `${MEDIA_BASE}/oud-zafar-film-v133.webm`,
-  videoMp4Url: `${MEDIA_BASE}/oud-zafar-film-v133.mp4`,
+  posterUrl: `${MEDIA_BASE}/oud-zafar-film-v134-half-wrap-poster.webp`,
+  videoWebmUrl: `${MEDIA_BASE}/oud-zafar-film-v134-half-wrap.webm`,
+  videoMp4Url: `${MEDIA_BASE}/oud-zafar-film-v134-half-wrap.mp4`,
   placement: "after_hero",
   mobileFit: "cover",
   desktopFit: "contain",
