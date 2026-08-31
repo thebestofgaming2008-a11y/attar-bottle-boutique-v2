@@ -11,6 +11,11 @@ export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const manuallyPaused = useRef(false);
   const [paused, setPaused] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+
+  useEffect(() => {
+    setVideoReady(false);
+  }, [config.posterUrl, config.videoMp4Url, config.videoWebmUrl]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -29,7 +34,10 @@ export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
         if (entry.isIntersecting && !manuallyPaused.current) {
           void video
             .play()
-            .then(() => setPaused(false))
+            .then(() => {
+              setPaused(false);
+              setVideoReady(true);
+            })
             .catch(() => setPaused(true));
         } else {
           video.pause();
@@ -44,6 +52,7 @@ export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
   const mobileFit = config.mobileFit === "contain" ? "object-contain" : "object-cover";
   const desktopFit = config.desktopFit === "cover" ? "sm:object-cover" : "sm:object-contain";
   const objectPosition = `center ${config.focalPosition}`;
+  const posterPosition = `${config.posterPositionX}% ${config.posterPositionY}%`;
 
   return (
     <section
@@ -63,10 +72,25 @@ export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
         preload="metadata"
         disablePictureInPicture
         aria-hidden="true"
+        onLoadedData={() => setVideoReady(true)}
+        onCanPlay={() => setVideoReady(true)}
+        onPlaying={() => setVideoReady(true)}
       >
         {config.videoWebmUrl && <source src={config.videoWebmUrl} type="video/webm" />}
         {config.videoMp4Url && <source src={config.videoMp4Url} type="video/mp4" />}
       </video>
+      <img
+        src={config.posterUrl}
+        alt=""
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`}
+        style={{
+          objectFit: config.posterFit,
+          objectPosition: posterPosition,
+          transform: `scale(${config.posterZoom / 100})`,
+          transformOrigin: posterPosition,
+        }}
+      />
       <button
         type="button"
         aria-label={paused ? "Play campaign film" : "Pause campaign film"}
@@ -78,7 +102,10 @@ export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
             manuallyPaused.current = false;
             void video
               .play()
-              .then(() => setPaused(false))
+              .then(() => {
+                setPaused(false);
+                setVideoReady(true);
+              })
               .catch(() => setPaused(true));
           } else {
             manuallyPaused.current = true;

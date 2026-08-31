@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   Area,
   AreaChart,
@@ -85,11 +86,7 @@ import {
 } from "@/services/adminService";
 import type { Product } from "@/services/productService";
 import { PRODUCTS as storefrontCatalog } from "@/lib/products";
-import {
-  DEFAULT_HOMEPAGE_FILM_CONFIG,
-  HOMEPAGE_FILM_PLACEMENTS,
-  type HomepageFilmConfig,
-} from "@/lib/homepageFilm";
+import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmConfig } from "@/lib/homepageFilm";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -2529,6 +2526,13 @@ function HomepageAdminPanel({
   const [filmLoading, setFilmLoading] = useState(true);
   const [filmSaving, setFilmSaving] = useState(false);
   const [filmUploading, setFilmUploading] = useState<"poster" | "video" | null>(null);
+  const [filmPreviewMode, setFilmPreviewMode] = useState<"poster" | "video">("poster");
+  const posterDragStart = useRef<{
+    clientX: number;
+    clientY: number;
+    positionX: number;
+    positionY: number;
+  } | null>(null);
   const featured = products.filter((product) => product.is_featured);
   const newArrivals = products.filter((product) => product.is_new_arrival);
   const bestsellers = products.filter((product) => product.is_bestseller);
@@ -2581,6 +2585,7 @@ function HomepageAdminPanel({
             ? { ...current, videoWebmUrl: url }
             : { ...current, videoMp4Url: url },
       );
+      if (kind === "poster") setFilmPreviewMode("poster");
       notify({
         title: kind === "poster" ? "Poster uploaded" : "Film uploaded",
         description: "Press Save film settings to publish it.",
@@ -2617,6 +2622,43 @@ function HomepageAdminPanel({
   };
 
   const previewMobileFit = filmConfig.mobileFit === "contain" ? "object-contain" : "object-cover";
+  const posterPosition = `${filmConfig.posterPositionX}% ${filmConfig.posterPositionY}%`;
+
+  const startPosterDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    posterDragStart.current = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      positionX: filmConfig.posterPositionX,
+      positionY: filmConfig.posterPositionY,
+    };
+  };
+
+  const movePoster = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = posterDragStart.current;
+    if (!start || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.min(
+      100,
+      Math.max(0, start.positionX - ((event.clientX - start.clientX) / bounds.width) * 100),
+    );
+    const y = Math.min(
+      100,
+      Math.max(0, start.positionY - ((event.clientY - start.clientY) / bounds.height) * 100),
+    );
+    setFilmConfig((current) => ({
+      ...current,
+      posterPositionX: Math.round(x),
+      posterPositionY: Math.round(y),
+    }));
+  };
+
+  const endPosterDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    posterDragStart.current = null;
+  };
 
   return (
     <div className="space-y-6">
@@ -2644,26 +2686,84 @@ function HomepageAdminPanel({
 
       <Section
         title="Vertical campaign film"
-        subtitle="Replace the poster or film and place the section anywhere on the homepage."
+        subtitle="Upload the poster and film, then crop and position the poster inside its vertical frame."
       >
         <div className="grid gap-6 lg:grid-cols-[minmax(220px,320px)_1fr]">
-          <div className="overflow-hidden bg-black">
-            <video
-              key={`${filmConfig.videoWebmUrl ?? ""}|${filmConfig.videoMp4Url ?? ""}`}
-              className={`aspect-[9/16] max-h-[560px] w-full ${previewMobileFit}`}
-              style={{ objectPosition: `center ${filmConfig.focalPosition}` }}
-              poster={filmConfig.posterUrl}
-              muted
-              loop
-              playsInline
-              controls
-              preload="metadata"
-            >
-              {filmConfig.videoWebmUrl && (
-                <source src={filmConfig.videoWebmUrl} type="video/webm" />
-              )}
-              {filmConfig.videoMp4Url && <source src={filmConfig.videoMp4Url} type="video/mp4" />}
-            </video>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 border border-[rgb(var(--vibe-border))] bg-white p-1 text-xs">
+              <button
+                type="button"
+                className={cn(
+                  "min-h-9 px-3 font-medium transition",
+                  filmPreviewMode === "poster"
+                    ? "bg-black text-white"
+                    : "text-[rgb(var(--vibe-muted))] hover:bg-black/5 hover:text-black",
+                )}
+                onClick={() => setFilmPreviewMode("poster")}
+              >
+                Poster crop
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "min-h-9 px-3 font-medium transition",
+                  filmPreviewMode === "video"
+                    ? "bg-black text-white"
+                    : "text-[rgb(var(--vibe-muted))] hover:bg-black/5 hover:text-black",
+                )}
+                onClick={() => setFilmPreviewMode("video")}
+              >
+                Film preview
+              </button>
+            </div>
+            {filmPreviewMode === "poster" ? (
+              <div
+                className="relative aspect-[9/16] max-h-[560px] w-full touch-none select-none overflow-hidden bg-black cursor-grab active:cursor-grabbing"
+                onPointerDown={startPosterDrag}
+                onPointerMove={movePoster}
+                onPointerUp={endPosterDrag}
+                onPointerCancel={endPosterDrag}
+                aria-label="Drag to position the campaign poster"
+                data-testid="admin-film-poster-preview"
+              >
+                <img
+                  src={filmConfig.posterUrl}
+                  alt="Campaign poster crop preview"
+                  draggable={false}
+                  className="pointer-events-none h-full w-full"
+                  style={{
+                    objectFit: filmConfig.posterFit,
+                    objectPosition: posterPosition,
+                    transform: `scale(${filmConfig.posterZoom / 100})`,
+                    transformOrigin: posterPosition,
+                  }}
+                />
+                <span className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-white backdrop-blur-sm">
+                  Drag to reposition
+                </span>
+              </div>
+            ) : (
+              <div className="overflow-hidden bg-black">
+                <video
+                  key={`${filmConfig.videoWebmUrl ?? ""}|${filmConfig.videoMp4Url ?? ""}`}
+                  className={`aspect-[9/16] max-h-[560px] w-full ${previewMobileFit}`}
+                  style={{ objectPosition: `center ${filmConfig.focalPosition}` }}
+                  poster={filmConfig.posterUrl}
+                  muted
+                  loop
+                  playsInline
+                  controls
+                  preload="metadata"
+                >
+                  {filmConfig.videoWebmUrl && (
+                    <source src={filmConfig.videoWebmUrl} type="video/webm" />
+                  )}
+                  {filmConfig.videoMp4Url && (
+                    <source src={filmConfig.videoMp4Url} type="video/mp4" />
+                  )}
+                </video>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -2683,26 +2783,23 @@ function HomepageAdminPanel({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <AdminField label="Homepage position">
+              <AdminField label="Poster crop">
                 <select
                   className="admin-input"
-                  value={filmConfig.placement}
+                  value={filmConfig.posterFit}
                   onChange={(event) =>
                     setFilmConfig((current) => ({
                       ...current,
-                      placement: event.target.value as HomepageFilmConfig["placement"],
+                      posterFit: event.target.value as HomepageFilmConfig["posterFit"],
                     }))
                   }
-                  data-testid="admin-film-placement-select"
+                  data-testid="admin-film-poster-fit-select"
                 >
-                  {HOMEPAGE_FILM_PLACEMENTS.map((placement) => (
-                    <option key={placement.value} value={placement.value}>
-                      {placement.label}
-                    </option>
-                  ))}
+                  <option value="cover">Fill frame and crop</option>
+                  <option value="contain">Show full image</option>
                 </select>
               </AdminField>
-              <AdminField label="Vertical focus">
+              <AdminField label="Video focus">
                 <select
                   className="admin-input"
                   value={filmConfig.focalPosition}
@@ -2749,6 +2846,39 @@ function HomepageAdminPanel({
                   <option value="cover">Fill screen</option>
                 </select>
               </AdminField>
+            </div>
+
+            <div className="grid gap-4 border border-[rgb(var(--vibe-border))] p-4 sm:grid-cols-3">
+              <AdminRangeField
+                label="Horizontal crop"
+                value={filmConfig.posterPositionX}
+                min={0}
+                max={100}
+                suffix="%"
+                onChange={(value) =>
+                  setFilmConfig((current) => ({ ...current, posterPositionX: value }))
+                }
+              />
+              <AdminRangeField
+                label="Vertical crop"
+                value={filmConfig.posterPositionY}
+                min={0}
+                max={100}
+                suffix="%"
+                onChange={(value) =>
+                  setFilmConfig((current) => ({ ...current, posterPositionY: value }))
+                }
+              />
+              <AdminRangeField
+                label="Poster zoom"
+                value={filmConfig.posterZoom}
+                min={100}
+                max={300}
+                suffix="%"
+                onChange={(value) =>
+                  setFilmConfig((current) => ({ ...current, posterZoom: value }))
+                }
+              />
             </div>
 
             <AdminField label="Poster URL">
@@ -3178,6 +3308,43 @@ function ToggleButton({ active, onClick }: { active: boolean; onClick: () => voi
     >
       {active ? "On" : "Off"}
     </button>
+  );
+}
+
+function AdminRangeField({
+  label,
+  value,
+  min,
+  max,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 flex items-center justify-between gap-3 text-[11px] font-medium uppercase tracking-[0.12em] text-[rgb(var(--vibe-muted))]">
+        <span>{label}</span>
+        <output className="font-mono text-black">
+          {Math.round(value)}
+          {suffix}
+        </output>
+      </span>
+      <input
+        className="h-8 w-full cursor-ew-resize accent-black"
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
   );
 }
 

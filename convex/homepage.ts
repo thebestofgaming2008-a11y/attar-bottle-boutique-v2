@@ -24,6 +24,10 @@ const filmConfig = v.object({
   mobileFit: fit,
   desktopFit: fit,
   focalPosition,
+  posterFit: fit,
+  posterPositionX: v.number(),
+  posterPositionY: v.number(),
+  posterZoom: v.number(),
 });
 
 type FilmConfig = {
@@ -43,6 +47,10 @@ type FilmConfig = {
   mobileFit: "cover" | "contain";
   desktopFit: "cover" | "contain";
   focalPosition: "top" | "center" | "bottom";
+  posterFit: "cover" | "contain";
+  posterPositionX: number;
+  posterPositionY: number;
+  posterZoom: number;
 };
 
 const MEDIA_BASE = "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/campaign";
@@ -55,6 +63,10 @@ const DEFAULT_FILM_CONFIG: FilmConfig = {
   mobileFit: "cover",
   desktopFit: "contain",
   focalPosition: "center",
+  posterFit: "cover",
+  posterPositionX: 50,
+  posterPositionY: 50,
+  posterZoom: 100,
 };
 
 const LEGACY_V133_MEDIA = {
@@ -72,6 +84,11 @@ function safeHttpsUrl(value: unknown) {
   } catch {
     return null;
   }
+}
+
+function boundedNumber(value: unknown, minimum: number, maximum: number, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function normalizeConfig(value: unknown): FilmConfig {
@@ -114,6 +131,10 @@ function normalizeConfig(value: unknown): FilmConfig {
     desktopFit: input.desktopFit === "cover" ? "cover" : "contain",
     focalPosition:
       rawFocal === "top" || rawFocal === "bottom" || rawFocal === "center" ? rawFocal : "center",
+    posterFit: input.posterFit === "contain" ? "contain" : "cover",
+    posterPositionX: boundedNumber(input.posterPositionX, 0, 100, 50),
+    posterPositionY: boundedNumber(input.posterPositionY, 0, 100, 50),
+    posterZoom: boundedNumber(input.posterZoom, 100, 300, 100),
   };
 }
 
@@ -170,6 +191,10 @@ export const saveFilmConfig = mutation({
         posterUrl: config.posterUrl,
         videoWebmUrl: config.videoWebmUrl,
         videoMp4Url: config.videoMp4Url,
+        posterFit: config.posterFit,
+        posterPositionX: config.posterPositionX,
+        posterPositionY: config.posterPositionY,
+        posterZoom: config.posterZoom,
       },
     });
     return config;

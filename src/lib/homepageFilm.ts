@@ -17,6 +17,10 @@ export interface HomepageFilmConfig {
   mobileFit: "cover" | "contain";
   desktopFit: "cover" | "contain";
   focalPosition: "top" | "center" | "bottom";
+  posterFit: "cover" | "contain";
+  posterPositionX: number;
+  posterPositionY: number;
+  posterZoom: number;
 }
 
 const MEDIA_BASE = "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/campaign";
@@ -30,6 +34,10 @@ export const DEFAULT_HOMEPAGE_FILM_CONFIG: HomepageFilmConfig = {
   mobileFit: "cover",
   desktopFit: "contain",
   focalPosition: "center",
+  posterFit: "cover",
+  posterPositionX: 50,
+  posterPositionY: 50,
+  posterZoom: 100,
 };
 
 export const HOMEPAGE_FILM_PLACEMENTS: Array<{
