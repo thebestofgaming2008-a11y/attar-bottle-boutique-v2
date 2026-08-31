@@ -8,8 +8,7 @@ export function Wordmark({
   estd?: boolean;
   className?: string;
 }) {
-  const width =
-    size === "sm" ? "w-10" : size === "lg" ? "w-20 sm:w-24" : "w-[52px] sm:w-[58px]";
+  const width = size === "sm" ? "w-10" : size === "lg" ? "w-20 sm:w-24" : "w-[52px] sm:w-[58px]";
   return (
     <span className={`inline-flex flex-col items-center text-center leading-none ${className}`}>
       <img

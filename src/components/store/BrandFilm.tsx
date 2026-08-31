@@ -1,13 +1,21 @@
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { HomepageFilmConfig } from "@/lib/homepageFilm";
+import type { HomepageMedia } from "@/lib/homepageLayout";
 
 /**
  * The Oud Zafar launch film. It fills a phone screen, stays uncropped on wider
  * displays, and pauses whenever it is outside the viewport to avoid wasting
  * bandwidth, battery or GPU time farther down the page.
  */
-export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
+export function BrandFilm({
+  config,
+  posterMedia,
+}: {
+  config: HomepageFilmConfig;
+  posterMedia?: HomepageMedia;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const manuallyPaused = useRef(false);
   const [paused, setPaused] = useState(false);
@@ -53,6 +61,14 @@ export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
   const desktopFit = config.desktopFit === "cover" ? "sm:object-cover" : "sm:object-contain";
   const objectPosition = `center ${config.focalPosition}`;
   const posterPosition = `${config.posterPositionX}% ${config.posterPositionY}%`;
+  const posterStyle = posterMedia
+    ? ({
+        "--homepage-mobile-position": `${posterMedia.mobileCrop.x}% ${posterMedia.mobileCrop.y}%`,
+        "--homepage-desktop-position": `${posterMedia.desktopCrop.x}% ${posterMedia.desktopCrop.y}%`,
+        "--homepage-mobile-zoom": posterMedia.mobileCrop.zoom / 100,
+        "--homepage-desktop-zoom": posterMedia.desktopCrop.zoom / 100,
+      } as CSSProperties)
+    : undefined;
 
   return (
     <section
@@ -79,18 +95,25 @@ export function BrandFilm({ config }: { config: HomepageFilmConfig }) {
         {config.videoWebmUrl && <source src={config.videoWebmUrl} type="video/webm" />}
         {config.videoMp4Url && <source src={config.videoMp4Url} type="video/mp4" />}
       </video>
-      <img
-        src={config.posterUrl}
-        alt=""
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`}
-        style={{
-          objectFit: config.posterFit,
-          objectPosition: posterPosition,
-          transform: `scale(${config.posterZoom / 100})`,
-          transformOrigin: posterPosition,
-        }}
-      />
+      <picture>
+        {posterMedia?.mobileImageUrl ? (
+          <source media="(max-width: 639px)" srcSet={posterMedia.mobileImageUrl} />
+        ) : null}
+        <img
+          src={config.posterUrl}
+          alt=""
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-300 ${posterMedia ? "homepage-cropped-media" : ""} ${videoReady ? "opacity-0" : "opacity-100"}`}
+          style={
+            posterStyle ?? {
+              objectFit: config.posterFit,
+              objectPosition: posterPosition,
+              transform: `scale(${config.posterZoom / 100})`,
+              transformOrigin: posterPosition,
+            }
+          }
+        />
+      </picture>
       <button
         type="button"
         aria-label={paused ? "Play campaign film" : "Pause campaign film"}

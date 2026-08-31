@@ -89,6 +89,7 @@ import { PRODUCTS as storefrontCatalog } from "@/lib/products";
 import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmConfig } from "@/lib/homepageFilm";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { HomepageEditor } from "@/components/admin/HomepageEditor";
 
 const CATEGORIES = [
   {
@@ -1015,18 +1016,7 @@ const Admin = () => {
             )}
 
             {!loading && !adminLoadError && tab === "homepage" && (
-              <HomepageAdminPanel
-                products={products}
-                onEdit={setEditing}
-                onPatch={async (product, patch) => {
-                  const saved = await updateProduct(product.id, patch);
-                  if (saved) {
-                    await refreshPublicCatalog(saved);
-                    notify({ title: "Homepage placement updated" });
-                    await refreshProducts();
-                  }
-                }}
-              />
+              <HomepageEditor products={products} />
             )}
 
             {!loading && !adminLoadError && tab === "orders" && (
@@ -2580,7 +2570,7 @@ function ReviewsTable({
   );
 }
 
-function HomepageAdminPanel({
+function LegacyHomepageAdminPanel({
   products,
   onEdit,
   onPatch,

@@ -2,8 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { BOTTLE_IMAGES, type Product } from "@/lib/products";
+import type { HomepageHeroSection } from "@/lib/homepageLayout";
 
-export function Hero({ products }: { products: Product[] }) {
+export function Hero({ products, config }: { products: Product[]; config?: HomepageHeroSection }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const length = products.length;
 
@@ -21,6 +22,7 @@ export function Hero({ products }: { products: Product[] }) {
   if (!length) return null;
 
   const active = products[activeIndex];
+  const headlineWords = (config?.headline || "Rare Air").split(/\s+/).filter(Boolean);
 
   return (
     <section
@@ -28,19 +30,35 @@ export function Hero({ products }: { products: Product[] }) {
       aria-label="BADR fragrance collection"
       className="relative overflow-hidden bg-foreground px-6 pb-4 pt-28 text-background sm:pt-32"
     >
+      {config?.eyebrow ? (
+        <p className="mb-5 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-background/65">
+          {config.eyebrow}
+        </p>
+      ) : null}
       <h1 className="mx-auto text-center font-display text-[22vw] leading-[0.82] sm:text-[9rem]">
-        <span className="block">Rare</span>
-        <span className="block">Air</span>
+        {headlineWords.map((word) => (
+          <span key={word} className="block">
+            {word}
+          </span>
+        ))}
       </h1>
 
-      <div className="mt-8 flex justify-center">
-        <a
-          href="#shop"
-          className="motion-button border border-background/70 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:bg-background hover:text-foreground"
-        >
-          Shop now
-        </a>
-      </div>
+      {config?.subtext ? (
+        <p className="mx-auto mt-5 max-w-xl text-center text-sm leading-6 text-background/75">
+          {config.subtext}
+        </p>
+      ) : null}
+
+      {config?.ctaLabel !== "" ? (
+        <div className="mt-8 flex justify-center">
+          <a
+            href={config?.ctaHref || "#shop"}
+            className="motion-button border border-background/70 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-background hover:-translate-y-0.5 hover:bg-background hover:text-foreground"
+          >
+            {config?.ctaLabel || "Shop now"}
+          </a>
+        </div>
+      ) : null}
 
       <div className="relative -mx-6 mt-10 h-[250px] w-screen overflow-hidden sm:mt-12 sm:h-[280px]">
         <div

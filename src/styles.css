@@ -362,6 +362,31 @@
   }
 }
 
+.homepage-cropped-media {
+  object-position: var(--homepage-mobile-position, 50% 50%);
+  transform: scale(var(--homepage-mobile-zoom, 1));
+  transform-origin: var(--homepage-mobile-position, 50% 50%);
+  transition:
+    transform 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease;
+}
+
+.group:hover .homepage-cropped-media {
+  transform: scale(calc(var(--homepage-mobile-zoom, 1) * 1.04));
+}
+
+@media (min-width: 640px) {
+  .homepage-cropped-media {
+    object-position: var(--homepage-desktop-position, 50% 50%);
+    transform: scale(var(--homepage-desktop-zoom, 1));
+    transform-origin: var(--homepage-desktop-position, 50% 50%);
+  }
+
+  .group:hover .homepage-cropped-media {
+    transform: scale(calc(var(--homepage-desktop-zoom, 1) * 1.04));
+  }
+}
+
 @utility motion-link {
   transition:
     color var(--motion-base) var(--ease-shop),

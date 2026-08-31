@@ -10,6 +10,8 @@ import { ScentChapter } from "@/components/store/ScentChapter";
 import { ProductCard } from "@/components/store/ProductCard";
 import { listActiveProducts } from "@/services/productService";
 import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmPlacement } from "@/lib/homepageFilm";
+import type { HomepageLayout } from "@/lib/homepageLayout";
+import { HomepageLayoutRenderer } from "@/components/store/HomepageLayoutRenderer";
 
 const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://houseofbadr.com";
 
@@ -58,6 +60,8 @@ export const Route = createFileRoute("/")({
 function Index() {
   const { collection } = Route.useLoaderData();
   const filmConfig = useQuery(api.homepage.getFilmConfig, {}) ?? DEFAULT_HOMEPAGE_FILM_CONFIG;
+  const publishedLayout = useQuery(api.homepageLayout.getPublishedLayout, {}) as
+    HomepageLayout | null | undefined;
   const collectionById = new Map(collection.map((product) => [product.id, product]));
   const chapterProducts = PRODUCTS.flatMap((product) => {
     const current = collectionById.get(product.id);
@@ -69,20 +73,26 @@ function Index() {
     ) : null;
   return (
     <StoreShell>
-      <Hero products={collection} />
+      {publishedLayout ? (
+        <HomepageLayoutRenderer layout={publishedLayout} products={collection} />
+      ) : (
+        <>
+          <Hero products={collection} />
 
-      {filmAt("after_hero")}
+          {filmAt("after_hero")}
 
-      {chapterProducts.map((p, index) => (
-        <Fragment key={p.id}>
-          <ScentChapter product={p} />
-          {filmAt(`after_scent_${index + 1}` as HomepageFilmPlacement)}
-        </Fragment>
-      ))}
+          {chapterProducts.map((p, index) => (
+            <Fragment key={p.id}>
+              <ScentChapter product={p} />
+              {filmAt(`after_scent_${index + 1}` as HomepageFilmPlacement)}
+            </Fragment>
+          ))}
 
-      {filmAt("before_shop")}
-      <CollectionSection products={collection} />
-      {filmAt("after_shop")}
+          {filmAt("before_shop")}
+          <CollectionSection products={collection} />
+          {filmAt("after_shop")}
+        </>
+      )}
 
       <SiteFooter />
     </StoreShell>

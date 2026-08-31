@@ -1,6 +1,7 @@
 import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { homepageLayout } from "./homepageModel";
 
 const optionalString = v.optional(v.union(v.string(), v.null()));
 const optionalNumber = v.optional(v.union(v.number(), v.null()));
@@ -274,6 +275,23 @@ export default defineSchema({
     value: v.any(),
     updated_at: v.string(),
   }).index("by_key", ["key"]),
+  homepage_layouts: defineTable({
+    key: v.string(),
+    draft: homepageLayout,
+    published: homepageLayout,
+    draft_version: v.number(),
+    published_version: v.number(),
+    draft_updated_at: v.string(),
+    published_at: v.string(),
+    updated_by: optionalString,
+  }).index("by_key", ["key"]),
+  homepage_revisions: defineTable({
+    layout: homepageLayout,
+    version: v.number(),
+    published_at: v.string(),
+    published_by: optionalString,
+    summary: optionalString,
+  }).index("by_published_at", ["published_at"]),
   audit_logs: defineTable({
     actor_user_id: optionalString,
     actor_email: optionalString,
