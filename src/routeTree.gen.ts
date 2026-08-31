@@ -14,9 +14,16 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as JournalRouteImport } from './routes/journal'
 import { Route as OrderConfirmationRouteImport } from './routes/order-confirmation'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ReturnsRouteImport } from './routes/returns'
+import { Route as ShippingRouteImport } from './routes/shipping'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrackOrderRouteImport } from './routes/track-order'
+import { Route as JournalSlugRouteImport } from './routes/journal_.$slug'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -44,9 +51,34 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderConfirmationRoute = OrderConfirmationRouteImport.update({
   id: '/order-confirmation',
   path: '/order-confirmation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReturnsRoute = ReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShippingRoute = ShippingRouteImport.update({
+  id: '/shipping',
+  path: '/shipping',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopRoute = ShopRouteImport.update({
@@ -54,9 +86,19 @@ const ShopRoute = ShopRouteImport.update({
   path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrackOrderRoute = TrackOrderRouteImport.update({
   id: '/track-order',
   path: '/track-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalSlugRoute = JournalSlugRouteImport.update({
+  id: '/journal_/$slug',
+  path: '/journal/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductIdRoute = ProductIdRouteImport.update({
@@ -71,9 +113,16 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
+  '/journal': typeof JournalRoute
   '/order-confirmation': typeof OrderConfirmationRoute
+  '/privacy': typeof PrivacyRoute
+  '/returns': typeof ReturnsRoute
+  '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
+  '/terms': typeof TermsRoute
   '/track-order': typeof TrackOrderRoute
+  '/journal/$slug': typeof JournalSlugRoute
   '/product/$id': typeof ProductIdRoute
 }
 export interface FileRoutesByTo {
@@ -82,9 +131,16 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
+  '/journal': typeof JournalRoute
   '/order-confirmation': typeof OrderConfirmationRoute
+  '/privacy': typeof PrivacyRoute
+  '/returns': typeof ReturnsRoute
+  '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
+  '/terms': typeof TermsRoute
   '/track-order': typeof TrackOrderRoute
+  '/journal/$slug': typeof JournalSlugRoute
   '/product/$id': typeof ProductIdRoute
 }
 export interface FileRoutesById {
@@ -94,9 +150,16 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
+  '/journal': typeof JournalRoute
   '/order-confirmation': typeof OrderConfirmationRoute
+  '/privacy': typeof PrivacyRoute
+  '/returns': typeof ReturnsRoute
+  '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
+  '/terms': typeof TermsRoute
   '/track-order': typeof TrackOrderRoute
+  '/journal_/$slug': typeof JournalSlugRoute
   '/product/$id': typeof ProductIdRoute
 }
 export interface FileRouteTypes {
@@ -107,9 +170,16 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/checkout'
+    | '/contact'
+    | '/journal'
     | '/order-confirmation'
+    | '/privacy'
+    | '/returns'
+    | '/shipping'
     | '/shop'
+    | '/terms'
     | '/track-order'
+    | '/journal/$slug'
     | '/product/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -118,9 +188,16 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/checkout'
+    | '/contact'
+    | '/journal'
     | '/order-confirmation'
+    | '/privacy'
+    | '/returns'
+    | '/shipping'
     | '/shop'
+    | '/terms'
     | '/track-order'
+    | '/journal/$slug'
     | '/product/$id'
   id:
     | '__root__'
@@ -129,9 +206,16 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/checkout'
+    | '/contact'
+    | '/journal'
     | '/order-confirmation'
+    | '/privacy'
+    | '/returns'
+    | '/shipping'
     | '/shop'
+    | '/terms'
     | '/track-order'
+    | '/journal_/$slug'
     | '/product/$id'
   fileRoutesById: FileRoutesById
 }
@@ -141,9 +225,16 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   CheckoutRoute: typeof CheckoutRoute
+  ContactRoute: typeof ContactRoute
+  JournalRoute: typeof JournalRoute
   OrderConfirmationRoute: typeof OrderConfirmationRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ReturnsRoute: typeof ReturnsRoute
+  ShippingRoute: typeof ShippingRoute
   ShopRoute: typeof ShopRoute
+  TermsRoute: typeof TermsRoute
   TrackOrderRoute: typeof TrackOrderRoute
+  JournalSlugRoute: typeof JournalSlugRoute
   ProductIdRoute: typeof ProductIdRoute
 }
 
@@ -184,11 +275,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order-confirmation': {
       id: '/order-confirmation'
       path: '/order-confirmation'
       fullPath: '/order-confirmation'
       preLoaderRoute: typeof OrderConfirmationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/returns': {
+      id: '/returns'
+      path: '/returns'
+      fullPath: '/returns'
+      preLoaderRoute: typeof ReturnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping': {
+      id: '/shipping'
+      path: '/shipping'
+      fullPath: '/shipping'
+      preLoaderRoute: typeof ShippingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shop': {
@@ -198,11 +324,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/track-order': {
       id: '/track-order'
       path: '/track-order'
       fullPath: '/track-order'
       preLoaderRoute: typeof TrackOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal_/$slug': {
+      id: '/journal_/$slug'
+      path: '/journal/$slug'
+      fullPath: '/journal/$slug'
+      preLoaderRoute: typeof JournalSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/product/$id': {
@@ -221,9 +361,16 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   CheckoutRoute: CheckoutRoute,
+  ContactRoute: ContactRoute,
+  JournalRoute: JournalRoute,
   OrderConfirmationRoute: OrderConfirmationRoute,
+  PrivacyRoute: PrivacyRoute,
+  ReturnsRoute: ReturnsRoute,
+  ShippingRoute: ShippingRoute,
   ShopRoute: ShopRoute,
+  TermsRoute: TermsRoute,
   TrackOrderRoute: TrackOrderRoute,
+  JournalSlugRoute: JournalSlugRoute,
   ProductIdRoute: ProductIdRoute,
 }
 export const routeTree = rootRouteImport

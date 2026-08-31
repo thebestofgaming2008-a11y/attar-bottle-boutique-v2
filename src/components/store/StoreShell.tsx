@@ -218,6 +218,9 @@ function SiteHeader() {
             <Link to="/about" onClick={closeMenu} className="menu-center-link">
               Our story
             </Link>
+            <Link to="/journal" onClick={closeMenu} className="menu-center-link">
+              Journal
+            </Link>
             <Link to="/account" onClick={closeMenu} className="menu-center-link">
               Account
             </Link>
@@ -280,11 +283,16 @@ export function SiteFooter() {
       <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-[9px] font-semibold uppercase tracking-[0.13em] text-white/55">
         <Link to="/shop">Shop</Link>
         <Link to="/about">Our story</Link>
+        <Link to="/journal">Journal</Link>
         <Link to="/account">Account</Link>
         <Link to="/track-order" search={{ order: undefined, email: undefined }}>
           Track order
         </Link>
-        <a href="https://wa.me/919073215410">Contact</a>
+        <Link to="/shipping">Shipping</Link>
+        <Link to="/returns">Returns</Link>
+        <Link to="/contact">Contact</Link>
+        <Link to="/privacy">Privacy</Link>
+        <Link to="/terms">Terms</Link>
       </div>
       <p className="mt-10 text-[10px] text-white/40">ESTD 1448 AH · Made in India</p>
     </footer>

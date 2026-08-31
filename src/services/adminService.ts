@@ -3,6 +3,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { convex } from "@/integrations/convex/client";
 import { clearProductListCache, type Product } from "./productService";
 import type { HomepageFilmConfig } from "@/lib/homepageFilm";
+import { notifySearchEngines } from "./indexNowService";
 
 export const PRODUCT_BUCKET = "product-images";
 
@@ -144,6 +145,8 @@ export async function refreshPublicCatalog(product?: Pick<Product, "id" | "slug"
     throw new Error(
       "Product saved, but the public shop cache could not refresh. Refresh the shop once and check it before announcing the product.",
     );
+  const slug = product?.slug || product?.id;
+  await notifySearchEngines(["/", "/shop", ...(slug ? [`/product/${slug}`] : [])]);
 }
 
 export async function uploadProductImage(file: File): Promise<string | null> {

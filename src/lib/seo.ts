@@ -29,7 +29,7 @@ export function socialMeta({
   url: string;
   image?: string;
   imageAlt: string;
-  type?: "website" | "product";
+  type?: "website" | "product" | "article";
 }) {
   const resolvedImage = absoluteUrl(image);
   return [

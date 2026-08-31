@@ -90,6 +90,7 @@ import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmConfig } from "@/lib/hom
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
+import { NOINDEX_ROBOTS } from "@/lib/seo";
 
 const CATEGORIES = [
   {
@@ -1292,7 +1293,9 @@ const Admin = () => {
 };
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "BADR admin" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "BADR admin" }, { name: "robots", content: NOINDEX_ROBOTS }],
+  }),
   component: Admin,
 });
 

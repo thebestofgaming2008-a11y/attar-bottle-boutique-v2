@@ -13,7 +13,6 @@ The application code and staging deployment can be verified without production c
   - `refund.created`
   - `refund.processed`
   - `refund.failed`
-  - `payment.refunded`
 - Completed: production Cloudflare Turnstile keys are restricted to the apex and `www` hostnames.
 - Completed: `EXCHANGE_RATE_API_KEY` supplies live rates through `/api/rates`; the store still safely falls back to INR if that service is unavailable.
 - Completed: `WHATSAPP_ORDER_NUMBER` is configured in international format and `/api/storefront-config` supplies it to checkout at runtime.

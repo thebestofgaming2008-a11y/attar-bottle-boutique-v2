@@ -1,3 +1,5 @@
+import { JOURNAL_ARTICLES } from "./journal";
+
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
   IN: "INR",
   US: "USD",
@@ -31,6 +33,17 @@ const PRODUCT_MEDIA_TYPES = new Set([
 ]);
 
 const MAX_PRODUCT_MEDIA_BYTES = 25 * 1024 * 1024;
+const PUBLIC_STATIC_PATHS = [
+  "",
+  "/shop",
+  "/about",
+  "/journal",
+  "/contact",
+  "/shipping",
+  "/returns",
+  "/privacy",
+  "/terms",
+];
 
 function json(body: unknown, status = 200, cacheControl = "no-store") {
   return Response.json(body, {
@@ -94,21 +107,20 @@ async function sitemapResponse(request: Request, env: Env) {
     // The core catalog remains discoverable if Convex is temporarily unavailable.
   }
   const urls = [
-    { location: origin, priority: "1.0", frequency: "weekly", lastmod: null, image: null },
-    {
-      location: `${origin}/shop`,
-      priority: "0.9",
-      frequency: "daily",
+    ...PUBLIC_STATIC_PATHS.map((path) => ({
+      location: `${origin}${path}`,
+      priority: path === "" ? "1.0" : path === "/shop" ? "0.9" : "0.6",
+      frequency: path === "/shop" ? "daily" : path === "" ? "weekly" : "monthly",
       lastmod: null,
       image: null,
-    },
-    {
-      location: `${origin}/about`,
-      priority: "0.6",
+    })),
+    ...JOURNAL_ARTICLES.map((article) => ({
+      location: `${origin}/journal/${article.slug}`,
+      priority: "0.7",
       frequency: "monthly",
-      lastmod: null,
+      lastmod: validLastModified(article.updated),
       image: null,
-    },
+    })),
     ...products.map((product) => ({
       location: `${origin}/product/${encodeURIComponent(product.slug)}`,
       priority: "0.8",
@@ -129,6 +141,37 @@ async function sitemapResponse(request: Request, env: Env) {
           `  <url><loc>${xmlText(location)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}<changefreq>${frequency}</changefreq><priority>${priority}</priority>${image ? `<image:image><image:loc>${xmlText(image.location)}</image:loc><image:title>${xmlText(image.title)}</image:title></image:image>` : ""}</url>`,
       )
       .join("\n")}\n</urlset>`,
+  );
+}
+
+function journalFeedResponse(request: Request, env: Env) {
+  const origin = (env.PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, "");
+  const updated = JOURNAL_ARTICLES.reduce(
+    (latest, article) => (article.updated > latest ? article.updated : latest),
+    "2026-08-31",
+  );
+  return xml(
+    `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>BADR Attar Journal</title>
+  <subtitle>Clear guides to attar perfume oil, oud and choosing a scent.</subtitle>
+  <id>${xmlText(`${origin}/journal`)}</id>
+  <link href="${xmlText(`${origin}/journal`)}" />
+  <link href="${xmlText(`${origin}/feed.xml`)}" rel="self" type="application/atom+xml" />
+  <updated>${validLastModified(updated)}</updated>
+  ${JOURNAL_ARTICLES.map(
+    (article) => `<entry>
+    <title>${xmlText(article.title)}</title>
+    <id>${xmlText(`${origin}/journal/${article.slug}`)}</id>
+    <link href="${xmlText(`${origin}/journal/${article.slug}`)}" />
+    <published>${validLastModified(article.published)}</published>
+    <updated>${validLastModified(article.updated)}</updated>
+    <summary>${xmlText(article.description)}</summary>
+    <author><name>BADR</name></author>
+  </entry>`,
+  ).join("\n  ")}
+</feed>`,
+    "public, max-age=3600, stale-while-revalidate=86400",
   );
 }
 
@@ -426,6 +469,9 @@ export async function handleWorkerApi(request: Request, env: Env): Promise<Respo
   }
   if (url.pathname === "/merchant-feed.xml" && request.method === "GET") {
     return await merchantFeedResponse(request, env);
+  }
+  if (url.pathname === "/feed.xml" && request.method === "GET") {
+    return journalFeedResponse(request, env);
   }
   if (url.pathname === "/api/media/upload" && request.method === "POST") {
     return await uploadResponse(request, env);

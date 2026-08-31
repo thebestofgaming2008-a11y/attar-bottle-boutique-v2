@@ -26,6 +26,7 @@ import {
 
 const GOOGLE_SITE_VERIFICATION = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION;
 const BING_SITE_VERIFICATION = import.meta.env.VITE_BING_SITE_VERIFICATION;
+const CLOUDFLARE_WEB_ANALYTICS_TOKEN = import.meta.env.VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN;
 const ROOT_SCHEMA = {
   "@context": "https://schema.org",
   "@graph": [
@@ -44,6 +45,7 @@ const ROOT_SCHEMA = {
         height: 512,
       },
       image: DEFAULT_SOCIAL_IMAGE,
+      email: "mailto:houseofbadr@gmail.com",
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
@@ -179,6 +181,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "preconnect", href: "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev" },
       {
+        rel: "alternate",
+        type: "application/atom+xml",
+        title: "BADR Attar Journal",
+        href: `${SITE_ORIGIN}/feed.xml`,
+      },
+      {
         rel: "icon",
         href: "/favicon-badr-32.png",
         type: "image/png",
@@ -207,6 +215,13 @@ function RootShell({ children }: { children: ReactNode }) {
       <body>
         {children}
         <Scripts />
+        {CLOUDFLARE_WEB_ANALYTICS_TOKEN ? (
+          <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={JSON.stringify({ token: CLOUDFLARE_WEB_ANALYTICS_TOKEN })}
+          />
+        ) : null}
       </body>
     </html>
   );
