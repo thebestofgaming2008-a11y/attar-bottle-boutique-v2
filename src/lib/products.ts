@@ -60,6 +60,7 @@ export type Product = {
   countryOfOrigin?: string;
   stockQuantity?: number;
   inStock?: boolean;
+  sku?: string;
   badge?: string;
   isFeatured?: boolean;
   showInCollection?: boolean;
@@ -341,6 +342,7 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
     countryOfOrigin: text(source.country_of_origin) || fallback?.countryOfOrigin || "India",
     stockQuantity: Number.isFinite(rawStock) ? rawStock : 0,
     inStock: source.in_stock !== false && rawStock > 0,
+    sku: text(source.sku) || fallback?.sku,
     badge: text(source.badge) || fallback?.badge,
     isFeatured: source.is_featured === true,
     showInCollection: source.show_in_category_section !== false,

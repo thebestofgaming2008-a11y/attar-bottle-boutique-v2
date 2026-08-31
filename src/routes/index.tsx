@@ -12,8 +12,18 @@ import { listActiveProducts } from "@/services/productService";
 import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmPlacement } from "@/lib/homepageFilm";
 import type { HomepageLayout } from "@/lib/homepageLayout";
 import { HomepageLayoutRenderer } from "@/components/store/HomepageLayoutRenderer";
+import {
+  DEFAULT_SOCIAL_IMAGE,
+  ORGANIZATION_ID,
+  SITE_ORIGIN,
+  WEBSITE_ID,
+  serializeJsonLd,
+  socialMeta,
+} from "@/lib/seo";
 
-const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://houseofbadr.com";
+const HOME_TITLE = "Attar Perfume Online India | Unisex Perfume Oils | BADR";
+const HOME_DESCRIPTION =
+  "Shop concentrated 6 ml attar perfumes online from BADR. Discover oud, rose, fruity, fresh aquatic and vanilla perfume oils from ₹499 with India delivery included.";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -29,28 +39,15 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "BADR Attar — Shop Your Scent" },
-      {
-        name: "description",
-        content:
-          "Five unisex attars in one signature 6 ml bottle. Oud Zafar, Oud Gulaab, Fitoor, Dariya and Ulfat — from ₹499 with India shipping included.",
-      },
-      {
-        name: "keywords",
-        content:
-          "BADR attar, attar perfume India, unisex attar, oud attar, perfume oil, 6 ml roll-on attar",
-      },
-      { property: "og:title", content: "BADR Attar — Shop Your Scent" },
-      {
-        property: "og:description",
-        content: "Rare air. Crafted for the relentless. Five unisex attars, one signature bottle.",
-      },
-      { property: "og:type", content: "website" },
-      {
-        property: "og:url",
-        content: SITE_ORIGIN,
-      },
-      { name: "twitter:card", content: "summary_large_image" },
+      { title: HOME_TITLE },
+      { name: "description", content: HOME_DESCRIPTION },
+      ...socialMeta({
+        title: HOME_TITLE,
+        description: HOME_DESCRIPTION,
+        url: SITE_ORIGIN,
+        image: DEFAULT_SOCIAL_IMAGE,
+        imageAlt: "BADR concentrated Oud Zafar attar perfume bottle",
+      }),
     ],
     links: [{ rel: "canonical", href: SITE_ORIGIN }],
   }),
@@ -71,8 +68,42 @@ function Index() {
     filmConfig.enabled && filmConfig.placement === placement ? (
       <BrandFilm config={filmConfig} />
     ) : null;
+  const homeSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${SITE_ORIGIN}/#webpage`,
+        url: SITE_ORIGIN,
+        name: HOME_TITLE,
+        description: HOME_DESCRIPTION,
+        isPartOf: { "@id": WEBSITE_ID },
+        about: { "@id": ORGANIZATION_ID },
+        primaryImageOfPage: {
+          "@type": "ImageObject",
+          url: DEFAULT_SOCIAL_IMAGE,
+        },
+        inLanguage: "en-IN",
+      },
+      {
+        "@type": "ItemList",
+        name: "BADR attar perfume collection",
+        numberOfItems: collection.length,
+        itemListElement: collection.map((product, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: `${product.name} attar perfume`,
+          url: `${SITE_ORIGIN}/product/${product.id}`,
+        })),
+      },
+    ],
+  };
   return (
     <StoreShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(homeSchema) }}
+      />
       {publishedLayout ? (
         <HomepageLayoutRenderer layout={publishedLayout} products={collection} />
       ) : (

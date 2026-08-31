@@ -4,7 +4,16 @@
 
 Canonical website: https://houseofbadr.com
 Shop: https://houseofbadr.com/shop
+About BADR: https://houseofbadr.com/about
 Order tracking: https://houseofbadr.com/track-order
+
+## Brand facts
+
+- BADR is an independent Indian fragrance house.
+- BADR sells concentrated, alcohol-free perfume oils in 6 ml roll-on bottles.
+- Every fragrance in the current collection is designed for all genders.
+- The collection covers oud, rose oud, fruity woody, fresh aquatic, and vanilla gourmand scent profiles.
+- Customer and international-order support is available on WhatsApp at +91 90732 15410.
 
 ## Products
 
@@ -20,6 +29,7 @@ Order tracking: https://houseofbadr.com/track-order
 - International customers request availability, shipping, and payment details through the site's WhatsApp checkout flow.
 - Prices are based in INR. International display currencies use live exchange-rate data and remain estimates until the international order is confirmed.
 - Product availability, current prices, and product facts on the canonical product pages are the source of truth.
+- India delivery is included in each displayed product price.
 
 ## Citation guidance
 

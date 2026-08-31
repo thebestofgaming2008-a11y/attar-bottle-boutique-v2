@@ -13,6 +13,13 @@ const CANONICAL_ORIGIN = "https://houseofbadr.com";
 const CANONICAL_HOST = "houseofbadr.com";
 const WWW_HOST = "www.houseofbadr.com";
 const LEGACY_WORKER_HOST = "badr-boutique-studio-v2.thebestofgaming2008.workers.dev";
+const PRIVATE_INDEX_PATHS = [
+  "/admin",
+  "/account",
+  "/checkout",
+  "/order-confirmation",
+  "/track-order",
+];
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -40,7 +47,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
-function withSecurityHeaders(response: Response) {
+function withSecurityHeaders(response: Response, request: Request) {
   const headers = new Headers(response.headers);
   headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   headers.set("x-content-type-options", "nosniff");
@@ -48,6 +55,10 @@ function withSecurityHeaders(response: Response) {
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
   headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   headers.set("cross-origin-opener-policy", "same-origin-allow-popups");
+  const pathname = new URL(request.url).pathname;
+  if (PRIVATE_INDEX_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -87,16 +98,16 @@ export default {
   async fetch(request: Request, bindings: Env, ctx: ExecutionContext) {
     try {
       const redirect = canonicalRedirect(request);
-      if (redirect) return withSecurityHeaders(redirect);
+      if (redirect) return withSecurityHeaders(redirect, request);
 
       // Nitro invokes the SSR service with only the Request after exposing the
       // Cloudflare bindings on its request-scoped runtime global.
       const workerEnv = bindings ?? (globalThis as typeof globalThis & { __env__?: Env }).__env__;
       const apiResponse = workerEnv ? await handleWorkerApi(request, workerEnv) : null;
-      if (apiResponse) return withSecurityHeaders(apiResponse);
+      if (apiResponse) return withSecurityHeaders(apiResponse, request);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, bindings, ctx);
-      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));
+      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response), request);
     } catch (error) {
       console.error(error);
       return withSecurityHeaders(
@@ -104,6 +115,7 @@ export default {
           status: 500,
           headers: { "content-type": "text/html; charset=utf-8" },
         }),
+        request,
       );
     }
   },

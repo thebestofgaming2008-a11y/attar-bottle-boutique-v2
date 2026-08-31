@@ -215,6 +215,9 @@ function SiteHeader() {
             <Link to="/shop" onClick={closeMenu} className="menu-center-link">
               Shop
             </Link>
+            <Link to="/about" onClick={closeMenu} className="menu-center-link">
+              Our story
+            </Link>
             <Link to="/account" onClick={closeMenu} className="menu-center-link">
               Account
             </Link>
@@ -270,12 +273,18 @@ export function SiteFooter() {
       <p className="mt-5 font-display text-xl leading-tight">
         Rare Air. Crafted for the Relentless.
       </p>
+      <p className="mx-auto mt-4 max-w-xl text-xs leading-6 text-white/45">
+        Independent Indian fragrance house creating concentrated, alcohol-free 6 ml roll-on attar
+        perfume oils for all genders.
+      </p>
       <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-[9px] font-semibold uppercase tracking-[0.13em] text-white/55">
         <Link to="/shop">Shop</Link>
+        <Link to="/about">Our story</Link>
         <Link to="/account">Account</Link>
         <Link to="/track-order" search={{ order: undefined, email: undefined }}>
           Track order
         </Link>
+        <a href="https://wa.me/919073215410">Contact</a>
       </div>
       <p className="mt-10 text-[10px] text-white/40">ESTD 1448 AH · Made in India</p>
     </footer>

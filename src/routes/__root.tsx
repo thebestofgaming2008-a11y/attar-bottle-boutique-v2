@@ -15,22 +15,55 @@ import { CartProvider } from "../components/store/CartContext";
 import { AuthProvider } from "../contexts/AuthContext";
 import { CurrencyProvider } from "../contexts/CurrencyContext";
 import { convex } from "../integrations/convex/client";
+import {
+  DEFAULT_SOCIAL_IMAGE,
+  INDEX_ROBOTS,
+  ORGANIZATION_ID,
+  SITE_ORIGIN,
+  WEBSITE_ID,
+  serializeJsonLd,
+} from "../lib/seo";
 
-const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://houseofbadr.com";
-const SOCIAL_IMAGE =
-  "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/products/scene-oud-zafar.webp";
-const WEBSITE_SCHEMA = {
+const GOOGLE_SITE_VERIFICATION = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION;
+const BING_SITE_VERIFICATION = import.meta.env.VITE_BING_SITE_VERIFICATION;
+const ROOT_SCHEMA = {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "BADR",
-  url: SITE_ORIGIN,
-  description: "Rare air. Crafted for the relentless. Unisex attars made in India.",
-  publisher: {
-    "@type": "Organization",
-    name: "BADR",
-    url: SITE_ORIGIN,
-    logo: `${SITE_ORIGIN}/icon-512.png`,
-  },
+  "@graph": [
+    {
+      "@type": "OnlineStore",
+      "@id": ORGANIZATION_ID,
+      name: "BADR",
+      alternateName: "House of BADR",
+      url: SITE_ORIGIN,
+      description:
+        "Independent Indian fragrance house creating concentrated, alcohol-free 6 ml roll-on attars for all genders.",
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_ORIGIN}/icon-512.png`,
+        width: 512,
+        height: 512,
+      },
+      image: DEFAULT_SOCIAL_IMAGE,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        telephone: "+91-90732-15410",
+        availableLanguage: ["English"],
+        areaServed: "IN",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": WEBSITE_ID,
+      name: "BADR",
+      alternateName: "House of BADR",
+      url: SITE_ORIGIN,
+      inLanguage: "en-IN",
+      description:
+        "Shop BADR concentrated attar perfume oils, including oud, rose, fruity, fresh aquatic and vanilla fragrances.",
+      publisher: { "@id": ORGANIZATION_ID },
+    },
+  ],
 };
 
 function NotFoundComponent() {
@@ -94,35 +127,44 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "BADR Attar — Rare Air" },
+      { title: "BADR Attar Perfume | Unisex Perfume Oils Made in India" },
       {
         name: "description",
-        content: "Rare air, crafted for the relentless. Shop BADR's unisex 6 ml attars.",
+        content:
+          "Shop BADR concentrated 6 ml roll-on attar perfumes made in India. Explore oud, rose, fruity, aquatic and vanilla perfume oils for all genders.",
       },
       { name: "author", content: "BADR" },
-      {
-        name: "keywords",
-        content:
-          "BADR attar, attar perfume India, unisex perfume oil, oud attar, 6 ml roll-on attar",
-      },
-      { name: "robots", content: "index, follow, max-image-preview:large" },
+      { name: "creator", content: "BADR" },
+      { name: "publisher", content: "BADR" },
+      { name: "application-name", content: "BADR Attar" },
+      { name: "robots", content: INDEX_ROBOTS },
       { name: "theme-color", content: "#111111" },
+      { name: "color-scheme", content: "light" },
       { property: "og:site_name", content: "BADR" },
-      { property: "og:title", content: "BADR Attar — Rare Air" },
+      { property: "og:locale", content: "en_IN" },
+      { property: "og:title", content: "BADR Attar Perfume — Rare Air" },
       {
         property: "og:description",
-        content: "Rare air, crafted for the relentless. Five unisex attars made in India.",
+        content: "Five concentrated unisex attar perfume oils made in India. From ₹499.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_ORIGIN },
-      { property: "og:image", content: SOCIAL_IMAGE },
+      { property: "og:image", content: DEFAULT_SOCIAL_IMAGE },
+      { property: "og:image:alt", content: "BADR Oud Zafar attar perfume bottle" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "BADR Attar — Rare Air" },
+      { name: "twitter:title", content: "BADR Attar Perfume — Rare Air" },
       {
         name: "twitter:description",
-        content: "Rare air. Crafted for the relentless. Five unisex attars made in India.",
+        content: "Five concentrated unisex attar perfume oils made in India. From ₹499.",
       },
-      { name: "twitter:image", content: SOCIAL_IMAGE },
+      { name: "twitter:image", content: DEFAULT_SOCIAL_IMAGE },
+      { name: "twitter:image:alt", content: "BADR Oud Zafar attar perfume bottle" },
+      ...(GOOGLE_SITE_VERIFICATION
+        ? [{ name: "google-site-verification", content: GOOGLE_SITE_VERIFICATION }]
+        : []),
+      ...(BING_SITE_VERIFICATION
+        ? [{ name: "msvalidate.01", content: BING_SITE_VERIFICATION }]
+        : []),
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -135,6 +177,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "preconnect", href: "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev" },
       {
         rel: "icon",
         href: "/favicon-badr-32.png",
@@ -153,12 +196,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en-IN">
       <head>
         <HeadContent />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_SCHEMA) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(ROOT_SCHEMA) }}
         />
       </head>
       <body>

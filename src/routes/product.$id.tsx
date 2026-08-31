@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Minus, Plus, ShoppingBag, Star } from "lucide-react";
 import {
   BOTTLE_IMAGES,
@@ -23,8 +23,14 @@ import { getProductBySlug, listActiveProducts } from "@/services/productService"
 import { listPublishedReviews, type ProductReview } from "@/services/reviewService";
 import { SearchSelect } from "@/components/ui/search-select";
 import { useCurrency } from "@/contexts/CurrencyContext";
-
-const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://houseofbadr.com";
+import {
+  ORGANIZATION_ID,
+  SITE_ORIGIN,
+  WEBSITE_ID,
+  absoluteUrl,
+  serializeJsonLd,
+  socialMeta,
+} from "@/lib/seo";
 
 const PRODUCT_DATA_TIMEOUT_MS = 3500;
 
@@ -73,34 +79,33 @@ export const Route = createFileRoute("/product/$id")({
     }
 
     const pageUrl = `${SITE_ORIGIN}/product/${product.id}`;
-    const socialImage = new URL(
+    const socialImage = absoluteUrl(
       product.socialImage || SCENE_IMAGES[product.id] || product.image,
-      SITE_ORIGIN,
-    ).toString();
+    );
     const description =
       product.seoDescription ||
       `${product.hook} ${product.category}, ${product.volume || "6 ml"}, ${inr(product.price)}.`;
+    const title = product.seoTitle || `${product.name} Attar Perfume Oil | BADR India`;
 
     return {
       meta: [
-        { title: product.seoTitle || `${product.name} Attar — BADR` },
+        { title },
         { name: "description", content: description },
+        ...socialMeta({
+          title,
+          description,
+          url: pageUrl,
+          image: socialImage,
+          imageAlt: `${product.name} concentrated attar perfume bottle by BADR`,
+          type: "product",
+        }),
+        { property: "product:brand", content: "BADR" },
+        { property: "product:price:amount", content: String(product.price) },
+        { property: "product:price:currency", content: "INR" },
         {
-          name: "keywords",
-          content: (product.seoKeywords?.length
-            ? product.seoKeywords
-            : [product.name, product.category, ...product.notes, "BADR attar"]
-          ).join(", "),
+          property: "product:availability",
+          content: product.inStock === false ? "out of stock" : "in stock",
         },
-        { property: "og:title", content: product.seoTitle || `${product.name} Attar — BADR` },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "product" },
-        { property: "og:url", content: pageUrl },
-        { property: "og:image", content: socialImage },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: product.seoTitle || `${product.name} Attar — BADR` },
-        { name: "twitter:description", content: description },
-        { name: "twitter:image", content: socialImage },
       ],
       links: [{ rel: "canonical", href: pageUrl }],
     };
@@ -148,42 +153,122 @@ function ProductPage() {
     );
     setAdded(true);
   };
-  const socialImage = product.socialImage || SCENE_IMAGES[product.id] || product.image;
-  const productSchema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.name,
-    image: (product.gallery?.length ? product.gallery : [socialImage]).map((image) =>
-      new URL(image, SITE_ORIGIN).toString(),
-    ),
-    description: product.seoDescription || product.hook,
-    category: product.category,
-    brand: { "@type": "Brand", name: "BADR" },
-    offers: {
-      "@type": "Offer",
-      priceCurrency: "INR",
-      price: product.price,
-      availability:
-        product.inStock === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-      url: `${SITE_ORIGIN}/product/${product.id}`,
-    },
-    ...(reviews.length
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue:
-              reviews.reduce((total, review) => total + review.rating, 0) / reviews.length,
-            reviewCount: reviews.length,
-          },
-        }
-      : {}),
-  };
+  const productGraph = useMemo(() => {
+    const socialImage = product.socialImage || SCENE_IMAGES[product.id] || product.image;
+    const productUrl = `${SITE_ORIGIN}/product/${product.id}`;
+    const productImages = Array.from(
+      new Set([socialImage, product.image, ...(product.gallery || [])].filter(Boolean)),
+    ).map(absoluteUrl);
+    const ratingValue = reviews.length
+      ? Number(
+          (reviews.reduce((total, review) => total + review.rating, 0) / reviews.length).toFixed(2),
+        )
+      : null;
+    const productSchema = {
+      "@type": "Product",
+      "@id": `${productUrl}/#product`,
+      mainEntityOfPage: `${productUrl}/#webpage`,
+      name: product.name,
+      url: productUrl,
+      image: productImages,
+      description: product.seoDescription || product.hook,
+      category: product.category,
+      brand: { "@type": "Brand", name: "BADR" },
+      manufacturer: { "@id": ORGANIZATION_ID },
+      countryOfOrigin: { "@type": "Country", name: product.countryOfOrigin || "India" },
+      audience: { "@type": "PeopleAudience", suggestedGender: "unisex" },
+      size: product.volume || "6 ml",
+      ...(product.sku ? { sku: product.sku, mpn: product.sku } : {}),
+      additionalProperty: [
+        { "@type": "PropertyValue", name: "Format", value: product.format || "Roll-on attar" },
+        { "@type": "PropertyValue", name: "Volume", value: product.volume || "6 ml" },
+        { "@type": "PropertyValue", name: "Fragrance notes", value: product.notes.join(", ") },
+        { "@type": "PropertyValue", name: "Longevity", value: product.longevity },
+        { "@type": "PropertyValue", name: "Intensity", value: product.intensity },
+      ],
+      offers: {
+        "@type": "Offer",
+        "@id": `${productUrl}/#offer`,
+        url: productUrl,
+        priceCurrency: "INR",
+        price: product.price.toFixed(2),
+        availability:
+          product.inStock === false
+            ? "https://schema.org/OutOfStock"
+            : "https://schema.org/InStock",
+        itemCondition: "https://schema.org/NewCondition",
+        seller: { "@id": ORGANIZATION_ID },
+        shippingDetails: {
+          "@type": "OfferShippingDetails",
+          shippingRate: { "@type": "MonetaryAmount", value: "0", currency: "INR" },
+          shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
+        },
+      },
+      ...(reviews.length
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue,
+              reviewCount: reviews.length,
+            },
+            review: reviews.slice(0, 20).map((review) => ({
+              "@type": "Review",
+              name: review.title || `Verified review of ${product.name}`,
+              reviewBody: review.body || review.title || "Verified BADR purchase.",
+              reviewRating: { "@type": "Rating", ratingValue: review.rating, bestRating: 5 },
+              author: {
+                "@type": "Person",
+                name: review.customer_name || "Verified customer",
+              },
+              ...(review.created_at ? { datePublished: review.created_at.slice(0, 10) } : {}),
+            })),
+          }
+        : {}),
+    };
+    return {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebPage",
+          "@id": `${productUrl}/#webpage`,
+          url: productUrl,
+          name: product.seoTitle || `${product.name} Attar Perfume Oil | BADR India`,
+          description: product.seoDescription || product.hook,
+          isPartOf: { "@id": WEBSITE_ID },
+          about: { "@id": `${productUrl}/#product` },
+          primaryImageOfPage: { "@type": "ImageObject", url: productImages[0] },
+          inLanguage: "en-IN",
+        },
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: SITE_ORIGIN },
+            { "@type": "ListItem", position: 2, name: "Shop attars", item: `${SITE_ORIGIN}/shop` },
+            { "@type": "ListItem", position: 3, name: product.name, item: productUrl },
+          ],
+        },
+        productSchema,
+        ...(product.faqs.length
+          ? [
+              {
+                "@type": "FAQPage",
+                mainEntity: product.faqs.map((faq) => ({
+                  "@type": "Question",
+                  name: faq.q,
+                  acceptedAnswer: { "@type": "Answer", text: faq.a },
+                })),
+              },
+            ]
+          : []),
+      ],
+    };
+  }, [product, reviews]);
 
   return (
     <StoreShell>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(productGraph) }}
       />
 
       <main className="bg-white pb-18 sm:pb-0">

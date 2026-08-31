@@ -7,28 +7,55 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
 import { BOTTLE_IMAGES } from "@/lib/products";
 import { SearchSelect } from "@/components/ui/search-select";
+import {
+  DEFAULT_SOCIAL_IMAGE,
+  ORGANIZATION_ID,
+  SITE_ORIGIN,
+  WEBSITE_ID,
+  serializeJsonLd,
+  socialMeta,
+} from "@/lib/seo";
 
-const SITE_ORIGIN = "https://houseofbadr.com";
+const SHOP_URL = `${SITE_ORIGIN}/shop`;
+const SHOP_TITLE = "Shop Attar Perfume Online | Oud, Rose & Vanilla Oils | BADR";
+const SHOP_DESCRIPTION =
+  "Shop BADR concentrated 6 ml attar perfume oils online in India. Explore oud, rose, fruity, aquatic and vanilla scents for all genders from ₹499.";
+const SHOP_FAQS = [
+  {
+    question: "What is a BADR attar?",
+    answer:
+      "BADR attars are concentrated perfume oils supplied in a compact 6 ml roll-on bottle. Apply a small amount to pulse points and let the fragrance settle naturally on the skin.",
+  },
+  {
+    question: "Are BADR attars for men or women?",
+    answer:
+      "Every BADR fragrance is designed for all genders. Choose by scent profile: oud and saffron, rose and oud, fruity woods, fresh aquatic citrus, or vanilla and amber.",
+  },
+  {
+    question: "Is delivery included in the displayed price?",
+    answer:
+      "India delivery is included in the displayed product price. International availability, shipping and payment details are confirmed through WhatsApp at checkout.",
+  },
+];
 
 export const Route = createFileRoute("/shop")({
   loader: async () => ({ products: await listActiveProducts() }),
   head: () => ({
     meta: [
-      { title: "Shop all attars — BADR" },
-      {
-        name: "description",
-        content:
-          "Shop BADR's unisex 6 ml attars: oud, floral, fruity, fresh aquatic and gourmand perfume oils made in India.",
-      },
-      {
-        name: "keywords",
-        content: "shop attar online, unisex attar India, oud perfume oil, BADR attar collection",
-      },
+      { title: SHOP_TITLE },
+      { name: "description", content: SHOP_DESCRIPTION },
+      ...socialMeta({
+        title: SHOP_TITLE,
+        description: SHOP_DESCRIPTION,
+        url: SHOP_URL,
+        image: DEFAULT_SOCIAL_IMAGE,
+        imageAlt: "BADR concentrated attar perfume collection",
+      }),
     ],
     links: [
       {
         rel: "canonical",
-        href: `${SITE_ORIGIN}/shop`,
+        href: SHOP_URL,
       },
     ],
   }),
@@ -69,8 +96,57 @@ function ShopPage() {
       .toLowerCase();
     return matchesCollection && haystack.includes(search.trim().toLowerCase());
   });
+  const shopSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "@id": `${SHOP_URL}/#webpage`,
+          url: SHOP_URL,
+          name: SHOP_TITLE,
+          description: SHOP_DESCRIPTION,
+          isPartOf: { "@id": WEBSITE_ID },
+          about: { "@id": ORGANIZATION_ID },
+          inLanguage: "en-IN",
+        },
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: SITE_ORIGIN },
+            { "@type": "ListItem", position: 2, name: "Shop attars", item: SHOP_URL },
+          ],
+        },
+        {
+          "@type": "ItemList",
+          name: "BADR attar perfume collection",
+          numberOfItems: products.length,
+          itemListElement: products.map((product, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: `${product.name} attar perfume`,
+            url: `${SITE_ORIGIN}/product/${product.slug || product.id}`,
+            image: product.cover_image_url || undefined,
+          })),
+        },
+        {
+          "@type": "FAQPage",
+          mainEntity: SHOP_FAQS.map((faq) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: { "@type": "Answer", text: faq.answer },
+          })),
+        },
+      ],
+    }),
+    [products],
+  );
   return (
     <StoreShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(shopSchema) }}
+      />
       <main className="min-h-screen bg-white px-3 pb-24 pt-14 sm:px-6 sm:pt-20">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-center font-display text-3xl sm:text-5xl">Shop the collection</h1>
@@ -165,6 +241,21 @@ function ShopPage() {
               No scents match those filters.
             </p>
           )}
+
+          <section className="mx-auto mt-20 max-w-4xl border-t border-black/10 py-16 sm:mt-28 sm:py-20">
+            <p className="text-center text-xs text-black/45">Buying BADR attar online</p>
+            <h2 className="mt-3 text-center font-display text-3xl sm:text-5xl">
+              Attar perfume, made simple
+            </h2>
+            <div className="mt-10 grid gap-px bg-black/10 md:grid-cols-3">
+              {SHOP_FAQS.map((faq) => (
+                <article key={faq.question} className="bg-white p-6 sm:p-8">
+                  <h3 className="text-sm font-semibold leading-5">{faq.question}</h3>
+                  <p className="mt-4 text-sm leading-7 text-black/62">{faq.answer}</p>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
       </main>
       <SiteFooter />
