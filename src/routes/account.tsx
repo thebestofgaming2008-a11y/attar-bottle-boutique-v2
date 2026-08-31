@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { LogOut, MapPin, Package, UserRound } from "lucide-react";
@@ -22,9 +22,11 @@ export const Route = createFileRoute("/account")({
 
 function AccountPage() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const authCapabilities = useQuery(api.users.authCapabilities, {});
-  const orders = useQuery(api.orders.listMine, auth.user ? {} : "skip");
-  const addresses = useQuery(api.addresses.listMine, auth.user ? {} : "skip");
+  const customerAccount = Boolean(auth.user && !auth.isAdmin);
+  const orders = useQuery(api.orders.listMine, customerAccount ? {} : "skip");
+  const addresses = useQuery(api.addresses.listMine, customerAccount ? {} : "skip");
   const createAddress = useMutation(api.addresses.create);
   const removeAddress = useMutation(api.addresses.remove);
   const setDefaultAddress = useMutation(api.addresses.setDefault);
@@ -50,6 +52,11 @@ function AccountPage() {
   });
   const addressIsIndia = countryIsIndia(address.country);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (auth.loading || !auth.user || !auth.isAdmin) return;
+    void navigate({ to: "/admin", replace: true });
+  }, [auth.isAdmin, auth.loading, auth.user, navigate]);
 
   useEffect(() => {
     if (!auth.profile) return;
@@ -127,6 +134,19 @@ function AccountPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save address.");
     }
+  }
+
+  if (auth.loading || (auth.user && auth.isAdmin)) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#f5f2ec] px-4 text-center">
+        <div>
+          <p className="eyebrow">BADR</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {auth.isAdmin ? "Opening the admin workspace…" : "Loading your account…"}
+          </p>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -242,14 +262,6 @@ function AccountPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {auth.isAdmin ? (
-                    <Link
-                      to="/admin"
-                      className="bg-foreground px-4 py-3 text-xs font-semibold uppercase tracking-[0.13em] text-background"
-                    >
-                      Admin
-                    </Link>
-                  ) : null}
                   <button
                     onClick={() => void auth.signOut()}
                     className="flex items-center gap-2 border border-foreground px-4 py-3 text-xs font-semibold uppercase tracking-[0.13em]"
