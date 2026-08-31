@@ -2600,9 +2600,6 @@ function HomepageAdminPanel({
     positionX: number;
     positionY: number;
   } | null>(null);
-  const featured = products.filter((product) => product.is_featured);
-  const newArrivals = products.filter((product) => product.is_new_arrival);
-  const bestsellers = products.filter((product) => product.is_bestseller);
   const rows = products.filter((product) => product.is_active !== false);
 
   useEffect(() => {
@@ -2655,7 +2652,7 @@ function HomepageAdminPanel({
       if (kind === "poster") setFilmPreviewMode("poster");
       notify({
         title: kind === "poster" ? "Poster uploaded" : "Film uploaded",
-        description: "Press Save film settings to publish it.",
+        description: "Review the preview, then publish your changes.",
       });
     } catch (error) {
       notify({
@@ -2729,33 +2726,37 @@ function HomepageAdminPanel({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 md:grid-cols-3">
-        <AttentionCard
-          title="Featured"
-          count={featured.length}
-          description="Products shown in homepage rails"
-          Icon={Store}
-        />
-        <AttentionCard
-          title="New arrivals"
-          count={newArrivals.length}
-          description="Fresh products promoted on the storefront"
-          Icon={Sparkles}
-          accent="info"
-        />
-        <AttentionCard
-          title="Bestsellers"
-          count={bestsellers.length}
-          description="Products marked as strongest sellers"
-          Icon={TrendingUp}
-        />
-      </div>
-
       <Section
-        title="Vertical campaign film"
-        subtitle="Upload the poster and film, then crop and position the poster inside its vertical frame."
+        title="Homepage film"
+        subtitle="Upload, frame and publish the vertical campaign film shown on the storefront."
       >
-        <div className="grid gap-6 lg:grid-cols-[minmax(220px,320px)_1fr]">
+        <div className="mb-5 flex flex-col gap-3 border-b border-[rgb(var(--vibe-border))] pb-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-between gap-4 sm:justify-start">
+            <div>
+              <p className="text-sm font-medium">Storefront visibility</p>
+              <p className="text-xs text-[rgb(var(--vibe-muted))]">
+                {filmConfig.enabled ? "Visible to customers" : "Hidden from customers"}
+              </p>
+            </div>
+            <ToggleButton
+              active={filmConfig.enabled}
+              onClick={() =>
+                setFilmConfig((current) => ({ ...current, enabled: !current.enabled }))
+              }
+            />
+          </div>
+          <button
+            type="button"
+            className="admin-button w-full justify-center sm:w-auto"
+            disabled={filmLoading || filmSaving || filmUploading !== null}
+            onClick={() => void saveFilm()}
+            data-testid="admin-film-save-button"
+          >
+            {filmSaving ? "Publishing…" : "Publish changes"}
+          </button>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(240px,340px)_1fr]">
           <div className="space-y-2">
             <div className="grid grid-cols-2 border border-[rgb(var(--vibe-border))] bg-white p-1 text-xs">
               <button
@@ -2834,270 +2835,290 @@ function HomepageAdminPanel({
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-[rgb(var(--vibe-border))] p-3">
-              <div>
-                <p className="text-sm font-medium">Show on storefront</p>
-                <p className="text-xs text-[rgb(var(--vibe-muted))]">
-                  Hide it temporarily without losing the uploaded media.
+            <div className="border border-[rgb(var(--vibe-border))] p-4 sm:p-5">
+              <div className="mb-4">
+                <p className="text-sm font-semibold">1. Choose media</p>
+                <p className="mt-1 text-xs text-[rgb(var(--vibe-muted))]">
+                  Replace the poster or film. Nothing changes live until you publish.
                 </p>
               </div>
-              <ToggleButton
-                active={filmConfig.enabled}
-                onClick={() =>
-                  setFilmConfig((current) => ({ ...current, enabled: !current.enabled }))
-                }
-              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="admin-button admin-button-secondary cursor-pointer justify-center">
+                  <ImageIcon className="h-4 w-4" />
+                  {filmUploading === "poster" ? "Uploading poster…" : "Replace poster"}
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                    disabled={filmUploading !== null}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadFilmMedia(file, "poster");
+                      event.target.value = "";
+                    }}
+                    data-testid="admin-film-poster-file-input"
+                  />
+                </label>
+                <label className="admin-button admin-button-secondary cursor-pointer justify-center">
+                  <Upload className="h-4 w-4" />
+                  {filmUploading === "video" ? "Uploading film…" : "Replace film"}
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="video/mp4,video/webm"
+                    disabled={filmUploading !== null}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadFilmMedia(file, "video");
+                      event.target.value = "";
+                    }}
+                    data-testid="admin-film-video-file-input"
+                  />
+                </label>
+              </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AdminField label="Poster crop">
-                <select
-                  className="admin-input"
-                  value={filmConfig.posterFit}
-                  onChange={(event) =>
+            <div className="border border-[rgb(var(--vibe-border))] p-4 sm:p-5">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">2. Frame the poster</p>
+                  <p className="mt-1 text-xs text-[rgb(var(--vibe-muted))]">
+                    Drag the preview or use the sliders for exact positioning.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 border border-[rgb(var(--vibe-border))] px-2.5 text-xs font-medium hover:bg-[rgb(var(--vibe-accent))]"
+                  onClick={() =>
                     setFilmConfig((current) => ({
                       ...current,
-                      posterFit: event.target.value as HomepageFilmConfig["posterFit"],
+                      posterFit: "cover",
+                      posterPositionX: 50,
+                      posterPositionY: 50,
+                      posterZoom: 100,
                     }))
                   }
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </button>
+              </div>
+
+              <div className="mb-5 grid grid-cols-2 border border-[rgb(var(--vibe-border))] p-1 text-xs">
+                <button
+                  type="button"
+                  className={cn(
+                    "min-h-9 px-3 font-medium transition",
+                    filmConfig.posterFit === "cover"
+                      ? "bg-black text-white"
+                      : "text-[rgb(var(--vibe-muted))] hover:bg-black/5 hover:text-black",
+                  )}
+                  onClick={() => setFilmConfig((current) => ({ ...current, posterFit: "cover" }))}
                   data-testid="admin-film-poster-fit-select"
                 >
-                  <option value="cover">Fill frame and crop</option>
-                  <option value="contain">Show full image</option>
-                </select>
-              </AdminField>
-              <AdminField label="Video focus">
-                <select
-                  className="admin-input"
-                  value={filmConfig.focalPosition}
-                  onChange={(event) =>
-                    setFilmConfig((current) => ({
-                      ...current,
-                      focalPosition: event.target.value as HomepageFilmConfig["focalPosition"],
-                    }))
-                  }
-                  data-testid="admin-film-focus-select"
+                  Fill frame
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "min-h-9 px-3 font-medium transition",
+                    filmConfig.posterFit === "contain"
+                      ? "bg-black text-white"
+                      : "text-[rgb(var(--vibe-muted))] hover:bg-black/5 hover:text-black",
+                  )}
+                  onClick={() => setFilmConfig((current) => ({ ...current, posterFit: "contain" }))}
                 >
-                  <option value="top">Top</option>
-                  <option value="center">Centre</option>
-                  <option value="bottom">Bottom</option>
-                </select>
-              </AdminField>
-              <AdminField label="Phone fit">
-                <select
-                  className="admin-input"
-                  value={filmConfig.mobileFit}
-                  onChange={(event) =>
-                    setFilmConfig((current) => ({
-                      ...current,
-                      mobileFit: event.target.value as HomepageFilmConfig["mobileFit"],
-                    }))
+                  Show full poster
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <AdminRangeField
+                  label="Move left / right"
+                  value={filmConfig.posterPositionX}
+                  min={0}
+                  max={100}
+                  suffix="%"
+                  onChange={(value) =>
+                    setFilmConfig((current) => ({ ...current, posterPositionX: value }))
                   }
-                >
-                  <option value="cover">Fill screen</option>
-                  <option value="contain">Show full frame</option>
-                </select>
-              </AdminField>
-              <AdminField label="Desktop fit">
-                <select
-                  className="admin-input"
-                  value={filmConfig.desktopFit}
-                  onChange={(event) =>
-                    setFilmConfig((current) => ({
-                      ...current,
-                      desktopFit: event.target.value as HomepageFilmConfig["desktopFit"],
-                    }))
-                  }
-                >
-                  <option value="contain">Show full frame</option>
-                  <option value="cover">Fill screen</option>
-                </select>
-              </AdminField>
-            </div>
-
-            <div className="grid gap-4 border border-[rgb(var(--vibe-border))] p-4 sm:grid-cols-3">
-              <AdminRangeField
-                label="Horizontal crop"
-                value={filmConfig.posterPositionX}
-                min={0}
-                max={100}
-                suffix="%"
-                onChange={(value) =>
-                  setFilmConfig((current) => ({ ...current, posterPositionX: value }))
-                }
-              />
-              <AdminRangeField
-                label="Vertical crop"
-                value={filmConfig.posterPositionY}
-                min={0}
-                max={100}
-                suffix="%"
-                onChange={(value) =>
-                  setFilmConfig((current) => ({ ...current, posterPositionY: value }))
-                }
-              />
-              <AdminRangeField
-                label="Poster zoom"
-                value={filmConfig.posterZoom}
-                min={100}
-                max={300}
-                suffix="%"
-                onChange={(value) =>
-                  setFilmConfig((current) => ({ ...current, posterZoom: value }))
-                }
-              />
-            </div>
-
-            <AdminField label="Poster URL">
-              <input
-                className="admin-input"
-                type="url"
-                value={filmConfig.posterUrl}
-                onChange={(event) =>
-                  setFilmConfig((current) => ({ ...current, posterUrl: event.target.value }))
-                }
-                data-testid="admin-film-poster-url-input"
-              />
-            </AdminField>
-            <AdminField label="WebM URL (recommended)">
-              <input
-                className="admin-input"
-                type="url"
-                value={filmConfig.videoWebmUrl ?? ""}
-                onChange={(event) =>
-                  setFilmConfig((current) => ({
-                    ...current,
-                    videoWebmUrl: event.target.value || null,
-                  }))
-                }
-              />
-            </AdminField>
-            <AdminField label="MP4 fallback URL">
-              <input
-                className="admin-input"
-                type="url"
-                value={filmConfig.videoMp4Url ?? ""}
-                onChange={(event) =>
-                  setFilmConfig((current) => ({
-                    ...current,
-                    videoMp4Url: event.target.value || null,
-                  }))
-                }
-              />
-            </AdminField>
-
-            <div className="flex flex-wrap gap-2">
-              <label className="admin-button admin-button-secondary cursor-pointer">
-                <ImageIcon className="h-4 w-4" />
-                {filmUploading === "poster" ? "Uploading poster…" : "Upload poster"}
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-                  disabled={filmUploading !== null}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadFilmMedia(file, "poster");
-                    event.target.value = "";
-                  }}
-                  data-testid="admin-film-poster-file-input"
                 />
-              </label>
-              <label className="admin-button admin-button-secondary cursor-pointer">
-                <Upload className="h-4 w-4" />
-                {filmUploading === "video" ? "Uploading film…" : "Upload MP4 / WebM"}
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept="video/mp4,video/webm"
-                  disabled={filmUploading !== null}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadFilmMedia(file, "video");
-                    event.target.value = "";
-                  }}
-                  data-testid="admin-film-video-file-input"
+                <AdminRangeField
+                  label="Move up / down"
+                  value={filmConfig.posterPositionY}
+                  min={0}
+                  max={100}
+                  suffix="%"
+                  onChange={(value) =>
+                    setFilmConfig((current) => ({ ...current, posterPositionY: value }))
+                  }
                 />
-              </label>
-              <button
-                type="button"
-                className="admin-button"
-                disabled={filmLoading || filmSaving || filmUploading !== null}
-                onClick={() => void saveFilm()}
-                data-testid="admin-film-save-button"
-              >
-                {filmSaving ? "Publishing…" : "Save film settings"}
-              </button>
+                <AdminRangeField
+                  label="Zoom"
+                  value={filmConfig.posterZoom}
+                  min={100}
+                  max={300}
+                  suffix="%"
+                  onChange={(value) =>
+                    setFilmConfig((current) => ({ ...current, posterZoom: value }))
+                  }
+                />
+              </div>
             </div>
+
+            <details className="group border border-[rgb(var(--vibe-border))]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-medium hover:bg-[rgb(var(--vibe-accent))] [&::-webkit-details-marker]:hidden">
+                Advanced media settings
+                <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+              </summary>
+              <div className="space-y-4 border-t border-[rgb(var(--vibe-border))] p-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <AdminField label="Video focus">
+                    <select
+                      className="admin-input"
+                      value={filmConfig.focalPosition}
+                      onChange={(event) =>
+                        setFilmConfig((current) => ({
+                          ...current,
+                          focalPosition: event.target.value as HomepageFilmConfig["focalPosition"],
+                        }))
+                      }
+                      data-testid="admin-film-focus-select"
+                    >
+                      <option value="top">Top</option>
+                      <option value="center">Centre</option>
+                      <option value="bottom">Bottom</option>
+                    </select>
+                  </AdminField>
+                  <AdminField label="Phone fit">
+                    <select
+                      className="admin-input"
+                      value={filmConfig.mobileFit}
+                      onChange={(event) =>
+                        setFilmConfig((current) => ({
+                          ...current,
+                          mobileFit: event.target.value as HomepageFilmConfig["mobileFit"],
+                        }))
+                      }
+                    >
+                      <option value="cover">Fill screen</option>
+                      <option value="contain">Show full frame</option>
+                    </select>
+                  </AdminField>
+                  <AdminField label="Desktop fit">
+                    <select
+                      className="admin-input"
+                      value={filmConfig.desktopFit}
+                      onChange={(event) =>
+                        setFilmConfig((current) => ({
+                          ...current,
+                          desktopFit: event.target.value as HomepageFilmConfig["desktopFit"],
+                        }))
+                      }
+                    >
+                      <option value="contain">Show full frame</option>
+                      <option value="cover">Fill screen</option>
+                    </select>
+                  </AdminField>
+                </div>
+                <AdminField label="Poster URL">
+                  <input
+                    className="admin-input"
+                    type="url"
+                    value={filmConfig.posterUrl}
+                    onChange={(event) =>
+                      setFilmConfig((current) => ({ ...current, posterUrl: event.target.value }))
+                    }
+                    data-testid="admin-film-poster-url-input"
+                  />
+                </AdminField>
+                <AdminField label="WebM URL">
+                  <input
+                    className="admin-input"
+                    type="url"
+                    value={filmConfig.videoWebmUrl ?? ""}
+                    onChange={(event) =>
+                      setFilmConfig((current) => ({
+                        ...current,
+                        videoWebmUrl: event.target.value || null,
+                      }))
+                    }
+                  />
+                </AdminField>
+                <AdminField label="MP4 fallback URL">
+                  <input
+                    className="admin-input"
+                    type="url"
+                    value={filmConfig.videoMp4Url ?? ""}
+                    onChange={(event) =>
+                      setFilmConfig((current) => ({
+                        ...current,
+                        videoMp4Url: event.target.value || null,
+                      }))
+                    }
+                  />
+                </AdminField>
+              </div>
+            </details>
           </div>
         </div>
       </Section>
 
       <Section
-        title="Homepage placement"
-        subtitle="Choose what appears in the storefront sections."
+        title="Products on homepage"
+        subtitle="Turn storefront labels on or off for each active product."
       >
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm" data-testid="admin-homepage-placement-table">
-            <thead>
-              <tr className="border-b border-[rgb(var(--vibe-border))] text-left text-[11px] uppercase tracking-[0.16em] text-[rgb(var(--vibe-muted))]">
-                <th className="py-2 pr-3">Product</th>
-                <th className="py-2 px-3">Collection</th>
-                <th className="py-2 px-3">Featured</th>
-                <th className="py-2 px-3">New</th>
-                <th className="py-2 px-3">Bestseller</th>
-                <th className="py-2 pl-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((product) => (
-                <tr
-                  key={product.id}
-                  className="border-b border-[rgb(var(--vibe-border))] last:border-0"
-                >
-                  <td className="py-3 pr-3">
-                    <div className="flex items-center gap-3">
-                      <ProductThumb product={product} />
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{product.name}</p>
-                        <p className="text-xs text-[rgb(var(--vibe-muted))]">{product.slug}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
+        <div className="grid gap-3 lg:grid-cols-2" data-testid="admin-homepage-placement-table">
+          {rows.map((product) => (
+            <article key={product.id} className="border border-[rgb(var(--vibe-border))] p-4">
+              <div className="flex items-center gap-3">
+                <ProductThumb product={product} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{product.name}</p>
+                  <p className="truncate text-xs text-[rgb(var(--vibe-muted))]">
                     {categoryLabel(product.category_id ?? product.category)}
-                  </td>
-                  <td className="px-3 py-3">
-                    <ToggleButton
-                      active={Boolean(product.is_featured)}
-                      onClick={() => onPatch(product, { is_featured: !product.is_featured })}
-                    />
-                  </td>
-                  <td className="px-3 py-3">
-                    <ToggleButton
-                      active={Boolean(product.is_new_arrival)}
-                      onClick={() => onPatch(product, { is_new_arrival: !product.is_new_arrival })}
-                    />
-                  </td>
-                  <td className="px-3 py-3">
-                    <ToggleButton
-                      active={Boolean(product.is_bestseller)}
-                      onClick={() => onPatch(product, { is_bestseller: !product.is_bestseller })}
-                    />
-                  </td>
-                  <td className="py-3 pl-3 text-right">
-                    <button
-                      type="button"
-                      className="h-8 rounded-md border border-[rgb(var(--vibe-border))] px-3 text-xs hover:bg-[rgb(var(--vibe-accent))]"
-                      onClick={() => onEdit(product)}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="h-8 shrink-0 border border-[rgb(var(--vibe-border))] px-3 text-xs font-medium hover:bg-[rgb(var(--vibe-accent))]"
+                  onClick={() => onEdit(product)}
+                >
+                  Edit
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[rgb(var(--vibe-border))] pt-4">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <span className="text-[11px] font-medium text-[rgb(var(--vibe-muted))]">
+                    Featured
+                  </span>
+                  <ToggleButton
+                    active={Boolean(product.is_featured)}
+                    onClick={() => onPatch(product, { is_featured: !product.is_featured })}
+                  />
+                </div>
+                <div className="flex flex-col items-center gap-2 border-x border-[rgb(var(--vibe-border))] text-center">
+                  <span className="text-[11px] font-medium text-[rgb(var(--vibe-muted))]">
+                    New arrival
+                  </span>
+                  <ToggleButton
+                    active={Boolean(product.is_new_arrival)}
+                    onClick={() => onPatch(product, { is_new_arrival: !product.is_new_arrival })}
+                  />
+                </div>
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <span className="text-[11px] font-medium text-[rgb(var(--vibe-muted))]">
+                    Bestseller
+                  </span>
+                  <ToggleButton
+                    active={Boolean(product.is_bestseller)}
+                    onClick={() => onPatch(product, { is_bestseller: !product.is_bestseller })}
+                  />
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
       </Section>
     </div>
