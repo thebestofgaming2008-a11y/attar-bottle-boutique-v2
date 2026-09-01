@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Check, Minus, Plus, ShoppingBag, Star } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Minus, Plus, ShoppingBag, Star } from "lucide-react";
 import {
   BOTTLE_IMAGES,
   PRODUCTS,
@@ -568,39 +568,112 @@ function ProductGallery({ product }: { product: Product }) {
       ),
     ),
   );
-  const [featuredImage, ...supportingImages] = images;
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    galleryRef.current?.scrollTo({ left: 0 });
+  }, [product.id]);
+
+  const showImage = (index: number) => {
+    const nextIndex = Math.max(0, Math.min(index, images.length - 1));
+    const gallery = galleryRef.current;
+    setActiveIndex(nextIndex);
+    gallery?.scrollTo({ left: nextIndex * gallery.clientWidth, behavior: "smooth" });
+  };
 
   return (
-    <div className="min-w-0 bg-white lg:border-r lg:border-black/10 lg:p-3">
-      <figure className="relative aspect-square overflow-hidden bg-white p-10 sm:p-14 lg:p-16">
-        <img
-          src={featuredImage || product.image}
-          alt={`${product.name} attar`}
-          className="h-full w-full object-contain transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.025]"
-          fetchPriority="high"
-          decoding="async"
-        />
-        <figcaption className="absolute bottom-4 left-4 text-[8px] font-semibold uppercase tracking-[0.16em] text-black/42">
-          BADR concentrated perfume oil · Made in {product.countryOfOrigin || "India"}
-        </figcaption>
-      </figure>
-      {supportingImages.length ? (
-        <div className="grid grid-cols-2 gap-2 border-t border-black/10 p-2 sm:gap-3 sm:p-3">
-          {supportingImages.slice(0, 8).map((image, index) => (
-            <figure
-              key={image}
-              className="aspect-square overflow-hidden border border-black/10 bg-white"
-            >
+    <div
+      className="relative min-w-0 overflow-hidden bg-white lg:border-r lg:border-black/10 lg:p-3"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={`${product.name} product images`}
+    >
+      <div
+        ref={galleryRef}
+        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onScroll={(event) => {
+          const gallery = event.currentTarget;
+          if (!gallery.clientWidth) return;
+          const index = Math.round(gallery.scrollLeft / gallery.clientWidth);
+          setActiveIndex(Math.max(0, Math.min(index, images.length - 1)));
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") showImage(activeIndex - 1);
+          if (event.key === "ArrowRight") showImage(activeIndex + 1);
+        }}
+        tabIndex={images.length > 1 ? 0 : -1}
+      >
+        {images.map((image, index) => (
+          <figure
+            key={image}
+            className="relative aspect-square w-full shrink-0 snap-center snap-always overflow-hidden bg-white p-8 sm:p-12 lg:p-16"
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${index + 1} of ${images.length}`}
+          >
+            <div className="h-full w-full overflow-hidden">
               <img
                 src={image}
-                alt={`${product.name} ${index === 0 ? "campaign" : "detail"}`}
-                className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.025]"
-                loading="lazy"
+                alt={
+                  index === 0
+                    ? `${product.name} attar`
+                    : `${product.name} product view ${index + 1}`
+                }
+                className="h-full w-full object-contain transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.02]"
+                fetchPriority={index === 0 ? "high" : undefined}
+                loading={index === 0 ? "eager" : "lazy"}
                 decoding="async"
               />
-            </figure>
-          ))}
-        </div>
+            </div>
+            {index === 0 ? (
+              <figcaption className="absolute bottom-4 left-4 text-[8px] font-semibold uppercase tracking-[0.16em] text-black/42">
+                BADR concentrated perfume oil · Made in {product.countryOfOrigin || "India"}
+              </figcaption>
+            ) : null}
+          </figure>
+        ))}
+      </div>
+
+      {images.length > 1 ? (
+        <>
+          <button
+            type="button"
+            onClick={() => showImage(activeIndex - 1)}
+            disabled={activeIndex === 0}
+            className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center border border-black/12 bg-white/92 text-black shadow-sm backdrop-blur transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-0 sm:left-5"
+            aria-label="Previous product image"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => showImage(activeIndex + 1)}
+            disabled={activeIndex === images.length - 1}
+            className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center border border-black/12 bg-white/92 text-black shadow-sm backdrop-blur transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-0 sm:right-5"
+            aria-label="Next product image"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+
+          <div className="absolute bottom-4 right-4 flex items-center gap-3 bg-white/92 px-3 py-2 text-[10px] font-semibold tracking-[0.1em] text-black backdrop-blur">
+            <span aria-live="polite">
+              {String(activeIndex + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
+            </span>
+            <div className="flex gap-1">
+              {images.map((image, index) => (
+                <button
+                  key={image}
+                  type="button"
+                  onClick={() => showImage(index)}
+                  className={`h-1 transition-all ${activeIndex === index ? "w-5 bg-black" : "w-1 bg-black/25"}`}
+                  aria-label={`Show product image ${index + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+        </>
       ) : null}
     </div>
   );
