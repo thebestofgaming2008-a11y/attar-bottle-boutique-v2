@@ -23,7 +23,13 @@ const CURRENCY_NAMES: Record<string, string> = {
   ZAR: "South African rand",
 };
 
-export function StoreShell({ children }: { children: ReactNode }) {
+export function StoreShell({
+  children,
+  hideHeaderAtTop = false,
+}: {
+  children: ReactNode;
+  hideHeaderAtTop?: boolean;
+}) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -90,14 +96,14 @@ export function StoreShell({ children }: { children: ReactNode }) {
 
   return (
     <div ref={rootRef} className="store-motion min-h-screen bg-background text-foreground">
-      <SiteHeader />
+      <SiteHeader hideAtTop={hideHeaderAtTop} />
       <div className="page-enter">{children}</div>
       <CartDrawer />
     </div>
   );
 }
 
-function SiteHeader() {
+function SiteHeader({ hideAtTop = false }: { hideAtTop?: boolean }) {
   const cart = useCart();
   const { currency, currencies, rateSource, setCurrency } = useCurrency();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -135,14 +141,17 @@ function SiteHeader() {
   }, [menuOpen]);
 
   const closeMenu = () => setMenuOpen(false);
+  const headerHidden = hideAtTop && !scrolled && !menuOpen;
 
   return (
     <>
       <header
         data-scrolled={scrolled || undefined}
-        className={`pointer-events-none fixed inset-x-0 z-50 grid grid-cols-[1fr_auto_1fr] items-center px-4 text-white mix-blend-difference transition-[top,padding] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:px-6 ${
+        aria-hidden={headerHidden || undefined}
+        inert={headerHidden}
+        className={`pointer-events-none fixed inset-x-0 z-50 grid grid-cols-[1fr_auto_1fr] items-center px-4 text-white mix-blend-difference transition-[top,padding,opacity,transform] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:px-6 ${
           scrolled ? "top-2" : "top-4 sm:top-6"
-        }`}
+        } ${headerHidden ? "-translate-y-5 opacity-0" : "translate-y-0 opacity-100"}`}
       >
         <button
           type="button"

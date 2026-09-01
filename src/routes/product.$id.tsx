@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Minus, Plus, ShoppingBag, Star } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Minus, Plus } from "lucide-react";
 import {
   BOTTLE_IMAGES,
   PRODUCTS,
@@ -123,6 +123,8 @@ function ProductPage() {
     product.sizeOptions?.[0] || `${product.volume || "6 ml"} roll-on`,
   );
   const [added, setAdded] = useState(false);
+  const [showStickyPurchase, setShowStickyPurchase] = useState(false);
+  const purchaseActionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setQty(1);
@@ -136,6 +138,16 @@ function ProductPage() {
     const timeout = window.setTimeout(() => setAdded(false), 1600);
     return () => window.clearTimeout(timeout);
   }, [added]);
+
+  useEffect(() => {
+    const purchaseActions = purchaseActionsRef.current;
+    if (!purchaseActions) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setShowStickyPurchase(!entry.isIntersecting && entry.boundingClientRect.bottom < 0);
+    });
+    observer.observe(purchaseActions);
+    return () => observer.disconnect();
+  }, [product.id]);
 
   const addCurrentProduct = () => {
     cart.addProduct(
@@ -265,7 +277,7 @@ function ProductPage() {
   }, [product, reviews]);
 
   return (
-    <StoreShell>
+    <StoreShell hideHeaderAtTop>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(productGraph) }}
@@ -277,10 +289,10 @@ function ProductPage() {
             <ProductGallery product={product} />
             <ProductInformation
               product={product}
-              related={related}
               quantity={qty}
               selectedColor={selectedColor}
               selectedSize={selectedSize}
+              purchaseActionsRef={purchaseActionsRef}
               onColorChange={setSelectedColor}
               onSizeChange={setSelectedSize}
               onDecrease={() => setQty((value) => Math.max(1, value - 1))}
@@ -294,12 +306,9 @@ function ProductPage() {
         <ProductStory product={product} />
         {product.faqs.length ? <ProductFaqs product={product} /> : null}
 
-        <section className="border-t border-black/10 bg-white px-3 py-16 sm:px-6 sm:py-24">
+        <section className="bg-white px-3 py-20 sm:px-6 sm:py-28">
           <div className="mx-auto max-w-7xl">
-            <p className="text-center text-xs text-black/48">The BADR collection</p>
-            <h2 className="mt-2 text-center font-display text-3xl sm:text-5xl">
-              You may also like
-            </h2>
+            <h2 className="text-center font-display text-4xl sm:text-5xl">Explore more scents</h2>
             <div className="mt-9 grid grid-cols-2 gap-x-2 gap-y-10 lg:grid-cols-4">
               {related.map((candidate) => (
                 <ProductCard key={candidate.id} product={candidate} />
@@ -313,7 +322,12 @@ function ProductPage() {
 
       <SiteFooter />
 
-      <div className="fixed inset-x-0 bottom-0 z-40 grid min-h-20 grid-cols-[minmax(0,0.72fr)_minmax(190px,1.28fr)] items-center gap-4 border-t border-black/10 bg-[#f7f6f2]/95 px-4 py-3 shadow-[0_-14px_45px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:hidden">
+      <div
+        aria-hidden={!showStickyPurchase}
+        className={`fixed inset-x-0 bottom-0 z-40 grid min-h-20 grid-cols-[minmax(0,0.72fr)_minmax(190px,1.28fr)] items-center gap-4 bg-[#f7f6f2]/96 px-4 py-3 shadow-[0_-14px_45px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:hidden ${
+          showStickyPurchase ? "translate-y-0" : "pointer-events-none translate-y-full"
+        }`}
+      >
         <div className="min-w-0">
           <p className="truncate text-xs text-black/55">
             {product.name} · {product.volume || "6 ml"}
@@ -328,17 +342,7 @@ function ProductPage() {
             added ? "bg-[#254a36]" : "bg-black hover:bg-[#292929]"
           }`}
         >
-          {product.inStock === false ? (
-            "Sold out"
-          ) : added ? (
-            <>
-              <Check className="h-4 w-4" /> Added to bag
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="h-4 w-4" /> Add to bag
-            </>
-          )}
+          {product.inStock === false ? "Sold out" : added ? "Added to bag" : "Add to bag"}
         </button>
       </div>
     </StoreShell>
@@ -347,10 +351,10 @@ function ProductPage() {
 
 function ProductInformation({
   product,
-  related,
   quantity,
   selectedColor,
   selectedSize,
+  purchaseActionsRef,
   onColorChange,
   onSizeChange,
   onDecrease,
@@ -359,10 +363,10 @@ function ProductInformation({
   added,
 }: {
   product: Product;
-  related: Product[];
   quantity: number;
   selectedColor: string;
   selectedSize: string;
+  purchaseActionsRef: RefObject<HTMLDivElement | null>;
   onColorChange: (value: string) => void;
   onSizeChange: (value: string) => void;
   onDecrease: () => void;
@@ -373,103 +377,52 @@ function ProductInformation({
   const { detectedCountry, format } = useCurrency();
 
   return (
-    <div className="min-w-0 px-5 py-8 sm:px-10 sm:py-10 lg:sticky lg:top-13 lg:self-start lg:px-12 lg:py-10 xl:px-16">
-      <div className="flex items-center justify-between gap-5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-black/50">
-          {product.category}
-        </p>
-        <p className="shrink-0 text-xs text-black/52">
-          {product.inStock === false ? "Sold out" : "In stock"}
-        </p>
-      </div>
+    <div className="min-w-0 px-5 pb-16 pt-24 sm:px-10 sm:py-16 lg:sticky lg:top-12 lg:self-start lg:px-12 lg:py-14 xl:px-16">
+      <p className="text-sm text-black/50">{product.category}</p>
 
-      <h1 className="mt-4 font-display text-[2.5rem] leading-[0.92] sm:text-5xl xl:text-[3.5rem]">
+      <h1 className="mt-3 font-display text-[3.2rem] leading-[0.88] sm:text-6xl xl:text-[4.6rem]">
         {product.name}
       </h1>
 
-      <p className="mt-4 max-w-xl text-[15px] leading-6 text-black/72 sm:text-base sm:leading-7">
+      <p className="mt-6 max-w-xl text-lg leading-8 text-black/72 sm:text-xl sm:leading-9">
         {product.hook}
       </p>
-      <p className="mt-2 max-w-xl text-[11px] font-medium uppercase leading-5 tracking-[0.06em] text-black/50">
-        {product.mood}
-      </p>
 
-      <div className="mt-7 flex items-end justify-between gap-5">
+      <div className="mt-7 flex items-center gap-4">
         <div className="flex items-baseline gap-3">
-          <span className="text-2xl">{format(product.price)}</span>
+          <span className="text-2xl font-medium">{format(product.price)}</span>
           {product.mrp > product.price ? (
             <span className="text-sm text-black/35 line-through">{format(product.mrp)}</span>
           ) : null}
         </div>
-        <p className="text-right text-[9px] leading-4 text-black/48">
-          Incl. of all taxes
-          <br />
-          {detectedCountry === "IN" ? "India delivery included" : "Shipping confirmed at checkout"}
+        <p className="text-sm text-black/48">
+          {product.inStock === false ? "Sold out" : "In stock"}
         </p>
       </div>
+      <p className="mt-2 text-xs leading-5 text-black/45">
+        Taxes included.{" "}
+        {detectedCountry === "IN"
+          ? "Delivery included in India."
+          : "International shipping is confirmed at checkout."}
+      </p>
 
-      {product.notes.length ? (
-        <section aria-labelledby="scent-notes-heading" className="mt-7 bg-white/55 px-4 py-4">
-          <h2 id="scent-notes-heading" className="text-xs font-medium text-black/52">
-            Key notes
-          </h2>
-          <p className="mt-2 text-sm leading-6 sm:text-[15px]">{product.notes.join(" · ")}</p>
-        </section>
-      ) : null}
-
-      {related.length ? (
-        <section aria-labelledby="other-scents-heading" className="mt-7">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 id="other-scents-heading" className="text-xs font-medium">
-              Choose another scent
-            </h2>
-            <Link to="/shop" className="text-[10px] text-black/48 underline underline-offset-4">
-              See all
-            </Link>
-          </div>
-          <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-2">
-            {related.map((candidate) => (
-              <Link
-                key={candidate.id}
-                to="/product/$id"
-                params={{ id: candidate.id }}
-                className="group w-22 shrink-0"
-              >
-                <span className="block aspect-square border border-black/20 bg-white transition-colors group-hover:border-black">
-                  <img
-                    src={candidate.image}
-                    alt={candidate.name}
-                    className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-[1.04]"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </span>
-                <span className="mt-2 block text-[10px] font-medium leading-3">
-                  {candidate.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {product.sizeOptions?.length || product.colorOptions?.length ? (
+      {(product.sizeOptions?.length ?? 0) > 1 || (product.colorOptions?.length ?? 0) > 1 ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {product.sizeOptions?.length ? (
+          {(product.sizeOptions?.length ?? 0) > 1 ? (
             <SearchSelect
               label="Size / format"
               value={selectedSize}
-              options={product.sizeOptions.map((value) => ({ value, label: value }))}
+              options={(product.sizeOptions ?? []).map((value) => ({ value, label: value }))}
               searchPlaceholder="Search sizes…"
               onValueChange={onSizeChange}
               triggerClassName="bg-transparent"
             />
           ) : null}
-          {product.colorOptions?.length ? (
+          {(product.colorOptions?.length ?? 0) > 1 ? (
             <SearchSelect
               label="Variant"
               value={selectedColor}
-              options={product.colorOptions.map((value) => ({ value, label: value }))}
+              options={(product.colorOptions ?? []).map((value) => ({ value, label: value }))}
               searchPlaceholder="Search variants…"
               onValueChange={onColorChange}
               triggerClassName="bg-transparent"
@@ -478,8 +431,8 @@ function ProductInformation({
         </div>
       ) : null}
 
-      <div className="mt-7 grid grid-cols-[104px_minmax(0,1fr)] gap-2">
-        <div className="grid min-h-13 grid-cols-3 border border-black/45 bg-transparent">
+      <div ref={purchaseActionsRef} className="mt-8 grid grid-cols-[92px_minmax(0,1fr)] gap-2">
+        <div className="grid min-h-14 grid-cols-3 bg-[#f1efe9]">
           <button type="button" aria-label="Decrease quantity" onClick={onDecrease}>
             <Minus className="mx-auto h-3.5 w-3.5" />
           </button>
@@ -494,68 +447,18 @@ function ProductInformation({
           type="button"
           disabled={product.inStock === false}
           onClick={onAdd}
-          className={`motion-button flex min-h-13 items-center justify-center gap-2 px-5 font-display text-base text-white disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`motion-button flex min-h-14 items-center justify-center gap-2 px-5 font-display text-base text-white disabled:cursor-not-allowed disabled:opacity-40 sm:text-lg ${
             added ? "bg-[#254a36]" : "bg-black hover:bg-[#292929]"
           }`}
         >
-          {product.inStock === false ? (
-            "Sold out"
-          ) : added ? (
-            <>
-              <Check className="h-4 w-4" /> Added to bag
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="h-4 w-4" /> Add to bag · {format(product.price * quantity)}
-            </>
-          )}
+          {product.inStock === false ? "Sold out" : added ? "Added to bag" : "Add to bag"}
         </button>
       </div>
 
-      <dl className="mt-7 grid grid-cols-3 gap-4 bg-black px-4 py-5 text-white">
-        <ProductFact label="Size" value={product.volume || "6 ml"} />
-        <ProductFact label="Wear" value={product.longevity} />
-        <ProductFact label="Format" value={product.format || "Roll-on"} />
-      </dl>
-
-      <Accordion type="single" collapsible className="mt-6 border-y border-black/18">
-        <AccordionItem value="story" className="border-black/18">
-          <AccordionTrigger className="py-4 text-left text-[13px] font-medium hover:no-underline">
-            The story behind {product.name}
-          </AccordionTrigger>
-          <AccordionContent className="pb-5 text-sm leading-7 text-black/62">
-            {product.meaning ? `${product.meaning} ` : ""}
-            {product.story}
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="wear" className="border-black/18">
-          <AccordionTrigger className="py-4 text-left text-[13px] font-medium hover:no-underline">
-            How to wear it
-          </AccordionTrigger>
-          <AccordionContent className="pb-5 text-sm leading-7 text-black/62">
-            Roll lightly over pulse points—wrists, inner elbows and behind the ears. Let the oil
-            settle naturally instead of rubbing it in.
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="delivery" className="border-0">
-          <AccordionTrigger className="py-4 text-left text-[13px] font-medium hover:no-underline">
-            Delivery & international orders
-          </AccordionTrigger>
-          <AccordionContent className="pb-5 text-sm leading-7 text-black/62">
-            India delivery is included in the displayed price. International availability, shipping
-            and payment are confirmed on WhatsApp at checkout.
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
-  );
-}
-
-function ProductFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[9px] font-medium uppercase tracking-[0.08em] text-white/48">{label}</dt>
-      <dd className="mt-2 text-xs leading-4 text-white/90">{value}</dd>
+      <p className="mt-6 max-w-xl text-sm leading-6 text-black/55">
+        {product.volume || "6 ml"} {product.format || "roll-on perfume oil"}. Designed to wear for{" "}
+        {product.longevity.toLowerCase()}.
+      </p>
     </div>
   );
 }
@@ -585,14 +488,14 @@ function ProductGallery({ product }: { product: Product }) {
 
   return (
     <div
-      className="relative min-w-0 overflow-hidden bg-white lg:border-r lg:border-black/10 lg:p-3"
+      className="relative h-[100svh] min-w-0 overflow-hidden bg-white lg:h-auto lg:p-3"
       role="region"
       aria-roledescription="carousel"
       aria-label={`${product.name} product images`}
     >
       <div
         ref={galleryRef}
-        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] lg:aspect-square lg:h-auto [&::-webkit-scrollbar]:hidden"
         onScroll={(event) => {
           const gallery = event.currentTarget;
           if (!gallery.clientWidth) return;
@@ -608,7 +511,7 @@ function ProductGallery({ product }: { product: Product }) {
         {images.map((image, index) => (
           <figure
             key={image}
-            className="relative aspect-square w-full shrink-0 snap-center snap-always overflow-hidden bg-white p-8 sm:p-12 lg:p-16"
+            className="relative h-full w-full shrink-0 snap-center snap-always overflow-hidden bg-white p-4 sm:p-10 lg:p-16"
             role="group"
             aria-roledescription="slide"
             aria-label={`${index + 1} of ${images.length}`}
@@ -627,119 +530,80 @@ function ProductGallery({ product }: { product: Product }) {
                 decoding="async"
               />
             </div>
-            {index === 0 ? (
-              <figcaption className="absolute bottom-4 left-4 text-[8px] font-semibold uppercase tracking-[0.16em] text-black/42">
-                BADR concentrated perfume oil · Made in {product.countryOfOrigin || "India"}
-              </figcaption>
-            ) : null}
           </figure>
         ))}
       </div>
-
-      {images.length > 1 ? (
-        <>
-          <button
-            type="button"
-            onClick={() => showImage(activeIndex - 1)}
-            disabled={activeIndex === 0}
-            className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center border border-black/12 bg-white/92 text-black shadow-sm backdrop-blur transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-0 sm:left-5"
-            aria-label="Previous product image"
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => showImage(activeIndex + 1)}
-            disabled={activeIndex === images.length - 1}
-            className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center border border-black/12 bg-white/92 text-black shadow-sm backdrop-blur transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-0 sm:right-5"
-            aria-label="Next product image"
-          >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          </button>
-
-          <div className="absolute bottom-4 right-4 flex items-center gap-3 bg-white/92 px-3 py-2 text-[10px] font-semibold tracking-[0.1em] text-black backdrop-blur">
-            <span aria-live="polite">
-              {String(activeIndex + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
-            </span>
-            <div className="flex gap-1">
-              {images.map((image, index) => (
-                <button
-                  key={image}
-                  type="button"
-                  onClick={() => showImage(index)}
-                  className={`h-1 transition-all ${activeIndex === index ? "w-5 bg-black" : "w-1 bg-black/25"}`}
-                  aria-label={`Show product image ${index + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </>
-      ) : null}
     </div>
   );
 }
 
 function ProductStory({ product }: { product: Product }) {
-  const scene = BOTTLE_IMAGES[product.id] || product.image;
-
   return (
-    <section className="overflow-hidden border-t border-black/10 bg-white text-black">
-      <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[0.92fr_1.08fr]">
-        <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-24 lg:px-16">
-          <p className="text-xs text-black/48">About {product.name}</p>
-          <h2 className="mt-3 max-w-xl font-display text-4xl leading-[0.94] sm:text-5xl">
-            The story
+    <section className="bg-[#f3f0e8] px-5 py-20 text-black sm:px-10 sm:py-28 lg:px-16">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-3xl">
+          <p className="text-sm text-black/50">The fragrance</p>
+          <h2 className="mt-4 font-display text-4xl leading-[0.95] sm:text-6xl">
+            What {product.name} smells like
           </h2>
-          <p className="mt-6 max-w-xl text-sm leading-7 text-black/68 sm:text-base sm:leading-8">
+          <p className="mt-8 text-lg leading-8 text-black/70 sm:text-xl sm:leading-9">
             {product.meaning ? `${product.meaning} ` : ""}
             {product.story}
           </p>
-
-          <dl className="mt-10 grid grid-cols-3 gap-5">
-            <ProductStat label="Intensity" value={product.intensity} />
-            <ProductStat label="Lasts" value={product.longevity} />
-            <ProductStat label="Best worn" value={product.occasion} />
-          </dl>
         </div>
 
-        <figure className="relative min-h-[480px] border-l border-black/10 bg-white sm:min-h-[620px] lg:min-h-[720px]">
-          <img
-            src={scene}
-            alt={`${product.name} BADR attar bottle`}
-            className="absolute inset-0 h-full w-full object-contain p-14 sm:p-20 lg:p-24"
-            loading="lazy"
-            decoding="async"
-          />
-        </figure>
+        <div className="mt-16 grid gap-14 md:grid-cols-2 md:gap-20">
+          <div>
+            <h3 className="font-display text-3xl sm:text-4xl">Key notes</h3>
+            <ul className="mt-7 grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+              {product.notes.map((note) => (
+                <li key={note} className="text-lg text-black/72 sm:text-xl">
+                  {note}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="grid content-start gap-10">
+            <div>
+              <h3 className="font-display text-3xl sm:text-4xl">When to wear it</h3>
+              <p className="mt-5 text-base leading-8 text-black/68">
+                {product.mood.replaceAll(" · ", ", ")}. Expect a {product.intensity.toLowerCase()}{" "}
+                scent that stays for {product.longevity.toLowerCase()}.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-display text-3xl sm:text-4xl">How to wear it</h3>
+              <p className="mt-5 text-base leading-8 text-black/68">
+                Roll lightly over wrists, inner elbows and behind the ears. Let the perfume oil
+                settle naturally on the skin.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function ProductStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[10px] text-black/45">{label}</dt>
-      <dd className="mt-2 text-sm font-medium capitalize leading-5 sm:text-base">{value}</dd>
-    </div>
-  );
-}
-
 function ProductFaqs({ product }: { product: Product }) {
   return (
-    <section className="border-t border-black/10 bg-white px-5 py-16 sm:px-8 sm:py-24">
+    <section className="bg-white px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.55fr_1.45fr] lg:gap-20">
         <div>
-          <p className="text-xs text-black/48">Product information</p>
-          <h2 className="mt-3 font-display text-4xl sm:text-5xl">FAQs</h2>
+          <h2 className="font-display text-4xl sm:text-5xl">Good to know</h2>
         </div>
-        <Accordion type="single" collapsible className="border-t border-black/18">
+        <Accordion type="single" collapsible>
           {product.faqs.slice(0, 3).map((faq, index) => (
-            <AccordionItem key={faq.q} value={`faq-${index}`} className="border-black/18">
-              <AccordionTrigger className="py-6 text-left text-sm font-medium hover:no-underline sm:text-base">
+            <AccordionItem
+              key={faq.q}
+              value={`faq-${index}`}
+              className="mb-2 border-0 bg-[#f5f3ee] px-5 sm:px-7"
+            >
+              <AccordionTrigger className="py-6 text-left text-base font-medium hover:no-underline">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="max-w-2xl pb-7 text-sm leading-7 text-black/62">
+              <AccordionContent className="max-w-2xl pb-7 text-base leading-8 text-black/62">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>
@@ -752,20 +616,18 @@ function ProductFaqs({ product }: { product: Product }) {
 
 function ProductReviews({ reviews }: { reviews: ProductReview[] }) {
   return (
-    <section className="border-t border-black/12 bg-white px-5 py-16 sm:px-8 sm:py-24">
+    <section className="bg-white px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-center gap-3">
-          <Star className="h-4 w-4 fill-current" />
-          <h2 className="font-display text-2xl sm:text-4xl">Customer reviews</h2>
-        </div>
-        <div className="mt-9 grid gap-px bg-black/15 md:grid-cols-3">
+        <h2 className="font-display text-4xl sm:text-5xl">What customers say</h2>
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
           {reviews.slice(0, 6).map((review) => (
-            <blockquote key={review.id} className="bg-white p-6 sm:p-8">
+            <blockquote key={review.id} className="bg-[#f5f3ee] p-6 sm:p-8">
               <p className="text-sm leading-7">
                 “{review.body || review.title || "A verified BADR purchase."}”
               </p>
-              <footer className="mt-6 text-[9px] font-semibold uppercase tracking-[0.12em] text-black/45">
-                {review.customer_name || "Verified customer"} · Verified · {review.rating}/5
+              <footer className="mt-6 text-xs text-black/45">
+                {review.customer_name || "Verified customer"}, verified purchase, {review.rating}{" "}
+                out of 5
               </footer>
             </blockquote>
           ))}
