@@ -337,7 +337,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -389,7 +389,7 @@
 }
 
 @utility page-enter {
-  animation: page-enter var(--motion-slow) var(--ease-shop) both;
+  animation: page-enter var(--motion-slow) var(--ease-shop) backwards;
 }
 
 @utility cart-count-pop {

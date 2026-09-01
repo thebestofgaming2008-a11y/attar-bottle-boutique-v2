@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { Minus, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Star } from "lucide-react";
 import {
   BOTTLE_IMAGES,
   PRODUCTS,
@@ -142,11 +142,22 @@ function ProductPage() {
   useEffect(() => {
     const purchaseActions = purchaseActionsRef.current;
     if (!purchaseActions) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      setShowStickyPurchase(!entry.isIntersecting && entry.boundingClientRect.bottom < 0);
-    });
-    observer.observe(purchaseActions);
-    return () => observer.disconnect();
+    let frame = 0;
+    const update = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        setShowStickyPurchase(purchaseActions.getBoundingClientRect().bottom < 0);
+        frame = 0;
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, [product.id]);
 
   const addCurrentProduct = () => {
@@ -277,14 +288,14 @@ function ProductPage() {
   }, [product, reviews]);
 
   return (
-    <StoreShell hideHeaderAtTop>
+    <StoreShell>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(productGraph) }}
       />
 
       <main className="bg-white pb-18 sm:pb-0">
-        <section className="bg-white">
+        <section className="bg-white pt-24">
           <div className="grid min-w-0 lg:grid-cols-[minmax(0,1.08fr)_minmax(410px,0.92fr)]">
             <ProductGallery product={product} />
             <ProductInformation
@@ -306,9 +317,12 @@ function ProductPage() {
         <ProductStory product={product} />
         {product.faqs.length ? <ProductFaqs product={product} /> : null}
 
-        <section className="bg-white px-3 py-20 sm:px-6 sm:py-28">
+        <section className="border-t border-black/10 bg-white px-3 py-16 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-7xl">
-            <h2 className="text-center font-display text-4xl sm:text-5xl">Explore more scents</h2>
+            <p className="text-center text-xs text-black/48">The BADR collection</p>
+            <h2 className="mt-2 text-center font-display text-3xl sm:text-5xl">
+              You may also like
+            </h2>
             <div className="mt-9 grid grid-cols-2 gap-x-2 gap-y-10 lg:grid-cols-4">
               {related.map((candidate) => (
                 <ProductCard key={candidate.id} product={candidate} />
@@ -323,6 +337,7 @@ function ProductPage() {
       <SiteFooter />
 
       <div
+        data-testid="product-sticky-purchase"
         aria-hidden={!showStickyPurchase}
         className={`fixed inset-x-0 bottom-0 z-40 grid min-h-20 grid-cols-[minmax(0,0.72fr)_minmax(190px,1.28fr)] items-center gap-4 bg-[#f7f6f2]/96 px-4 py-3 shadow-[0_-14px_45px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:hidden ${
           showStickyPurchase ? "translate-y-0" : "pointer-events-none translate-y-full"
@@ -377,7 +392,7 @@ function ProductInformation({
   const { detectedCountry, format } = useCurrency();
 
   return (
-    <div className="min-w-0 px-5 pb-16 pt-24 sm:px-10 sm:py-16 lg:sticky lg:top-12 lg:self-start lg:px-12 lg:py-14 xl:px-16">
+    <div className="min-w-0 px-5 pb-16 pt-16 sm:px-10 sm:py-16 lg:sticky lg:top-12 lg:self-start lg:px-12 lg:py-14 xl:px-16">
       <p className="text-sm text-black/50">{product.category}</p>
 
       <h1 className="mt-3 font-display text-[3.2rem] leading-[0.88] sm:text-6xl xl:text-[4.6rem]">
@@ -431,7 +446,11 @@ function ProductInformation({
         </div>
       ) : null}
 
-      <div ref={purchaseActionsRef} className="mt-8 grid grid-cols-[92px_minmax(0,1fr)] gap-2">
+      <div
+        ref={purchaseActionsRef}
+        data-testid="product-primary-purchase"
+        className="mt-8 grid grid-cols-[92px_minmax(0,1fr)] gap-2"
+      >
         <div className="grid min-h-14 grid-cols-3 bg-[#f1efe9]">
           <button type="button" aria-label="Decrease quantity" onClick={onDecrease}>
             <Minus className="mx-auto h-3.5 w-3.5" />
@@ -471,139 +490,166 @@ function ProductGallery({ product }: { product: Product }) {
       ),
     ),
   );
-  const galleryRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [thumbnailStart, setThumbnailStart] = useState(0);
+  const visibleThumbnailCount = 4;
 
   useEffect(() => {
     setActiveIndex(0);
-    galleryRef.current?.scrollTo({ left: 0 });
+    setThumbnailStart(0);
   }, [product.id]);
 
-  const showImage = (index: number) => {
-    const nextIndex = Math.max(0, Math.min(index, images.length - 1));
-    const gallery = galleryRef.current;
-    setActiveIndex(nextIndex);
-    gallery?.scrollTo({ left: nextIndex * gallery.clientWidth, behavior: "smooth" });
-  };
+  const visibleThumbnails = images.slice(thumbnailStart, thumbnailStart + visibleThumbnailCount);
+  const canMoveBack = thumbnailStart > 0;
+  const canMoveForward = thumbnailStart + visibleThumbnailCount < images.length;
+  const selectedImage = images[activeIndex] || product.image;
 
   return (
     <div
-      className="relative h-[100svh] min-w-0 overflow-hidden bg-white lg:h-auto lg:p-3"
+      className="min-w-0 bg-white lg:border-r lg:border-black/10 lg:p-3"
       role="region"
-      aria-roledescription="carousel"
       aria-label={`${product.name} product images`}
     >
-      <div
-        ref={galleryRef}
-        className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] lg:aspect-square lg:h-auto [&::-webkit-scrollbar]:hidden"
-        onScroll={(event) => {
-          const gallery = event.currentTarget;
-          if (!gallery.clientWidth) return;
-          const index = Math.round(gallery.scrollLeft / gallery.clientWidth);
-          setActiveIndex(Math.max(0, Math.min(index, images.length - 1)));
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowLeft") showImage(activeIndex - 1);
-          if (event.key === "ArrowRight") showImage(activeIndex + 1);
-        }}
-        tabIndex={images.length > 1 ? 0 : -1}
-      >
-        {images.map((image, index) => (
-          <figure
-            key={image}
-            className="relative h-full w-full shrink-0 snap-center snap-always overflow-hidden bg-white p-4 sm:p-10 lg:p-16"
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${index + 1} of ${images.length}`}
+      <figure className="aspect-[4/5] overflow-hidden bg-white p-7 sm:aspect-square sm:p-12 lg:p-16">
+        <img
+          key={selectedImage}
+          src={selectedImage}
+          alt={
+            activeIndex === 0
+              ? `${product.name} attar`
+              : `${product.name} product view ${activeIndex + 1}`
+          }
+          className="h-full w-full object-contain"
+          fetchPriority={activeIndex === 0 ? "high" : undefined}
+          decoding="async"
+        />
+      </figure>
+
+      {images.length > 1 ? (
+        <div className="flex items-center justify-center gap-2 px-3 pb-4 pt-2 sm:gap-3 sm:px-5">
+          <button
+            type="button"
+            onClick={() => setThumbnailStart((start) => Math.max(0, start - 1))}
+            disabled={!canMoveBack}
+            className="grid h-10 w-8 shrink-0 place-items-center text-black transition-opacity disabled:pointer-events-none disabled:opacity-0"
+            aria-label="Show previous product thumbnails"
           >
-            <div className="h-full w-full overflow-hidden">
-              <img
-                src={image}
-                alt={
-                  index === 0
-                    ? `${product.name} attar`
-                    : `${product.name} product view ${index + 1}`
-                }
-                className="h-full w-full object-contain transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.02]"
-                fetchPriority={index === 0 ? "high" : undefined}
-                loading={index === 0 ? "eager" : "lazy"}
-                decoding="async"
-              />
-            </div>
-          </figure>
-        ))}
-      </div>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+
+          <div className="flex min-w-0 gap-2 sm:gap-3">
+            {visibleThumbnails.map((image, visibleIndex) => {
+              const imageIndex = thumbnailStart + visibleIndex;
+              return (
+                <button
+                  key={image}
+                  type="button"
+                  onClick={() => setActiveIndex(imageIndex)}
+                  className={`h-16 w-16 shrink-0 bg-[#f7f6f2] p-1.5 transition-colors sm:h-18 sm:w-18 ${
+                    activeIndex === imageIndex
+                      ? "border border-black"
+                      : "border border-transparent hover:border-black/30"
+                  }`}
+                  aria-label={`Show ${product.name} product image ${imageIndex + 1}`}
+                  aria-current={activeIndex === imageIndex ? "true" : undefined}
+                >
+                  <img src={image} alt="" className="h-full w-full object-contain" loading="lazy" />
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              setThumbnailStart((start) =>
+                Math.min(images.length - visibleThumbnailCount, start + 1),
+              )
+            }
+            disabled={!canMoveForward}
+            className="grid h-10 w-8 shrink-0 place-items-center text-black transition-opacity disabled:pointer-events-none disabled:opacity-0"
+            aria-label="Show more product thumbnails"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function ProductStory({ product }: { product: Product }) {
+  const scene = BOTTLE_IMAGES[product.id] || product.image;
+
   return (
-    <section className="bg-[#f3f0e8] px-5 py-20 text-black sm:px-10 sm:py-28 lg:px-16">
-      <div className="mx-auto max-w-6xl">
-        <div className="max-w-3xl">
-          <p className="text-sm text-black/50">The fragrance</p>
-          <h2 className="mt-4 font-display text-4xl leading-[0.95] sm:text-6xl">
+    <section className="overflow-hidden border-t border-black/10 bg-white text-black">
+      <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-24 lg:px-16">
+          <p className="text-xs text-black/48">About {product.name}</p>
+          <h2 className="mt-3 max-w-2xl font-display text-4xl leading-[0.94] sm:text-5xl">
             What {product.name} smells like
           </h2>
-          <p className="mt-8 text-lg leading-8 text-black/70 sm:text-xl sm:leading-9">
+          <p className="mt-6 max-w-2xl text-sm leading-7 text-black/68 sm:text-base sm:leading-8">
             {product.meaning ? `${product.meaning} ` : ""}
             {product.story}
           </p>
-        </div>
 
-        <div className="mt-16 grid gap-14 md:grid-cols-2 md:gap-20">
-          <div>
-            <h3 className="font-display text-3xl sm:text-4xl">Key notes</h3>
-            <ul className="mt-7 grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+          <div className="mt-10">
+            <h3 className="text-xs font-medium text-black/48">Key notes</h3>
+            <ul className="mt-4 flex flex-wrap gap-x-7 gap-y-3">
               {product.notes.map((note) => (
-                <li key={note} className="text-lg text-black/72 sm:text-xl">
+                <li key={note} className="text-base text-black/78 sm:text-lg">
                   {note}
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="grid content-start gap-10">
-            <div>
-              <h3 className="font-display text-3xl sm:text-4xl">When to wear it</h3>
-              <p className="mt-5 text-base leading-8 text-black/68">
-                {product.mood.replaceAll(" · ", ", ")}. Expect a {product.intensity.toLowerCase()}{" "}
-                scent that stays for {product.longevity.toLowerCase()}.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-display text-3xl sm:text-4xl">How to wear it</h3>
-              <p className="mt-5 text-base leading-8 text-black/68">
-                Roll lightly over wrists, inner elbows and behind the ears. Let the perfume oil
-                settle naturally on the skin.
-              </p>
-            </div>
-          </div>
+          <dl className="mt-10 grid grid-cols-3 gap-5">
+            <ProductStat label="Intensity" value={product.intensity} />
+            <ProductStat label="Lasts" value={product.longevity} />
+            <ProductStat label="Best worn" value={product.occasion} />
+          </dl>
         </div>
+
+        <figure className="relative min-h-[480px] bg-white sm:min-h-[620px] lg:min-h-[720px] lg:border-l lg:border-black/10">
+          <img
+            src={scene}
+            alt={`${product.name} BADR attar bottle`}
+            className="absolute inset-0 h-full w-full object-contain p-14 sm:p-20 lg:p-24"
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
       </div>
     </section>
   );
 }
 
+function ProductStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[10px] text-black/45">{label}</dt>
+      <dd className="mt-2 text-sm font-medium capitalize leading-5 sm:text-base">{value}</dd>
+    </div>
+  );
+}
+
 function ProductFaqs({ product }: { product: Product }) {
   return (
-    <section className="bg-white px-5 py-20 sm:px-8 sm:py-28">
+    <section className="border-t border-black/10 bg-white px-5 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.55fr_1.45fr] lg:gap-20">
         <div>
-          <h2 className="font-display text-4xl sm:text-5xl">Good to know</h2>
+          <p className="text-xs text-black/48">Product information</p>
+          <h2 className="mt-3 font-display text-4xl sm:text-5xl">FAQs</h2>
         </div>
-        <Accordion type="single" collapsible>
+        <Accordion type="single" collapsible className="border-t border-black/18">
           {product.faqs.slice(0, 3).map((faq, index) => (
-            <AccordionItem
-              key={faq.q}
-              value={`faq-${index}`}
-              className="mb-2 border-0 bg-[#f5f3ee] px-5 sm:px-7"
-            >
-              <AccordionTrigger className="py-6 text-left text-base font-medium hover:no-underline">
+            <AccordionItem key={faq.q} value={`faq-${index}`} className="border-black/18">
+              <AccordionTrigger className="py-6 text-left text-sm font-medium hover:no-underline sm:text-base">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="max-w-2xl pb-7 text-base leading-8 text-black/62">
+              <AccordionContent className="max-w-2xl pb-7 text-sm leading-7 text-black/62">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>
@@ -616,18 +662,20 @@ function ProductFaqs({ product }: { product: Product }) {
 
 function ProductReviews({ reviews }: { reviews: ProductReview[] }) {
   return (
-    <section className="bg-white px-5 py-20 sm:px-8 sm:py-28">
+    <section className="border-t border-black/12 bg-white px-5 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-6xl">
-        <h2 className="font-display text-4xl sm:text-5xl">What customers say</h2>
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
+        <div className="flex items-center gap-3">
+          <Star className="h-4 w-4 fill-current" />
+          <h2 className="font-display text-2xl sm:text-4xl">Customer reviews</h2>
+        </div>
+        <div className="mt-9 grid gap-px bg-black/15 md:grid-cols-3">
           {reviews.slice(0, 6).map((review) => (
-            <blockquote key={review.id} className="bg-[#f5f3ee] p-6 sm:p-8">
+            <blockquote key={review.id} className="bg-white p-6 sm:p-8">
               <p className="text-sm leading-7">
                 “{review.body || review.title || "A verified BADR purchase."}”
               </p>
-              <footer className="mt-6 text-xs text-black/45">
-                {review.customer_name || "Verified customer"}, verified purchase, {review.rating}{" "}
-                out of 5
+              <footer className="mt-6 text-[9px] font-semibold uppercase tracking-[0.12em] text-black/45">
+                {review.customer_name || "Verified customer"} · Verified · {review.rating}/5
               </footer>
             </blockquote>
           ))}
