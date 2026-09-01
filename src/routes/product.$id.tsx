@@ -563,14 +563,16 @@ function ProductFact({ label, value }: { label: string; value: string }) {
 function ProductGallery({ product }: { product: Product }) {
   const images = Array.from(
     new Set(
-      [product.image, BOTTLE_IMAGES[product.id]].filter((image): image is string => Boolean(image)),
+      [product.image, ...(product.gallery || []), BOTTLE_IMAGES[product.id]].filter(
+        (image): image is string => Boolean(image),
+      ),
     ),
   );
   const [featuredImage, ...supportingImages] = images;
 
   return (
     <div className="min-w-0 bg-white lg:border-r lg:border-black/10 lg:p-3">
-      <figure className="relative aspect-[1/1.05] overflow-hidden bg-white p-10 sm:p-14 lg:aspect-[1.16/1] lg:p-16">
+      <figure className="relative aspect-square overflow-hidden bg-white p-10 sm:p-14 lg:p-16">
         <img
           src={featuredImage || product.image}
           alt={`${product.name} attar`}
@@ -583,16 +585,16 @@ function ProductGallery({ product }: { product: Product }) {
         </figcaption>
       </figure>
       {supportingImages.length ? (
-        <div className="hidden grid-cols-2 gap-3 pt-3 lg:grid">
-          {supportingImages.slice(0, 4).map((image, index) => (
+        <div className="grid grid-cols-2 gap-2 border-t border-black/10 p-2 sm:gap-3 sm:p-3">
+          {supportingImages.slice(0, 8).map((image, index) => (
             <figure
               key={image}
-              className="aspect-[4/5] overflow-hidden border border-black/10 bg-white"
+              className="aspect-square overflow-hidden border border-black/10 bg-white"
             >
               <img
                 src={image}
                 alt={`${product.name} ${index === 0 ? "campaign" : "detail"}`}
-                className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.035]"
+                className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.025]"
                 loading="lazy"
                 decoding="async"
               />

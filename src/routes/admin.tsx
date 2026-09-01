@@ -3539,7 +3539,9 @@ function ProductDrawer({
     category: product?.category ?? CATEGORIES[0].label,
     category_id: product?.category_id ?? CATEGORIES[0].key,
     cover_image_url: product?.cover_image_url ?? null,
-    images: product?.images ?? [],
+    images: (product?.images ?? []).filter(
+      (url) => cleanImageUrl(url) !== cleanImageUrl(product?.cover_image_url),
+    ),
     linked_product_ids: product?.linked_product_ids ?? [],
     variant_label: product?.variant_label ?? "",
     color_options: product?.color_options ?? [],
@@ -3556,22 +3558,31 @@ function ProductDrawer({
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ complete: number; total: number } | null>(
+    null,
+  );
   const [linkedIds, setLinkedIds] = useState((product?.linked_product_ids ?? []).join(", "));
-  const drawerImages = useMemo(
+  const storedImages = useMemo(
     () =>
       Array.from(
         new Set(
-          [
-            form.cover_image_url,
-            ...(Array.isArray(form.images) ? form.images : []),
-            ...fallbackImagesForProduct(product ?? { name: form.name, slug: form.slug }),
-          ]
+          [form.cover_image_url, ...(Array.isArray(form.images) ? form.images : [])]
             .map(cleanImageUrl)
             .filter(Boolean) as string[],
         ),
       ),
-    [form.cover_image_url, form.images, form.name, form.slug, product],
+    [form.cover_image_url, form.images],
   );
+  const drawerImages = useMemo(() => {
+    if (storedImages.length) return storedImages;
+    return Array.from(
+      new Set(
+        fallbackImagesForProduct(product ?? { name: form.name, slug: form.slug })
+          .map(cleanImageUrl)
+          .filter(Boolean) as string[],
+      ),
+    );
+  }, [form.name, form.slug, product, storedImages]);
   const [selectedImage, setSelectedImage] = useState<string | null>(
     product ? (productImageUrls(product)[0] ?? null) : null,
   );
@@ -3585,23 +3596,73 @@ function ProductDrawer({
     }
   }, [drawerImages, selectedImage]);
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = async (files: File[]) => {
+    const availableSlots = Math.max(0, 9 - storedImages.length);
+    if (availableSlots === 0) {
+      notify({
+        title: "Gallery is full",
+        description:
+          "Remove an image before adding another. A product can have one cover and eight gallery images.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const acceptedFiles = files.slice(0, availableSlots);
+    if (files.length > acceptedFiles.length) {
+      notify({
+        title: `Only ${acceptedFiles.length} image${acceptedFiles.length === 1 ? "" : "s"} selected`,
+        description: "A product can have one cover and eight gallery images.",
+      });
+    }
     setUploading(true);
+    setUploadProgress({ complete: 0, total: acceptedFiles.length });
     try {
-      const url = await uploadProductImage(file);
-      if (url) {
-        const cleanUrl = cleanImageUrl(url) ?? url;
+      let complete = 0;
+      const results = await Promise.allSettled(
+        acceptedFiles.map(async (file) => {
+          try {
+            return await uploadProductImage(file);
+          } finally {
+            complete += 1;
+            setUploadProgress({ complete, total: acceptedFiles.length });
+          }
+        }),
+      );
+      const uploadedUrls = results.flatMap((result) => {
+        if (result.status !== "fulfilled" || !result.value) return [];
+        const url = cleanImageUrl(result.value) ?? result.value;
+        return url ? [url] : [];
+      });
+      if (uploadedUrls.length) {
         setForm((f) => ({
           ...f,
-          cover_image_url: cleanUrl,
-          images: Array.from(new Set([cleanUrl, ...(f.images ?? [])])),
+          cover_image_url: cleanImageUrl(f.cover_image_url) ?? uploadedUrls[0],
+          images: Array.from(
+            new Set([
+              ...(f.images ?? []).map(cleanImageUrl).filter(Boolean),
+              ...uploadedUrls,
+            ] as string[]),
+          )
+            .filter((url) => url !== (cleanImageUrl(f.cover_image_url) ?? uploadedUrls[0]))
+            .slice(0, 8),
         }));
-        setSelectedImage(cleanUrl);
-        notify({ title: "Image uploaded" });
+        setSelectedImage(uploadedUrls[0]);
+        notify({
+          title: `${uploadedUrls.length} image${uploadedUrls.length === 1 ? "" : "s"} uploaded`,
+          description: results.some((result) => result.status === "rejected")
+            ? "Some files failed. The successful images were kept."
+            : undefined,
+        });
       } else {
+        const firstFailure = results.find(
+          (result): result is PromiseRejectedResult => result.status === "rejected",
+        );
         notify({
           title: "Upload failed",
-          description: "Check the storage bucket exists and has admin write access.",
+          description:
+            firstFailure?.reason instanceof Error
+              ? firstFailure.reason.message
+              : "Check the files and connection, then try again.",
           variant: "destructive",
         });
       }
@@ -3613,31 +3674,49 @@ function ProductDrawer({
       });
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
+  };
+
+  const removeImage = (url: string) => {
+    const cleaned = cleanImageUrl(url);
+    if (!cleaned) return;
+    setForm((current) => {
+      const currentCover = cleanImageUrl(current.cover_image_url);
+      const remaining = (current.images ?? [])
+        .map(cleanImageUrl)
+        .filter((item): item is string => Boolean(item && item !== cleaned));
+      if (currentCover !== cleaned) return { ...current, images: remaining };
+      const nextCover = remaining[0] ?? null;
+      return {
+        ...current,
+        cover_image_url: nextCover,
+        images: remaining.filter((item) => item !== nextCover),
+      };
+    });
+    setSelectedImage((current) => (current === cleaned ? null : current));
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const selectedCover = coverImage ?? cleanImageUrl(activeImage);
       const savedImages = Array.from(
         new Set(
-          [
-            activeImage,
-            form.cover_image_url,
-            ...(Array.isArray(form.images) ? form.images : []),
-            ...fallbackImagesForProduct(product ?? form),
-          ]
+          [...(Array.isArray(form.images) ? form.images : [])]
             .map(cleanImageUrl)
             .filter(Boolean) as string[],
         ),
-      );
+      )
+        .filter((url) => url !== selectedCover)
+        .slice(0, 8);
       const payload = {
         ...form,
         price: form.price_inr,
         short_description: form.hook || form.short_description || null,
         description: form.story || form.description || null,
-        cover_image_url: coverImage ?? cleanImageUrl(activeImage) ?? savedImages[0] ?? null,
+        cover_image_url: selectedCover ?? savedImages[0] ?? null,
         images: savedImages,
         category:
           CATEGORIES.find((category) => category.key === form.category_id)?.label ??
@@ -3706,7 +3785,7 @@ function ProductDrawer({
                     <img
                       src={activeImage}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain p-2"
                       onError={() => setSelectedImage(null)}
                     />
                   ) : (
@@ -3720,30 +3799,44 @@ function ProductDrawer({
                 </p>
                 {drawerImages.length > 0 && (
                   <div className="mt-2 grid grid-cols-4 gap-1.5">
-                    {drawerImages.slice(0, 8).map((url) => (
-                      <button
+                    {drawerImages.slice(0, 9).map((url) => (
+                      <div
                         key={url}
-                        type="button"
-                        onClick={() => {
-                          setSelectedImage(url);
-                        }}
                         className={cn(
                           "relative aspect-square overflow-hidden rounded-md border bg-white",
                           activeImage === url
                             ? "border-[#111827] ring-2 ring-[#111827]/10"
                             : "border-border",
                         )}
-                        aria-label={
-                          coverImage === url ? "Current cover image" : "Preview this product image"
-                        }
                       >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImage(url)}
+                          className="h-full w-full"
+                          aria-label={
+                            coverImage === url
+                              ? "Current cover image"
+                              : "Preview this product image"
+                          }
+                        >
+                          <img src={url} alt="" className="h-full w-full object-contain p-1" />
+                        </button>
                         {coverImage === url && (
                           <span className="absolute left-1 top-1 rounded bg-[#111827] px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
                             Cover
                           </span>
                         )}
-                      </button>
+                        {storedImages.includes(url) ? (
+                          <button
+                            type="button"
+                            onClick={() => removeImage(url)}
+                            className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/95 text-black shadow hover:bg-black hover:text-white"
+                            aria-label="Remove this product image"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        ) : null}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -3751,30 +3844,45 @@ function ProductDrawer({
               <div className="flex-1 min-w-0">
                 <label className="inline-flex items-center gap-2 text-sm rounded-md border border-border px-3 py-2 cursor-pointer hover:border-brand transition-colors">
                   <Upload className="h-4 w-4" />
-                  {uploading ? "Uploading…" : "Upload image"}
+                  {uploading && uploadProgress
+                    ? `Uploading ${uploadProgress.complete}/${uploadProgress.total}`
+                    : "Add images"}
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
+                    disabled={uploading}
                     data-testid="admin-product-image-file-input"
                     className="hidden"
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleUpload(f);
+                      const files = Array.from(e.target.files ?? []);
+                      e.currentTarget.value = "";
+                      if (files.length) void handleUpload(files);
                     }}
                   />
                 </label>
+                <p className="mt-2 text-[11px] leading-4 text-foreground/55">
+                  Select several files at once. The cover stays unchanged; new files are added to
+                  the gallery. Maximum: one cover and eight gallery images.
+                </p>
                 <input
                   type="url"
                   value={cleanImageUrl(form.cover_image_url) ?? ""}
                   data-testid="admin-product-image-url-input"
                   onChange={(e) => {
                     const url = cleanImageUrl(e.target.value);
-                    setForm({
-                      ...form,
-                      cover_image_url: url,
-                      images: url
-                        ? Array.from(new Set([url, ...(form.images ?? [])]))
-                        : form.images,
+                    setForm((current) => {
+                      const oldCover = cleanImageUrl(current.cover_image_url);
+                      const images = Array.from(
+                        new Set(
+                          [oldCover, ...(current.images ?? []).map(cleanImageUrl)].filter(
+                            Boolean,
+                          ) as string[],
+                        ),
+                      )
+                        .filter((image) => image !== url)
+                        .slice(0, 8);
+                      return { ...current, cover_image_url: url, images };
                     });
                     setSelectedImage(url);
                   }}
@@ -3789,7 +3897,16 @@ function ProductDrawer({
                     setForm((f) => ({
                       ...f,
                       cover_image_url: activeImage,
-                      images: Array.from(new Set([activeImage, ...(f.images ?? [])])),
+                      images: Array.from(
+                        new Set(
+                          [
+                            cleanImageUrl(f.cover_image_url),
+                            ...(f.images ?? []).map(cleanImageUrl),
+                          ].filter(Boolean) as string[],
+                        ),
+                      )
+                        .filter((url) => url !== activeImage)
+                        .slice(0, 8),
                     }));
                   }}
                   className="mt-2 inline-flex h-9 items-center justify-center rounded-md bg-[#111827] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#1F2937] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#6B7280]"
