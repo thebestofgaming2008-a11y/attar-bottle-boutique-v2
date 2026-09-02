@@ -174,7 +174,8 @@ function ShopPage() {
                 const price = product.sale_price_inr ?? product.sale_price ?? product.price_inr;
                 const slug = product.slug || product.id;
                 const sourceImage = product.cover_image_url || "";
-                const displayImage = product.card_image_url || BOTTLE_IMAGES[slug] || sourceImage;
+                const displayImage =
+                  product.card_image_url || sourceImage || BOTTLE_IMAGES[slug] || "";
                 return (
                   <article
                     key={product.id}
@@ -187,7 +188,7 @@ function ShopPage() {
                           alt={product.name}
                           loading="lazy"
                           decoding="async"
-                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
+                          className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.025]"
                         />
                       </Link>
                     </div>

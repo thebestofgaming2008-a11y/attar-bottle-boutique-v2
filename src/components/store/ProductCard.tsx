@@ -28,7 +28,7 @@ export function ProductCard({
         <img
           src={cardImage}
           alt={`${product.name} attar, ${product.volume || "6 ml"}`}
-          className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.025]"
+          className="h-full w-full object-cover object-center transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.025]"
           loading="lazy"
           decoding="async"
         />

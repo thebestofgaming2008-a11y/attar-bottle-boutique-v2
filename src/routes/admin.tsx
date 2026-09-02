@@ -3579,7 +3579,7 @@ function ProductDrawer({
             .filter(Boolean) as string[],
         ),
       ),
-    [form.cover_image_url, form.images],
+    [form.card_image_url, form.cover_image_url, form.images],
   );
   const drawerImages = useMemo(() => {
     if (storedImages.length) return storedImages;
@@ -3598,8 +3598,8 @@ function ProductDrawer({
   const coverImage = cleanImageUrl(form.cover_image_url) ?? null;
   const cardImage = cleanImageUrl(form.card_image_url) ?? null;
   const automaticCardImage =
-    BOTTLE_IMAGES[String(form.slug ?? product?.slug ?? "")] ??
     coverImage ??
+    BOTTLE_IMAGES[String(form.slug ?? product?.slug ?? "")] ??
     drawerImages[0] ??
     null;
   const cardPreviewImage = cardImage ?? automaticCardImage;
@@ -3939,7 +3939,7 @@ function ProductDrawer({
                         <img
                           src={cardPreviewImage}
                           alt="Store card preview"
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover object-center"
                         />
                       ) : (
                         <div className="grid h-full place-items-center text-foreground/25">
@@ -3984,7 +3984,7 @@ function ProductDrawer({
                             }
                             className="inline-flex h-8 items-center rounded-md border border-border bg-white px-3 text-[11px] font-semibold text-foreground hover:border-foreground/40"
                           >
-                            Use automatic packshot
+                            Use main cover automatically
                           </button>
                         ) : null}
                       </div>

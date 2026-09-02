@@ -287,7 +287,7 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
     fallback?.image ||
     sourceCover ||
     "";
-  const cardImage = text(source.card_image_url) || BOTTLE_IMAGES[slug] || cover;
+  const cardImage = text(source.card_image_url) || sourceCover || BOTTLE_IMAGES[slug] || cover;
   const liveGallery = strings(source.images);
   const fallbackGallery = liveGallery.length
     ? []
