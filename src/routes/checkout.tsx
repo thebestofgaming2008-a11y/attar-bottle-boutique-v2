@@ -29,7 +29,15 @@ type RazorpayInstance = {
   open: () => void;
   on: (
     event: "payment.failed",
-    callback: (response: { error?: { description?: string } }) => void,
+    callback: (response: {
+      error?: {
+        code?: string;
+        description?: string;
+        reason?: string;
+        source?: string;
+        step?: string;
+      };
+    }) => void,
   ) => void;
 };
 
@@ -124,6 +132,32 @@ function loadTurnstile() {
 
 function countryIsIndia(country: string) {
   return ["india", "in", "bharat"].includes(country.trim().toLowerCase());
+}
+
+function razorpayContact(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+  return phone.trim();
+}
+
+function razorpayFailureMessage(error?: {
+  description?: string;
+  reason?: string;
+  source?: string;
+}) {
+  if (error?.reason === "payment_timed_out") {
+    return "UPI approval expired. Retry in Razorpay and approve promptly in your UPI app, or choose UPI QR or another payment method.";
+  }
+  if (error?.reason === "payment_risk_check_failed") {
+    return "The bank or payment network declined this attempt. Retry with a different real card, UPI app or UPI QR.";
+  }
+  if (error?.reason === "incorrect_card_details") {
+    return "This card could not be used. Check the card details or retry with UPI or another real card.";
+  }
+  return (
+    error?.description || "Payment failed. Retry in Razorpay or choose another payment method."
+  );
 }
 
 function validateCheckoutCustomer(customer: CheckoutCustomer) {
@@ -342,8 +376,13 @@ function CheckoutPage() {
           order_id: razorpayOrder.orderId,
           name: "BADR",
           description: "BADR attar order",
-          prefill: { name: customer.name, email: customer.email, contact: customer.phone },
+          prefill: {
+            name: customer.name,
+            email: customer.email,
+            contact: razorpayContact(customer.phone),
+          },
           remember_customer: false,
+          retry: { enabled: true },
           theme: { color: "#171717" },
           handler: (result: RazorpaySuccess) =>
             finish(() => {
@@ -364,8 +403,8 @@ function CheckoutPage() {
           },
         });
         checkout.on("payment.failed", (result) => {
-          lastFailureMessage = result.error?.description || "Payment failed.";
-          setMessage(`${lastFailureMessage} Retry in Razorpay or close the payment window.`);
+          lastFailureMessage = razorpayFailureMessage(result.error);
+          setMessage(lastFailureMessage);
         });
         checkout.open();
       });
@@ -554,6 +593,11 @@ function CheckoutPage() {
                       <p className="text-sm text-red-800">Checkout security is not configured.</p>
                     )}
                   </div>
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    Paying with UPI? Keep your payment app ready and approve the request promptly.
+                    If a bank declines an attempt, retry with UPI QR or another payment method in
+                    the Razorpay window.
+                  </p>
                 </>
               ) : null}
 

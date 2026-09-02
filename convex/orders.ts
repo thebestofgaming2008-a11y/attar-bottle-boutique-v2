@@ -1631,6 +1631,7 @@ export const recordRazorpayWebhook = internalMutation({
     refund_id: v.optional(v.string()),
     refund_status: v.optional(v.string()),
     refund_error: v.optional(v.string()),
+    payment_error: v.optional(v.string()),
     currency: v.optional(v.string()),
   },
   returns: v.object({ duplicate: v.boolean() }),
@@ -1661,7 +1662,7 @@ export const recordRazorpayWebhook = internalMutation({
       await failCheckoutIntent(ctx, {
         razorpay_order_id: args.razorpay_order_id,
         razorpay_payment_id: args.razorpay_payment_id ?? null,
-        error: "Razorpay payment failed.",
+        error: cleanNullable(args.payment_error, 500) ?? "Razorpay payment failed.",
       });
     }
     if (
@@ -1832,6 +1833,20 @@ export const razorpayWebhook = httpAction(async (ctx, request) => {
     refund_error:
       refund?.error_description || refund?.failure_reason || refund?.error_code
         ? cleanText(refund.error_description || refund.failure_reason || refund.error_code, 500)
+        : undefined,
+    payment_error:
+      eventType === "payment.failed"
+        ? cleanText(
+            [
+              payment?.error_description,
+              payment?.error_reason ? `Reason: ${payment.error_reason}` : "",
+              payment?.error_source ? `Source: ${payment.error_source}` : "",
+              payment?.error_step ? `Step: ${payment.error_step}` : "",
+            ]
+              .filter(Boolean)
+              .join(" ") || "Razorpay payment failed.",
+            500,
+          )
         : undefined,
     currency: payment?.currency ? cleanText(payment.currency, 12) : undefined,
   });
