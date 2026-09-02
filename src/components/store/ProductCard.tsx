@@ -22,12 +22,12 @@ export function ProductCard({
       <Link
         to="/product/$id"
         params={{ id: product.id }}
-        className="relative block aspect-square overflow-hidden bg-white"
+        className="relative block aspect-[3/4] overflow-hidden bg-white"
       >
         <img
           src={product.image}
           alt={`${product.name} attar, ${product.volume || "6 ml"}`}
-          className="h-full w-full object-contain p-[8%] transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045]"
+          className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.025]"
           loading="lazy"
           decoding="async"
         />

@@ -182,14 +182,14 @@ function ShopPage() {
                     key={product.id}
                     className="group flex h-full min-w-0 flex-col text-center"
                   >
-                    <div className="relative aspect-square overflow-hidden bg-white">
+                    <div className="relative aspect-[3/4] overflow-hidden bg-white">
                       <Link to="/product/$id" params={{ id: slug }} className="block h-full">
                         <img
                           src={displayImage}
                           alt={product.name}
                           loading="lazy"
                           decoding="async"
-                          className="h-full w-full object-contain p-[8%] transition-transform duration-700 group-hover:scale-[1.045]"
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
                         />
                       </Link>
                     </div>
