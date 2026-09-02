@@ -174,9 +174,7 @@ function ShopPage() {
                 const price = product.sale_price_inr ?? product.sale_price ?? product.price_inr;
                 const slug = product.slug || product.id;
                 const sourceImage = product.cover_image_url || "";
-                const displayImage = sourceImage.includes(`/products/sku-${slug}.webp`)
-                  ? BOTTLE_IMAGES[slug] || sourceImage
-                  : sourceImage;
+                const displayImage = product.card_image_url || BOTTLE_IMAGES[slug] || sourceImage;
                 return (
                   <article
                     key={product.id}

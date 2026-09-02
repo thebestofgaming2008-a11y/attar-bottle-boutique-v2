@@ -85,7 +85,7 @@ import {
   saveHomepageFilmConfig,
 } from "@/services/adminService";
 import type { Product } from "@/services/productService";
-import { PRODUCTS as storefrontCatalog } from "@/lib/products";
+import { BOTTLE_IMAGES, PRODUCTS as storefrontCatalog } from "@/lib/products";
 import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmConfig } from "@/lib/homepageFilm";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -3462,12 +3462,15 @@ function fallbackImagesForProduct(product: Partial<Pick<Product, "slug" | "name"
 }
 
 function productImageUrls(
-  product: Partial<Pick<Product, "cover_image_url" | "images" | "slug" | "name">>,
+  product: Partial<
+    Pick<Product, "cover_image_url" | "card_image_url" | "images" | "slug" | "name">
+  >,
 ) {
   return Array.from(
     new Set(
       [
         product.cover_image_url,
+        product.card_image_url,
         ...(Array.isArray(product.images) ? product.images : []),
         ...fallbackImagesForProduct(product),
       ]
@@ -3539,6 +3542,7 @@ function ProductDrawer({
     category: product?.category ?? CATEGORIES[0].label,
     category_id: product?.category_id ?? CATEGORIES[0].key,
     cover_image_url: product?.cover_image_url ?? null,
+    card_image_url: product?.card_image_url ?? null,
     images: (product?.images ?? []).filter(
       (url) => cleanImageUrl(url) !== cleanImageUrl(product?.cover_image_url),
     ),
@@ -3566,7 +3570,11 @@ function ProductDrawer({
     () =>
       Array.from(
         new Set(
-          [form.cover_image_url, ...(Array.isArray(form.images) ? form.images : [])]
+          [
+            form.cover_image_url,
+            form.card_image_url,
+            ...(Array.isArray(form.images) ? form.images : []),
+          ]
             .map(cleanImageUrl)
             .filter(Boolean) as string[],
         ),
@@ -3588,6 +3596,13 @@ function ProductDrawer({
   );
   const activeImage = selectedImage ?? drawerImages[0] ?? null;
   const coverImage = cleanImageUrl(form.cover_image_url) ?? null;
+  const cardImage = cleanImageUrl(form.card_image_url) ?? null;
+  const automaticCardImage =
+    BOTTLE_IMAGES[String(form.slug ?? product?.slug ?? "")] ??
+    coverImage ??
+    drawerImages[0] ??
+    null;
+  const cardPreviewImage = cardImage ?? automaticCardImage;
 
   useEffect(() => {
     if (!selectedImage && drawerImages[0]) setSelectedImage(drawerImages[0]);
@@ -3777,7 +3792,9 @@ function ProductDrawer({
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <span className="block text-xs font-medium text-foreground/70 mb-1.5">Cover image</span>
+            <span className="block text-xs font-medium text-foreground/70 mb-1.5">
+              Product images
+            </span>
             <div className="grid gap-3 sm:grid-cols-[132px_1fr]">
               <div className="min-w-0">
                 <div className="aspect-square w-full overflow-hidden rounded-lg border border-border bg-placeholder">
@@ -3915,6 +3932,65 @@ function ProductDrawer({
                     ? "Selected as cover"
                     : "Set selected as cover"}
                 </button>
+                <div className="mt-4 rounded-lg border border-border bg-[#F8FAFC] p-3">
+                  <div className="grid grid-cols-[72px_1fr] items-start gap-3">
+                    <div className="aspect-[3/4] overflow-hidden border border-border bg-white">
+                      {cardPreviewImage ? (
+                        <img
+                          src={cardPreviewImage}
+                          alt="Store card preview"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="grid h-full place-items-center text-foreground/25">
+                          <ImageIcon className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground">Store card image</p>
+                      <p className="mt-1 text-[11px] leading-4 text-foreground/55">
+                        This exact 3:4 preview appears on the homepage and shop. Choose a clean,
+                        centred product shot; wide lifestyle images can stay in the gallery.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={!activeImage || cardImage === activeImage}
+                          onClick={() => {
+                            if (!activeImage) return;
+                            setForm((current) => ({
+                              ...current,
+                              card_image_url: activeImage,
+                              images:
+                                cleanImageUrl(current.cover_image_url) === activeImage
+                                  ? current.images
+                                  : Array.from(
+                                      new Set([...(current.images ?? []), activeImage]),
+                                    ).slice(0, 8),
+                            }));
+                          }}
+                          className="inline-flex h-8 items-center rounded-md bg-[#111827] px-3 text-[11px] font-semibold text-white hover:bg-[#1F2937] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#6B7280]"
+                        >
+                          {activeImage && cardImage === activeImage
+                            ? "Selected for store"
+                            : "Use selected for store"}
+                        </button>
+                        {cardImage ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((current) => ({ ...current, card_image_url: null }))
+                            }
+                            className="inline-flex h-8 items-center rounded-md border border-border bg-white px-3 text-[11px] font-semibold text-foreground hover:border-foreground/40"
+                          >
+                            Use automatic packshot
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 {activeImage && (
                   <a
                     href={activeImage}

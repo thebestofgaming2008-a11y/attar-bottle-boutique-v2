@@ -60,6 +60,7 @@ const productInput = {
   category_id: v.optional(v.union(v.string(), v.null())),
   tags: v.optional(v.union(v.array(v.string()), v.null())),
   cover_image_url: v.optional(v.union(v.string(), v.null())),
+  card_image_url: v.optional(v.union(v.string(), v.null())),
   images: v.optional(v.union(v.array(v.string()), v.null())),
   linked_product_ids: v.optional(v.union(v.array(v.string()), v.null())),
   variant_label: v.optional(v.union(v.string(), v.null())),
@@ -128,6 +129,7 @@ const productPatch = {
   category_id: v.optional(v.union(v.string(), v.null())),
   tags: v.optional(v.union(v.array(v.string()), v.null())),
   cover_image_url: v.optional(v.union(v.string(), v.null())),
+  card_image_url: v.optional(v.union(v.string(), v.null())),
   images: v.optional(v.union(v.array(v.string()), v.null())),
   linked_product_ids: v.optional(v.union(v.array(v.string()), v.null())),
   variant_label: v.optional(v.union(v.string(), v.null())),
@@ -329,6 +331,8 @@ function normalize(input: any, isPatch = false, existingPrice?: number) {
   }
   if (input.cover_image_url !== undefined || !isPatch)
     output.cover_image_url = cleanUrl(input.cover_image_url);
+  if (input.card_image_url !== undefined || !isPatch)
+    output.card_image_url = cleanUrl(input.card_image_url);
   if (input.og_image_url !== undefined || !isPatch)
     output.og_image_url = cleanUrl(input.og_image_url);
   for (const field of ["key_notes", "seo_keywords"]) {

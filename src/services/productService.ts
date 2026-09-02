@@ -54,6 +54,7 @@ export interface Product {
   category_id: string | null;
   tags: string[] | null;
   cover_image_url: string | null;
+  card_image_url?: string | null;
   images: string[] | null;
   linked_product_ids?: string[] | null;
   variant_label?: string | null;

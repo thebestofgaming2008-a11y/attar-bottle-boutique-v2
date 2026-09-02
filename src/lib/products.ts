@@ -46,6 +46,8 @@ export type Product = {
   meaning?: string;
   hook: string;
   image: string;
+  /** Dedicated, consistently framed image for homepage and shop cards. */
+  cardImage?: string;
   story: string;
   notes: string[];
   price: number;
@@ -285,6 +287,7 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
     fallback?.image ||
     sourceCover ||
     "";
+  const cardImage = text(source.card_image_url) || BOTTLE_IMAGES[slug] || cover;
   const liveGallery = strings(source.images);
   const fallbackGallery = liveGallery.length
     ? []
@@ -323,6 +326,7 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
       text(source.short_description) ||
       "A BADR signature attar.",
     image: cover,
+    cardImage,
     story:
       text(source.story) ||
       fallback?.story ||

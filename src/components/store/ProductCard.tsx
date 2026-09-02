@@ -14,6 +14,7 @@ export function ProductCard({
 }) {
   const cart = useCart();
   const { format } = useCurrency();
+  const cardImage = product.cardImage || product.image;
 
   return (
     <article
@@ -25,7 +26,7 @@ export function ProductCard({
         className="relative block aspect-[3/4] overflow-hidden bg-white"
       >
         <img
-          src={product.image}
+          src={cardImage}
           alt={`${product.name} attar, ${product.volume || "6 ml"}`}
           className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.025]"
           loading="lazy"

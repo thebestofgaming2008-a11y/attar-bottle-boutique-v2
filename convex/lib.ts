@@ -106,6 +106,7 @@ export function publicProductCard(doc: Record<string, any>): Record<string, any>
     category_id: product.category_id ?? null,
     tags,
     cover_image_url: product.cover_image_url ?? null,
+    card_image_url: product.card_image_url ?? null,
     images: Array.isArray(product.images) ? product.images.slice(0, 8) : [],
     og_image_url: product.og_image_url ?? null,
     color_options: Array.isArray(product.color_options) ? product.color_options.slice(0, 30) : [],

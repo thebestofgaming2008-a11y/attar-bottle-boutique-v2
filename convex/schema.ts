@@ -103,6 +103,7 @@ export default defineSchema({
     category_id: optionalString,
     tags: optionalStringArray,
     cover_image_url: optionalString,
+    card_image_url: optionalString,
     images: optionalStringArray,
     linked_product_ids: optionalStringArray,
     cross_sell_product_ids: optionalStringArray,
