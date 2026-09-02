@@ -134,10 +134,17 @@ function countryIsIndia(country: string) {
   return ["india", "in", "bharat"].includes(country.trim().toLowerCase());
 }
 
+function indianMobileDigits(phone: string) {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.length === 14 && digits.startsWith("0091")) digits = digits.slice(4);
+  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  return digits;
+}
+
 function razorpayContact(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 10) return `+91${digits}`;
-  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+  const digits = indianMobileDigits(phone);
+  if (/^[6-9]\d{9}$/.test(digits)) return `+91${digits}`;
   return phone.trim();
 }
 
@@ -168,6 +175,12 @@ function validateCheckoutCustomer(customer: CheckoutCustomer) {
   const phoneDigits = customer.phone.replace(/\D/g, "");
   if (phoneDigits.length < 7 || phoneDigits.length > 15) {
     throw new Error("Enter a valid WhatsApp number with country code.");
+  }
+  if (
+    countryIsIndia(customer.country) &&
+    !/^[6-9]\d{9}$/.test(indianMobileDigits(customer.phone))
+  ) {
+    throw new Error("Enter a valid 10-digit Indian mobile number.");
   }
   if (
     !customer.country.trim() ||
