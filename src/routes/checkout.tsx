@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery } from "convex/react";
 import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, MessageCircle } from "lucide-react";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
@@ -18,6 +18,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SearchSelect } from "@/components/ui/search-select";
 import { COUNTRY_OPTIONS, countryNameFromCode } from "@/lib/countries";
 import { api } from "../../convex/_generated/api";
+import { loadCheckoutScript } from "@/lib/checkoutScript";
+import {
+  cartFingerprint,
+  PAYMENT_RECOVERY_KEY,
+  readPendingPayment,
+  type PendingPayment,
+} from "@/lib/checkoutRecovery";
 
 type RazorpaySuccess = {
   razorpay_payment_id: string;
@@ -27,6 +34,7 @@ type RazorpaySuccess = {
 
 type RazorpayInstance = {
   open: () => void;
+  close: () => void;
   on: (
     event: "payment.failed",
     callback: (response: {
@@ -36,6 +44,7 @@ type RazorpayInstance = {
         reason?: string;
         source?: string;
         step?: string;
+        metadata?: { payment_id?: string; order_id?: string };
       };
     }) => void,
   ) => void;
@@ -81,53 +90,19 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function loadRazorpay() {
-  if (window.Razorpay) return Promise.resolve();
-  const existing = document.querySelector<HTMLScriptElement>(
-    'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+  return loadCheckoutScript(
+    "https://checkout.razorpay.com/v1/checkout.js",
+    () => Boolean(window.Razorpay),
+    "Could not load Razorpay Checkout. Check your connection and try again.",
   );
-  if (existing) {
-    return new Promise<void>((resolve, reject) => {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error("Could not load Razorpay Checkout.")),
-        {
-          once: true,
-        },
-      );
-    });
-  }
-  return new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Could not load Razorpay Checkout."));
-    document.head.appendChild(script);
-  });
 }
 
 function loadTurnstile() {
-  if (window.turnstile) return Promise.resolve();
-  const source = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-  const existing = document.querySelector<HTMLScriptElement>(`script[src="${source}"]`);
-  if (existing) {
-    return new Promise<void>((resolve, reject) => {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Security check did not load.")), {
-        once: true,
-      });
-    });
-  }
-  return new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = source;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Security check did not load."));
-    document.head.appendChild(script);
-  });
+  return loadCheckoutScript(
+    "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+    () => Boolean(window.turnstile),
+    "Security check did not load. Check your connection and reload this page.",
+  );
 }
 
 function countryIsIndia(country: string) {
@@ -154,7 +129,7 @@ function razorpayFailureMessage(error?: {
   source?: string;
 }) {
   if (error?.reason === "payment_timed_out") {
-    return "UPI approval expired. Retry in Razorpay and approve promptly in your UPI app, or choose UPI QR or another payment method.";
+    return "Razorpay did not receive a completed UPI approval. This can involve the app handoff or bank response. If no money was debited, use Show All Options in Razorpay to try another available method.";
   }
   if (error?.reason === "payment_risk_check_failed") {
     return "The bank or payment network declined this attempt. Retry with a different real card, UPI app or UPI QR.";
@@ -219,6 +194,20 @@ function CheckoutPage() {
     postal_code: "",
   });
   const [busy, setBusy] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null);
+  const [failureReference, setFailureReference] = useState("");
+  const completingRef = useRef(false);
+  const razorpayRef = useRef<RazorpayInstance | null>(null);
+  const submitLockRef = useRef(false);
+  const recoveryStatus = useQuery(
+    api.orders.checkoutStatus,
+    pendingPayment
+      ? {
+          razorpay_order_id: pendingPayment.orderId,
+          checkout_attempt_id: pendingPayment.attemptId,
+        }
+      : "skip",
+  );
   const [savedAddressId, setSavedAddressId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -229,6 +218,44 @@ function CheckoutPage() {
   const turnstileHostRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const isIndia = countryIsIndia(customer.country);
+
+  useEffect(() => {
+    try {
+      setPendingPayment(readPendingPayment(window.sessionStorage));
+    } catch {
+      /* Storage may be disabled. */
+    }
+  }, []);
+
+  const completePayment = useCallback(
+    async (orderNumber: string, payment: PendingPayment) => {
+      if (!orderNumber || completingRef.current) return;
+      completingRef.current = true;
+      try {
+        window.sessionStorage.removeItem(PAYMENT_RECOVERY_KEY);
+      } catch {
+        /* Optional recovery storage. */
+      }
+      // Do not erase products added after an earlier checkout was interrupted.
+      if (cartFingerprint(cart.lines) === payment.cartFingerprint) cart.clear();
+      setSuccess(`Payment confirmed: ${orderNumber}`);
+      setMessage(null);
+      setPendingPayment(null);
+      razorpayRef.current?.close();
+      setBusy(false);
+      await navigate({
+        to: "/order-confirmation",
+        search: { order: orderNumber, email: payment.email },
+      });
+    },
+    [cart, navigate],
+  );
+
+  useEffect(() => {
+    if (pendingPayment && recoveryStatus?.orderNumber) {
+      void completePayment(recoveryStatus.orderNumber, pendingPayment);
+    }
+  }, [completePayment, pendingPayment, recoveryStatus]);
 
   useEffect(() => {
     void loadRazorpay().catch(() => undefined);
@@ -291,9 +318,9 @@ function CheckoutPage() {
     };
   }, [isIndia]);
 
-  function resetCheckoutProtection() {
+  function resetCheckoutProtection(newAttempt = true) {
     setTurnstileToken("");
-    setCheckoutAttemptId(crypto.randomUUID());
+    if (newAttempt) setCheckoutAttemptId(crypto.randomUUID());
     if (turnstileWidgetIdRef.current && window.turnstile) {
       window.turnstile.reset(turnstileWidgetIdRef.current);
     }
@@ -366,11 +393,32 @@ function CheckoutPage() {
       shipping: 0,
       total: cart.subtotal,
     };
-    const razorpayOrder = await createRazorpayCheckoutOrder({
-      ...payload,
-      checkoutAttemptId,
-      turnstileToken,
-    });
+    let razorpayOrder: Awaited<ReturnType<typeof createRazorpayCheckoutOrder>>;
+    try {
+      razorpayOrder = await createRazorpayCheckoutOrder({
+        ...payload,
+        checkoutAttemptId,
+        turnstileToken,
+      });
+    } catch (error) {
+      // Turnstile tokens are single-use. Preserve the idempotency key if a
+      // successful order response was lost, but request a fresh security token.
+      resetCheckoutProtection(false);
+      throw error;
+    }
+    const payment: PendingPayment = {
+      orderId: razorpayOrder.orderId,
+      attemptId: checkoutAttemptId,
+      email: customer.email,
+      cartFingerprint: cartFingerprint(cart.lines),
+      createdAt: Date.now(),
+    };
+    setPendingPayment(payment);
+    try {
+      window.sessionStorage.setItem(PAYMENT_RECOVERY_KEY, JSON.stringify(payment));
+    } catch {
+      /* Webhooks still recover the order. */
+    }
 
     let response: RazorpaySuccess;
     try {
@@ -409,8 +457,8 @@ function CheckoutPage() {
                 reject(
                   new Error(
                     lastFailureMessage
-                      ? `${lastFailureMessage} No order was placed.`
-                      : "Payment was cancelled. No order was placed.",
+                      ? lastFailureMessage
+                      : "Payment window closed. If money was debited, do not pay again. We will show confirmation here once it reaches the store.",
                   ),
                 ),
               ),
@@ -419,31 +467,36 @@ function CheckoutPage() {
         checkout.on("payment.failed", (result) => {
           lastFailureMessage = razorpayFailureMessage(result.error);
           setMessage(lastFailureMessage);
+          const paymentId = result.error?.metadata?.payment_id;
+          const reason = result.error?.reason || result.error?.code || "payment_failed";
+          setFailureReference(
+            `${paymentId || razorpayOrder.orderId} · ${reason} · ${new Date().toISOString()}`,
+          );
         });
+        razorpayRef.current = checkout;
         checkout.open();
       });
     } catch (error) {
+      if (completingRef.current) return;
       await cancelRazorpayCheckout(razorpayOrder.orderId, checkoutAttemptId).catch(() => undefined);
       resetCheckoutProtection();
       throw error;
     }
 
+    if (completingRef.current) return;
+
     let order: any;
     try {
       order = await verifyRazorpayPaymentWithRetry({ ...payload, ...response });
     } catch {
+      if (completingRef.current) return;
       setTurnstileToken("");
       throw new Error(
         "Payment response received, but confirmation is still processing. Do not pay again; check tracking shortly or contact us.",
       );
     }
     const orderNumber = String(order?.order_number ?? "");
-    cart.clear();
-    setSuccess(orderNumber || "Payment verified");
-    await navigate({
-      to: "/order-confirmation",
-      search: { order: orderNumber, email: customer.email },
-    });
+    await completePayment(orderNumber, payment);
   }
 
   function submitInternational() {
@@ -468,7 +521,8 @@ function CheckoutPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!cart.lines.length) return;
+    if (!cart.lines.length || submitLockRef.current || pendingPayment) return;
+    submitLockRef.current = true;
     setBusy(true);
     setMessage(null);
     try {
@@ -478,6 +532,7 @@ function CheckoutPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Checkout could not be completed.");
     } finally {
+      submitLockRef.current = false;
       setBusy(false);
     }
   }
@@ -608,9 +663,9 @@ function CheckoutPage() {
                     )}
                   </div>
                   <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                    Paying with UPI? Keep your payment app ready and approve the request promptly.
-                    If a bank declines an attempt, retry with UPI QR or another payment method in
-                    the Razorpay window.
+                    Paying with UPI? Choose your app in Razorpay, complete approval there, then
+                    return here. If the app does not open, use Show All Options for another
+                    available method. If money was debited, do not pay again.
                   </p>
                 </>
               ) : null}
@@ -629,10 +684,55 @@ function CheckoutPage() {
                 </p>
               ) : null}
 
+              {pendingPayment ? (
+                <div
+                  className="mt-5 space-y-3 border border-foreground/20 p-4 text-sm leading-6"
+                  role="status"
+                >
+                  <p>
+                    Waiting for payment confirmation. This page updates automatically when the store
+                    receives it, even if the payment window closes.
+                  </p>
+                  <p className="break-all text-xs text-muted-foreground">
+                    Reference: {failureReference || pendingPayment.orderId}
+                  </p>
+                  {!busy ? (
+                    <>
+                      <p>
+                        If money was debited, wait for confirmation or contact us with this
+                        reference. Only start another payment if you have confirmed no debit.
+                      </p>
+                      <button
+                        type="button"
+                        className="min-h-11 border border-foreground px-4 py-2 font-semibold"
+                        onClick={() => {
+                          void cancelRazorpayCheckout(
+                            pendingPayment.orderId,
+                            pendingPayment.attemptId,
+                          ).catch(() => undefined);
+                          try {
+                            window.sessionStorage.removeItem(PAYMENT_RECOVERY_KEY);
+                          } catch {
+                            /* Optional storage. */
+                          }
+                          setPendingPayment(null);
+                          setFailureReference("");
+                          setMessage(null);
+                          resetCheckoutProtection();
+                        }}
+                      >
+                        No debit — start a new payment
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+
               <button
                 type="submit"
                 disabled={
                   busy ||
+                  Boolean(pendingPayment) ||
                   cart.lines.length === 0 ||
                   (!isIndia && whatsappConfigLoading) ||
                   (isIndia && (!RAZORPAY_IS_AVAILABLE || !TURNSTILE_SITE_KEY || !turnstileToken))

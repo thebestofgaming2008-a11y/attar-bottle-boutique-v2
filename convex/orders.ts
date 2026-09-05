@@ -856,6 +856,39 @@ export const reserveCheckoutIntent = internalMutation({
   },
 });
 
+// Guest recovery requires the opaque checkout capability as well as the gateway
+// order ID. Never expose customer details or treat a browser report as payment.
+export const checkoutStatus = query({
+  args: { razorpay_order_id: v.string(), checkout_attempt_id: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      status: v.string(),
+      orderNumber: v.union(v.string(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    if (
+      !CHECKOUT_ATTEMPT_PATTERN.test(args.checkout_attempt_id) ||
+      args.razorpay_order_id.length > 120
+    )
+      return null;
+    const intent = await ctx.db
+      .query("checkout_intents")
+      .withIndex("by_razorpay_order_id", (q) => q.eq("razorpay_order_id", args.razorpay_order_id))
+      .first();
+    if (!intent || intent.checkout_attempt_id !== args.checkout_attempt_id) return null;
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_payment_order_id", (q) => q.eq("payment_order_id", args.razorpay_order_id))
+      .first();
+    return {
+      status: order ? "confirmed" : intent.status,
+      orderNumber: order?.order_number ?? null,
+    };
+  },
+});
+
 export const cancelRazorpayCheckout = mutation({
   args: {
     razorpay_order_id: v.string(),
