@@ -395,6 +395,7 @@ function CheckoutPage() {
             contact: razorpayContact(customer.phone),
           },
           remember_customer: false,
+          webview_intent: true,
           retry: { enabled: true },
           theme: { color: "#171717" },
           handler: (result: RazorpaySuccess) =>
