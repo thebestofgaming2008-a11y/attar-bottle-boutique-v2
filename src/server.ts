@@ -58,6 +58,7 @@ function withSecurityHeaders(response: Response, request: Request) {
   const pathname = new URL(request.url).pathname;
   if (PRIVATE_INDEX_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+    headers.set("cache-control", "private, no-store, max-age=0");
   }
   return new Response(response.body, {
     status: response.status,

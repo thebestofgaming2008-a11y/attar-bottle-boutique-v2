@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   action,
@@ -175,6 +175,43 @@ function cleanCheckoutAttemptId(value: string) {
   return attemptId;
 }
 
+function checkoutContents(cart: Array<any>, customer: any) {
+  return JSON.stringify({
+    customer: normalizeCheckoutCustomer(customer),
+    cart: cart
+      .map((item) => [
+        String(item.productId),
+        item.qty,
+        cleanNullable(item.selectedColor, 60),
+        cleanNullable(item.selectedSize, 60),
+      ])
+      .sort(),
+  });
+}
+
+function assertReusableCheckout(intent: any, cart: Array<any>, customer: any) {
+  if (intent.status === "completed") {
+    throw new ConvexError({
+      code: "CHECKOUT_ALREADY_PAID",
+      orderId: intent.razorpay_order_id,
+      email: intent.customer.email,
+      message: "This checkout is already paid. Recovering your order.",
+    });
+  }
+  if (intent.status !== "pending" || intent.expires_at <= Date.now()) {
+    throw new ConvexError({
+      code: "CHECKOUT_ATTEMPT_ENDED",
+      message: "This checkout attempt has ended. Please try again with a fresh security check.",
+    });
+  }
+  if (checkoutContents(intent.cart, intent.customer) !== checkoutContents(cart, customer)) {
+    throw new ConvexError({
+      code: "CHECKOUT_CHANGED",
+      message: "Your address or cart changed. Please start a fresh payment attempt.",
+    });
+  }
+}
+
 function cleanTrackingUrl(value: string | null | undefined) {
   const url = cleanText(value, 500);
   if (!url) return null;
@@ -221,14 +258,17 @@ async function checkoutQuote(ctx: any, cart: Array<any>) {
     throw new Error(`Cart cannot contain more than ${MAX_CART_LINES} different items.`);
   let subtotal = 0;
   let itemCount = 0;
+  const quantities = new Map<string, number>();
   for (const item of cart) {
-    const qty = Math.floor(item.qty);
-    if (!Number.isFinite(qty) || qty < 1 || qty > 99) throw new Error("Cart quantity is invalid.");
+    const qty = item.qty;
+    if (!Number.isInteger(qty) || qty < 1 || qty > 99) throw new Error("Cart quantity is invalid.");
     const product = (await ctx.db.get(item.productId as any)) as any;
     if (!product || product.is_active === false)
       throw new Error(`Product is no longer available: ${cleanText(item.name, 80)}`);
     const stock = product.stock_quantity ?? 0;
-    if (stock < qty || product.in_stock === false)
+    const combinedQty = (quantities.get(item.productId) ?? 0) + qty;
+    quantities.set(item.productId, combinedQty);
+    if (stock < combinedQty || product.in_stock === false)
       throw new Error(`Not enough stock for ${product.name}.`);
     const unitPrice = product.sale_price_inr ?? product.price_inr ?? product.price;
     if (!Number.isFinite(unitPrice) || unitPrice < 0)
@@ -241,7 +281,8 @@ async function checkoutQuote(ctx: any, cart: Array<any>) {
   const shipping = 0;
   const total = subtotal + shipping;
   const amountPaise = Math.round(total * 100);
-  if (amountPaise < 100) throw new Error("Razorpay orders must be at least ₹1.");
+  if (!Number.isSafeInteger(amountPaise) || amountPaise < 100)
+    throw new Error("Razorpay orders must have a valid total of at least ₹1.");
   return { subtotal, shipping, total, amountPaise, itemCount };
 }
 
@@ -315,11 +356,11 @@ async function applyProcessedRefund(
   refundId?: string | null,
 ) {
   const timestamp = nowIso();
+  const previousRefundAmount = Math.max(0, Number(order.refund_amount_inr ?? 0));
   const nextRefundAmount = Math.min(
     order.total,
-    Math.max(0, Math.round(amountRefundedPaise) / 100),
+    Math.max(previousRefundAmount, Math.round(amountRefundedPaise) / 100),
   );
-  const previousRefundAmount = Math.max(0, Number(order.refund_amount_inr ?? 0));
   const newlyRefundedAmount = Math.max(0, nextRefundAmount - previousRefundAmount);
   const fullyRefunded = Math.round(nextRefundAmount * 100) >= Math.round(order.total * 100);
   await ctx.db.patch(order._id, {
@@ -400,6 +441,7 @@ async function savePaidOrder(
   const normalizedItems = [];
   let computedSubtotal = 0;
   let inventoryAttention = false;
+  const remainingByProduct = new Map<string, number>();
   for (const item of args.cart) {
     const qty = Math.floor(item.qty);
     if (!Number.isFinite(qty) || qty < 1 || qty > 99) throw new Error("Cart quantity is invalid.");
@@ -407,7 +449,8 @@ async function savePaidOrder(
     if (!args.use_reserved_snapshot && (!product || product.is_active === false)) {
       throw new Error(`Product is no longer available: ${cleanText(item.name, 80)}`);
     }
-    const stock = Number(product?.stock_quantity ?? 0);
+    const stock = remainingByProduct.get(item.productId) ?? Number(product?.stock_quantity ?? 0);
+    remainingByProduct.set(item.productId, stock - qty);
     if (!args.use_reserved_snapshot && (stock < qty || product?.in_stock === false)) {
       throw new Error(`Not enough stock for ${product.name}.`);
     }
@@ -484,7 +527,10 @@ async function savePaidOrder(
       subtotal: item.unitPrice * item.qty,
     });
     if (item.product) {
-      const nextStock = Math.max(0, (item.product.stock_quantity ?? 0) - item.qty);
+      // Multiple option lines may share a product. Read this transaction's
+      // latest stock instead of overwriting it from an earlier snapshot.
+      const currentProduct = await ctx.db.get(item.product._id);
+      const nextStock = Math.max(0, (currentProduct.stock_quantity ?? 0) - item.qty);
       await ctx.db.patch(item.product._id, {
         stock_quantity: nextStock,
         in_stock: nextStock > 0,
@@ -513,6 +559,13 @@ async function savePaidOrder(
 
 export const quoteCheckout = query({
   args: { cart: v.array(cartItem) },
+  returns: v.object({
+    subtotal: v.number(),
+    shipping: v.number(),
+    total: v.number(),
+    amountPaise: v.number(),
+    itemCount: v.number(),
+  }),
   handler: async (ctx, args) => {
     return await checkoutQuote(ctx, args.cart);
   },
@@ -705,9 +758,7 @@ export const createRazorpayCheckoutOrder = action({
     });
     const { keyId } = razorpayKeys();
     if (existing) {
-      if (existing.status !== "pending" || existing.expires_at <= Date.now()) {
-        throw new Error("This checkout attempt has ended. Please try again.");
-      }
+      assertReusableCheckout(existing, args.cart, customer);
       return {
         keyId,
         orderId: existing.razorpay_order_id,
@@ -773,6 +824,7 @@ export const reserveCheckoutIntent = internalMutation({
       )
       .first();
     if (existingAttempt) {
+      assertReusableCheckout(existingAttempt, args.cart, args.customer);
       return {
         razorpay_order_id: existingAttempt.razorpay_order_id,
         amount_paise: existingAttempt.amount_paise,
@@ -936,6 +988,7 @@ export const finalizeCheckoutIntent = internalMutation({
     amount_paise: v.optional(v.number()),
     currency: v.optional(v.string()),
   },
+  returns: v.any(),
   handler: async (ctx, args) => finalizeCheckoutIntentHandler(ctx, args),
 });
 
@@ -1035,6 +1088,7 @@ export const verifyRazorpayPayment = action({
     razorpay_payment_id: v.string(),
     razorpay_signature: v.string(),
   },
+  returns: v.any(),
   handler: async (ctx, args): Promise<any> => {
     const { keySecret } = razorpayKeys();
     const expectedSignature = await hmacSha256Hex(
@@ -1053,9 +1107,11 @@ export const verifyRazorpayPayment = action({
     const reservedIntent = await ctx.runQuery(internal.orders.findCheckoutIntent, {
       razorpay_order_id: args.razorpay_order_id,
     });
-    const expectedAmountPaise =
-      reservedIntent?.amount_paise ??
-      (await ctx.runQuery(api.orders.quoteCheckout, { cart: args.cart })).amountPaise;
+    if (!reservedIntent)
+      throw new Error(
+        "This payment has no store checkout record. Contact BADR with the payment reference; do not pay again.",
+      );
+    const expectedAmountPaise = reservedIntent.amount_paise;
 
     const [razorpayOrder, fetchedPayment] = await Promise.all([
       razorpayRequest(`/orders/${args.razorpay_order_id}`),
@@ -1084,9 +1140,6 @@ export const verifyRazorpayPayment = action({
       }
     }
     if (payment.status !== "captured") throw new Error("Razorpay payment has not been captured.");
-    const identity = await ctx.auth.getUserIdentity();
-    const userId = identity ? await getAuthUserId(ctx) : null;
-
     const reservedOrder: any = await ctx.runMutation(internal.orders.finalizeCheckoutIntent, {
       razorpay_order_id: args.razorpay_order_id,
       razorpay_payment_id: args.razorpay_payment_id,
@@ -1094,27 +1147,13 @@ export const verifyRazorpayPayment = action({
       currency: fetchedPayment.currency,
     });
     if (reservedOrder) return reservedOrder;
-    const hasIntent = await ctx.runQuery(internal.orders.findCheckoutIntent, {
-      razorpay_order_id: args.razorpay_order_id,
-    });
-    if (hasIntent)
-      throw new Error("Payment received, but this order needs manual recovery. Do not pay again.");
-    return await ctx.runMutation(internal.orders.saveVerifiedGuestOrder, {
-      cart: args.cart,
-      customer: args.customer,
-      subtotal: args.subtotal,
-      shipping: args.shipping,
-      total: args.total,
-      user_id: userId,
-      razorpay_order_id: args.razorpay_order_id,
-      razorpay_payment_id: args.razorpay_payment_id,
-      razorpay_signature: args.razorpay_signature,
-    });
+    throw new Error("Payment received, but this order needs manual recovery. Do not pay again.");
   },
 });
 
 export const findCheckoutIntent = internalQuery({
   args: { razorpay_order_id: v.string() },
+  returns: v.any(),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("checkout_intents")
@@ -1717,6 +1756,14 @@ export const recordRazorpayWebhook = internalMutation({
             args.amount_refunded_paise,
             args.refund_id ?? null,
           );
+        } else if (
+          args.refund_id &&
+          args.refund_id === order.refund_id &&
+          order.refund_status === "processed"
+        ) {
+          // Delivery order is not guaranteed: created/failed must not undo
+          // processed for the same refund.
+          return { duplicate: false };
         } else if (args.event_type === "refund.failed") {
           await ctx.db.patch(order._id, {
             refund_status: "failed",
@@ -1764,13 +1811,33 @@ export const razorpayWebhook = httpAction(async (ctx, request) => {
   if (Number.isFinite(declaredLength) && declaredLength > MAX_WEBHOOK_BYTES) {
     return new Response("Payload too large.", { status: 413 });
   }
-  const rawBody = await request.text();
-  if (new TextEncoder().encode(rawBody).byteLength > MAX_WEBHOOK_BYTES) {
-    return new Response("Payload too large.", { status: 413 });
-  }
   const receivedSignature = (request.headers.get("x-razorpay-signature") ?? "")
     .trim()
     .toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(receivedSignature))
+    return new Response("Invalid signature.", { status: 401 });
+  // Enforce the bound while reading, not after allocating an arbitrary body.
+  const reader = request.body?.getReader();
+  const decoder = new TextDecoder();
+  let size = 0;
+  let rawBody = "";
+  if (reader) {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_WEBHOOK_BYTES) {
+          await reader.cancel();
+          return new Response("Payload too large.", { status: 413 });
+        }
+        rawBody += decoder.decode(value, { stream: true });
+      }
+      rawBody += decoder.decode();
+    } finally {
+      reader.releaseLock();
+    }
+  }
   const signatures = await Promise.all(
     [currentSecret, previousSecret]
       .filter((secret): secret is string => Boolean(secret))
@@ -1839,11 +1906,22 @@ export const razorpayWebhook = httpAction(async (ctx, request) => {
     payment = await razorpayRequest(`/payments/${cleanText(refund.payment_id, 120)}`);
   }
   const normalizedEventType =
-    eventType === "refund.processed" || eventType === "payment.refunded"
+    eventType.startsWith("refund.") || eventType === "payment.refunded"
       ? eventType
       : payment?.status === "captured"
         ? "payment.captured"
         : eventType;
+  if (
+    (eventType === "payment.captured" || eventType === "order.paid") &&
+    (payment?.status !== "captured" ||
+      !payment?.id ||
+      !payment?.order_id ||
+      !Number.isSafeInteger(payment?.amount) ||
+      !payment?.currency)
+  ) {
+    // Ask Razorpay to retry rather than acknowledging an unusable paid event.
+    return new Response("Captured payment details are unavailable.", { status: 503 });
+  }
   await ctx.runMutation(internal.orders.recordRazorpayWebhook, {
     event_id: eventId,
     event_type: normalizedEventType,

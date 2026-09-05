@@ -1,6 +1,7 @@
 import { api } from "../../convex/_generated/api";
 import { convex } from "@/integrations/convex/client";
 import { checkoutShippingForCountry } from "./shipping";
+import { checkoutDeadline } from "@/lib/checkoutDeadline";
 
 export interface CheckoutCartLine {
   cartKey?: string;
@@ -44,14 +45,21 @@ export async function createRazorpayCheckoutOrder(args: {
   checkoutAttemptId: string;
   turnstileToken: string;
 }) {
-  return await convex.action(api.orders.createRazorpayCheckoutOrder, args);
+  return await checkoutDeadline(
+    convex.action(api.orders.createRazorpayCheckoutOrder, args),
+    "The connection interrupted checkout preparation. Check your connection and try again; this checkout attempt will be reused safely.",
+  );
 }
 
 export async function cancelRazorpayCheckout(razorpayOrderId: string, checkoutAttemptId: string) {
-  return await convex.mutation(api.orders.cancelRazorpayCheckout, {
-    razorpay_order_id: razorpayOrderId,
-    checkout_attempt_id: checkoutAttemptId,
-  });
+  return await checkoutDeadline(
+    convex.mutation(api.orders.cancelRazorpayCheckout, {
+      razorpay_order_id: razorpayOrderId,
+      checkout_attempt_id: checkoutAttemptId,
+    }),
+    "Checkout release is still processing.",
+    10000,
+  );
 }
 
 export interface RazorpayVerificationArgs {
@@ -66,7 +74,11 @@ export interface RazorpayVerificationArgs {
 }
 
 export async function verifyRazorpayPayment(args: RazorpayVerificationArgs) {
-  return await convex.action(api.orders.verifyRazorpayPayment, args);
+  return await checkoutDeadline(
+    convex.action(api.orders.verifyRazorpayPayment, args),
+    "Payment confirmation is still processing. Do not pay again.",
+    20000,
+  );
 }
 
 export async function verifyRazorpayPaymentWithRetry(args: RazorpayVerificationArgs, attempts = 3) {

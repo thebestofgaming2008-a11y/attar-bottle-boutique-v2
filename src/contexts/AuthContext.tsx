@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "../../convex/_generated/api";
+import { readPreference, removePreference, writePreference } from "../lib/safeStorage";
 
 export interface Profile {
   id: string;
@@ -63,10 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated || !user?.id || ensuredUserRef.current === user.id) return;
     ensuredUserRef.current = user.id;
-    const pendingName = window.localStorage.getItem("badr_pending_full_name") ?? undefined;
+    const pendingName = readPreference("badr_pending_full_name") ?? undefined;
     void ensureCurrentProfile({ fullName: pendingName?.trim() || undefined })
       .then(() => {
-        window.localStorage.removeItem("badr_pending_full_name");
+        removePreference("badr_pending_full_name");
       })
       .catch(() => {
         ensuredUserRef.current = null;
@@ -93,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string, fullName?: string) => {
       const pendingName = fullName?.trim();
       try {
-        if (pendingName) window.localStorage.setItem("badr_pending_full_name", pendingName);
+        if (pendingName) writePreference("badr_pending_full_name", pendingName);
         await convexSignIn("password", {
           email: email.trim().toLowerCase(),
           password,
@@ -101,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         return { error: null };
       } catch (err) {
-        if (pendingName) window.localStorage.removeItem("badr_pending_full_name");
+        if (pendingName) removePreference("badr_pending_full_name");
         return { error: err instanceof Error ? err : new Error("Unable to create account.") };
       }
     },

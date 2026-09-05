@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { PRODUCTS } from "@/lib/products";
+import { writePreference } from "@/lib/safeStorage";
 
 export type CartLine = {
   id: string;
@@ -76,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
+    writePreference(STORAGE_KEY, JSON.stringify(lines));
   }, [hydrated, lines]);
 
   const addProduct = useCallback((product: CartProductInput, qty = 1) => {

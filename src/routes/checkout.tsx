@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
+import { checkoutDeadline } from "@/lib/checkoutDeadline";
 import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, MessageCircle } from "lucide-react";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { useCart } from "@/components/store/CartContext";
@@ -199,6 +201,7 @@ function CheckoutPage() {
   const completingRef = useRef(false);
   const razorpayRef = useRef<RazorpayInstance | null>(null);
   const submitLockRef = useRef(false);
+  const countryChosenRef = useRef(false);
   const recoveryStatus = useQuery(
     api.orders.checkoutStatus,
     pendingPayment
@@ -241,12 +244,22 @@ function CheckoutPage() {
       setSuccess(`Payment confirmed: ${orderNumber}`);
       setMessage(null);
       setPendingPayment(null);
-      razorpayRef.current?.close();
+      try {
+        razorpayRef.current?.close();
+      } catch {
+        /* Confirmation is already verified. */
+      }
       setBusy(false);
-      await navigate({
-        to: "/order-confirmation",
-        search: { order: orderNumber, email: payment.email },
-      });
+      try {
+        await navigate({
+          to: "/order-confirmation",
+          search: { order: orderNumber, email: payment.email },
+        });
+      } catch {
+        window.location.assign(
+          `/order-confirmation?${new URLSearchParams({ order: orderNumber, email: payment.email })}`,
+        );
+      }
     },
     [cart, navigate],
   );
@@ -327,7 +340,7 @@ function CheckoutPage() {
   }
 
   useEffect(() => {
-    if (!detectedCountry) return;
+    if (!detectedCountry || countryChosenRef.current || submitLockRef.current) return;
     const detected = countryNameFromCode(detectedCountry);
     if (detected) setCustomer((current) => ({ ...current, country: detected }));
   }, [detectedCountry]);
@@ -352,11 +365,16 @@ function CheckoutPage() {
   );
 
   const update = (field: keyof CheckoutCustomer, value: string) => {
+    if (field === "country") countryChosenRef.current = true;
     setCustomer((current) => ({ ...current, [field]: value }));
   };
 
   async function resolveCheckoutCart(): Promise<CheckoutCartLine[]> {
-    const catalog = await listActiveProducts();
+    const catalog = await checkoutDeadline(
+      listActiveProducts(),
+      "Could not refresh the cart. Check your connection and try again.",
+      20000,
+    );
     return cart.lines.map((line) => {
       const product = catalog.find(
         (candidate) => candidate.id === line.productId || candidate.slug === line.slug,
@@ -403,8 +421,36 @@ function CheckoutPage() {
     } catch (error) {
       // Turnstile tokens are single-use. Preserve the idempotency key if a
       // successful order response was lost, but request a fresh security token.
-      resetCheckoutProtection(false);
-      throw error;
+      const details =
+        error instanceof ConvexError && typeof error.data === "object" && error.data
+          ? error.data
+          : null;
+      if (details?.code === "CHECKOUT_ALREADY_PAID" && typeof details.orderId === "string") {
+        const recovery: PendingPayment = {
+          orderId: details.orderId,
+          attemptId: checkoutAttemptId,
+          email: typeof details.email === "string" ? details.email : customer.email,
+          cartFingerprint: "",
+          createdAt: Date.now(),
+        };
+        setPendingPayment(recovery);
+        try {
+          window.sessionStorage.setItem(PAYMENT_RECOVERY_KEY, JSON.stringify(recovery));
+        } catch {
+          /* Optional storage. */
+        }
+        return;
+      }
+      resetCheckoutProtection(
+        details?.code === "CHECKOUT_CHANGED" || details?.code === "CHECKOUT_ATTEMPT_ENDED",
+      );
+      throw new Error(
+        typeof details?.message === "string"
+          ? details.message
+          : error instanceof Error
+            ? error.message
+            : "Checkout could not start. Please try again.",
+      );
     }
     const payment: PendingPayment = {
       orderId: razorpayOrder.orderId,
@@ -566,6 +612,7 @@ function CheckoutPage() {
                     searchPlaceholder="Search saved addresses…"
                     className="sm:col-span-2"
                     onValueChange={(id) => {
+                      countryChosenRef.current = true;
                       setSavedAddressId(id);
                       if (!id) return;
                       const saved = addresses.find((item) => item.id === id);

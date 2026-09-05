@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
 import appCss from "../styles.css?url";
@@ -15,6 +15,7 @@ import { CartProvider } from "../components/store/CartContext";
 import { AuthProvider } from "../contexts/AuthContext";
 import { CurrencyProvider } from "../contexts/CurrencyContext";
 import { convex } from "../integrations/convex/client";
+import { createBrowserTokenStorage } from "../lib/safeStorage";
 import {
   DEFAULT_SOCIAL_IMAGE,
   INDEX_ROBOTS,
@@ -229,10 +230,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [tokenStorage] = useState(createBrowserTokenStorage);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ConvexAuthProvider client={convex}>
+      <ConvexAuthProvider client={convex} storage={tokenStorage}>
         <AuthProvider>
           <CurrencyProvider>
             <CartProvider>

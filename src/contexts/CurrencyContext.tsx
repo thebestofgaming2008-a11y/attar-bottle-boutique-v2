@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { readPreference, writePreference } from "@/lib/safeStorage";
 
 type RateSource = "fallback" | "exchangerate-api.com";
 
@@ -60,7 +61,7 @@ function supportedCurrency(value: string | null | undefined) {
 }
 
 function hasManualCurrency() {
-  return typeof window !== "undefined" && window.localStorage.getItem(MANUAL_KEY) === "1";
+  return readPreference(MANUAL_KEY) === "1";
 }
 
 function cleanRates(value: RatesResponse | null | undefined) {
@@ -89,8 +90,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [sourceTimestamp, setSourceTimestamp] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrencyState(supportedCurrency(window.localStorage.getItem(STORAGE_KEY)));
-    setDetectedCountry(window.localStorage.getItem(COUNTRY_KEY));
+    setCurrencyState(supportedCurrency(readPreference(STORAGE_KEY)));
+    setDetectedCountry(readPreference(COUNTRY_KEY));
   }, []);
 
   useEffect(() => {
@@ -148,8 +149,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
             .toUpperCase() || null;
         setCurrencyState(nextCurrency);
         setDetectedCountry(nextCountry);
-        window.localStorage.setItem(STORAGE_KEY, nextCurrency);
-        if (nextCountry) window.localStorage.setItem(COUNTRY_KEY, nextCountry);
+        writePreference(STORAGE_KEY, nextCurrency);
+        if (nextCountry) writePreference(COUNTRY_KEY, nextCountry);
       })
       .catch((error) => {
         if (!cancelled)
@@ -167,8 +168,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     const clean = supportedCurrency(next);
     setCurrencyState(clean);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, clean);
-      window.localStorage.setItem(MANUAL_KEY, "1");
+      writePreference(STORAGE_KEY, clean);
+      writePreference(MANUAL_KEY, "1");
     }
   }, []);
 
