@@ -496,7 +496,6 @@ export async function listAdminNotifications(): Promise<AdminNotification[]> {
 }
 
 export interface AdminOrder {
-  inventory_attention?: boolean | null;
   id: string;
   order_number: string | null;
   user_id: string | null;
