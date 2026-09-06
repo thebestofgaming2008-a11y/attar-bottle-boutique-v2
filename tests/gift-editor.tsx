@@ -8,6 +8,7 @@ import type { Product } from "../src/services/productService";
 import "../src/styles.css";
 import { GiftChoicePicker } from "../src/components/store/GiftChoicePicker";
 import type { GiftSelection } from "../convex/gifts";
+import { blankGiftCampaign } from "../src/components/admin/gift-campaign-builder";
 
 const products = [
   {
@@ -37,7 +38,32 @@ const categories = [
   { id: "oud-category", slug: "oud", name: "Oud", type: "category", is_active: true },
 ] as AdminCategory[];
 export function Fixture() {
-  const [campaigns, setCampaigns] = useState<GiftCampaign[]>([]);
+  const [campaigns, setCampaigns] = useState<GiftCampaign[]>(() =>
+    new URLSearchParams(location.search).has("publication")
+      ? [
+          {
+            ...blankGiftCampaign(1),
+            id: "publication-fixture",
+            name: "Buy any two, choose two free",
+            requirements: [
+              {
+                label: "All products",
+                scope_type: "all",
+                product_ids: [],
+                category_ids: [],
+                collection_slugs: [],
+                required_quantity: 2,
+              },
+            ],
+            reward_mode: "choice",
+            reward_scope: "all",
+            gift_quantity: 2,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ]
+      : [],
+  );
   const [status, setStatus] = useState("No local changes");
   const [selections, setSelections] = useState<GiftSelection[]>([]);
   return (

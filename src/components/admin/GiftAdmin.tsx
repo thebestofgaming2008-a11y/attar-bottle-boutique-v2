@@ -55,7 +55,20 @@ export function GiftAdmin({
       onSave={async (input, id) => {
         const saved = await saveGiftCampaign(input, id);
         setCampaigns((rows) => [...(rows ?? []).filter((row) => row.id !== saved.id), saved]);
-        toast.success(saved.active ? "Gift offer published" : "Gift draft saved");
+        const wasPublished = campaigns.some(
+          (campaign) => campaign.id === saved.id && campaign.active,
+        );
+        toast.success(
+          saved.active
+            ? saved.starts_at && Date.parse(saved.starts_at) > Date.now()
+              ? "Gift offer published — scheduled for its start time"
+              : wasPublished
+                ? "Published offer updated"
+                : "Gift offer published"
+            : wasPublished
+              ? "Gift offer unpublished — saved as a draft"
+              : "Gift draft saved",
+        );
         return saved;
       }}
       onDelete={async (id) => {

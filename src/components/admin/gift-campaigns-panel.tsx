@@ -32,10 +32,8 @@ import type {
   AdminCategory,
   GiftCampaign,
   GiftCampaignInput,
-  GiftCampaignTestResult,
   GiftRequirement,
 } from "@/services/adminService";
-import { testGiftCampaign } from "@/services/adminService";
 import type { Product } from "@/services/productService";
 
 function GiftSelect({
@@ -163,6 +161,44 @@ function ToggleRow({
   );
 }
 
+function GiftPublishActions({
+  active,
+  saving,
+  dirty,
+  onAction,
+}: {
+  active: boolean;
+  saving: boolean;
+  dirty: boolean;
+  onAction: (action: "save" | "publish" | "unpublish") => Promise<void>;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2" aria-label="Offer publishing">
+      <button
+        type="button"
+        disabled={saving || !dirty}
+        onClick={() => void onAction("save")}
+        className={cn(secondaryButton, "h-11")}
+      >
+        {saving ? "Saving…" : active ? "Save changes" : "Save draft"}
+      </button>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => void onAction(active ? "unpublish" : "publish")}
+        className={cn(
+          "h-11 rounded-md px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+          active
+            ? "border border-[#CBD1D8] bg-white text-[#B42318] hover:bg-red-50 focus-visible:ring-red-700"
+            : "bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:ring-emerald-700",
+        )}
+      >
+        {active ? "Unpublish" : "Publish offer"}
+      </button>
+    </div>
+  );
+}
+
 export function GiftCampaignsPanel({
   campaigns,
   products,
@@ -183,12 +219,7 @@ export function GiftCampaignsPanel({
   const [productQuery, setProductQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const [testProductId, setTestProductId] = useState("");
-  const [testQuantity, setTestQuantity] = useState(1);
-  const [testCart, setTestCart] = useState<Array<{ product_id: string; quantity: number }>>([]);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<GiftCampaignTestResult | null>(null);
-
+  const [validatePublishing, setValidatePublishing] = useState(false);
   const activeProducts = useMemo(
     () => products.filter((product) => product.is_active !== false),
     [products],
@@ -222,7 +253,10 @@ export function GiftCampaignsPanel({
   }, [activeProducts, productQuery]);
   const reward = activeProducts.find((product) => product.id === draft?.gift_product_id);
   const readiness = draft
-    ? validateGiftCampaign(draft, reward ? Number(reward.stock_quantity ?? 0) : null)
+    ? validateGiftCampaign(
+        { ...draft, active: draft.active || validatePublishing },
+        reward ? Number(reward.stock_quantity ?? 0) : null,
+      )
     : { errors: [], warnings: [] };
   const isDirty = Boolean(draft && giftCampaignSignature(draft) !== savedSignature);
   const currentCampaigns = campaigns.filter((campaign) => !campaign.archived_at);
@@ -252,10 +286,7 @@ export function GiftCampaignsPanel({
     setSavedSignature(giftCampaignSignature(next));
     setProductQuery("");
     setShowErrors(false);
-    setTestProductId("");
-    setTestQuantity(1);
-    setTestCart([]);
-    setTestResult(null);
+    setValidatePublishing(false);
   };
 
   const createCampaign = () => {
@@ -276,10 +307,23 @@ export function GiftCampaignsPanel({
     );
   };
 
-  const submit = async () => {
-    if (!draft) return;
+  const submit = async (action: "save" | "publish" | "unpublish" = "save") => {
+    if (!draft || saving || draft.archived_at) return;
+    if (
+      action === "unpublish" &&
+      isDirty &&
+      !window.confirm("Unpublish the saved offer and discard your unsaved edits?")
+    )
+      return;
+    const source =
+      action === "unpublish" ? campaigns.find((campaign) => campaign.id === draft.id) : null;
+    const next = {
+      ...(source ? giftCampaignDraft(source) : draft),
+      active: action === "publish" ? true : action === "unpublish" ? false : draft.active,
+    };
+    setValidatePublishing(next.active);
     const nextReadiness = validateGiftCampaign(
-      draft,
+      next,
       reward ? Number(reward.stock_quantity ?? 0) : null,
     );
     if (nextReadiness.errors.length) {
@@ -291,7 +335,7 @@ export function GiftCampaignsPanel({
 
     setSaving(true);
     try {
-      const { id, archived_at: _archivedAt, ...input } = draft;
+      const { id, archived_at: _archivedAt, ...input } = next;
       const saved = await onSave(
         {
           ...input,
@@ -316,6 +360,7 @@ export function GiftCampaignsPanel({
       setDraft(savedDraft);
       setSavedSignature(giftCampaignSignature(savedDraft));
       setShowErrors(false);
+      setValidatePublishing(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gift offer could not be saved.");
     } finally {
@@ -340,38 +385,6 @@ export function GiftCampaignsPanel({
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gift offer could not be archived.");
-    }
-  };
-
-  const addTestItem = () => {
-    if (!testProductId) return;
-    setTestCart((current) => {
-      const existing = current.find((line) => line.product_id === testProductId);
-      if (existing) {
-        return current.map((line) =>
-          line.product_id === testProductId
-            ? { ...line, quantity: Math.min(99, line.quantity + testQuantity) }
-            : line,
-        );
-      }
-      return [...current, { product_id: testProductId, quantity: testQuantity }];
-    });
-    setTestProductId("");
-    setTestQuantity(1);
-    setTestResult(null);
-  };
-
-  const runOfferTest = async () => {
-    if (!draft?.id || !testCart.length || isDirty) return;
-    setTesting(true);
-    try {
-      const result = await testGiftCampaign(draft.id, testCart);
-      setTestResult(result);
-      if (!result) toast.error("This saved gift offer could not be tested.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gift offer test failed.");
-    } finally {
-      setTesting(false);
     }
   };
 
@@ -475,7 +488,7 @@ export function GiftCampaignsPanel({
         <div className="min-w-0">
           <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-[#DDE2E8] bg-white/95 px-5 py-4 backdrop-blur md:px-6">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase text-[#667085]">
                   {draft.id ? "Gift offer" : "New gift offer"}
                 </span>
@@ -519,6 +532,7 @@ export function GiftCampaignsPanel({
                   type="button"
                   aria-label="Archive gift offer"
                   title="Archive gift offer"
+                  disabled={saving}
                   onClick={() => void archive()}
                   className="grid h-10 w-10 place-items-center rounded-md border border-[#CBD1D8] text-[#B42318] transition hover:bg-red-50"
                 >
@@ -526,19 +540,17 @@ export function GiftCampaignsPanel({
                 </button>
               ) : null}
               {!draft.archived_at ? (
-                <button
-                  type="button"
-                  disabled={saving || !isDirty}
-                  onClick={() => void submit()}
-                  className="h-10 rounded-md bg-[#111827] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {saving ? "Saving..." : draft.active ? "Save offer" : "Save draft"}
-                </button>
+                <GiftPublishActions
+                  active={draft.active}
+                  saving={saving}
+                  dirty={isDirty}
+                  onAction={submit}
+                />
               ) : null}
             </div>
           </header>
 
-          <fieldset disabled={Boolean(draft.archived_at)} className="disabled:opacity-70">
+          <fieldset disabled={Boolean(draft.archived_at) || saving} className="disabled:opacity-70">
             {draft.archived_at ? (
               <div className="m-5 flex items-start gap-3 rounded-md border border-[#DDE2E8] bg-[#F8FAFC] px-4 py-3 text-sm text-[#596579] md:m-6">
                 <Archive className="mt-0.5 h-4 w-4 shrink-0" />
@@ -1021,21 +1033,8 @@ export function GiftCampaignsPanel({
               <StepHeading
                 number={3}
                 title="Choose when the offer runs"
-                description="Save it as a draft while preparing it, or make it live when everything is ready. Times use the timezone on this device."
+                description="Optional: set a start or end time. Publish offer saves and enables it. Times use the timezone on this device."
               />
-
-              <div className="mt-5 rounded-md border border-[#DDE2E8] px-4">
-                <ToggleRow
-                  checked={draft.active}
-                  onChange={(active) => setDraft({ ...draft, active })}
-                  title={draft.active ? "Offer enabled" : "Keep as draft"}
-                  description={
-                    draft.active
-                      ? "Customers can qualify now, or at the scheduled start time below."
-                      : "Customers cannot see or receive this gift yet."
-                  }
-                />
-              </div>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <label>
@@ -1049,7 +1048,7 @@ export function GiftCampaignsPanel({
                     className={inputClass}
                   />
                   <span className="mt-1.5 block text-[11px] text-[#667085]">
-                    Leave empty to start immediately after enabling.
+                    Leave empty to start when you click Publish offer.
                   </span>
                 </label>
                 <label>
@@ -1063,7 +1062,7 @@ export function GiftCampaignsPanel({
                     className={inputClass}
                   />
                   <span className="mt-1.5 block text-[11px] text-[#667085]">
-                    Leave empty to keep running until you turn it off.
+                    Leave empty to run until you click Unpublish.
                   </span>
                 </label>
               </div>
@@ -1144,142 +1143,16 @@ export function GiftCampaignsPanel({
                     {giftCampaignStatus(draft)}
                   </span>
                   <span className="rounded-full bg-white/10 px-2.5 py-1">
-                    {draft.starts_at ? "Scheduled start" : "Starts immediately"}
+                    {draft.starts_at
+                      ? "Scheduled start"
+                      : draft.active
+                        ? "Starts immediately"
+                        : "Starts when published"}
                   </span>
                   <span className="rounded-full bg-white/10 px-2.5 py-1">
                     {draft.ends_at ? "Scheduled end" : "No end date"}
                   </span>
                 </div>
-              </div>
-
-              <div className="mt-4 rounded-md border border-[#DDE2E8] bg-[#F8FAFC] p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-[#111827]">Test this offer</p>
-                    <p className="mt-1 text-xs leading-5 text-[#667085]">
-                      Build a sample cart here. Testing never changes stock, orders, or the public
-                      store.
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-[#D1D5DB] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase text-[#667085]">
-                    Private
-                  </span>
-                </div>
-
-                <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_90px_auto]">
-                  <GiftSelect
-                    value={testProductId}
-                    onChange={(event) => setTestProductId(event.target.value)}
-                    className={inputClass}
-                    aria-label="Product for test cart"
-                  >
-                    <option value="">Choose a product</option>
-                    {activeProducts.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name}
-                      </option>
-                    ))}
-                  </GiftSelect>
-                  <input
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={testQuantity || ""}
-                    onChange={(event) => setTestQuantity(Number(event.target.value))}
-                    className={inputClass}
-                    aria-label="Test quantity"
-                  />
-                  <button
-                    type="button"
-                    onClick={addTestItem}
-                    disabled={
-                      !testProductId ||
-                      !Number.isInteger(testQuantity) ||
-                      testQuantity < 1 ||
-                      testQuantity > 99
-                    }
-                    className={secondaryButton}
-                  >
-                    Add to test
-                  </button>
-                </div>
-
-                {testCart.length ? (
-                  <div className="mt-3 grid gap-2">
-                    {testCart.map((line) => {
-                      const product = activeProducts.find((item) => item.id === line.product_id);
-                      return (
-                        <div
-                          key={line.product_id}
-                          className="flex items-center justify-between gap-3 rounded-md border border-[#E5E7EB] bg-white px-3 py-2 text-xs"
-                        >
-                          <span className="min-w-0 truncate text-[#344054]">
-                            {line.quantity} x {product?.name ?? "Product"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTestCart((current) =>
-                                current.filter((item) => item.product_id !== line.product_id),
-                              );
-                              setTestResult(null);
-                            }}
-                            className="text-[#B42318] hover:underline"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void runOfferTest()}
-                    disabled={!draft.id || !testCart.length || isDirty || testing}
-                    className="h-10 rounded-md bg-[#111827] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {testing ? "Testing..." : "Run test"}
-                  </button>
-                  <p className="text-xs text-[#667085]">
-                    {!draft.id
-                      ? "Save the draft once before testing it."
-                      : isDirty
-                        ? "Save your latest changes before testing."
-                        : "Uses the saved rule while ignoring its public schedule."}
-                  </p>
-                </div>
-
-                {testResult ? (
-                  <div
-                    className={cn(
-                      "mt-4 rounded-md border p-4",
-                      testResult.earned || testResult.selection_required
-                        ? "border-emerald-200 bg-emerald-50"
-                        : "border-amber-200 bg-amber-50",
-                    )}
-                    role="status"
-                  >
-                    <p className="text-sm font-semibold text-[#111827]">
-                      {testResult.selection_required
-                        ? `Pass: customer qualifies to choose ${testResult.gift.quantity} free items`
-                        : testResult.earned
-                          ? `Pass: ${testResult.gift.quantity} x ${testResult.gift.name} is awarded`
-                          : `Not earned yet: ${testResult.progress}% complete`}
-                    </p>
-                    <div className="mt-2 grid gap-1 text-xs text-[#4B5563]">
-                      {testResult.requirements.map((requirement) => (
-                        <p key={requirement.label}>
-                          {requirement.complete ? "Complete" : "Incomplete"}: {requirement.label} (
-                          {requirement.current_quantity}/{requirement.required_quantity})
-                        </p>
-                      ))}
-                      {testResult.blocked_reason ? <p>{testResult.blocked_reason}</p> : null}
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               {showErrors && readiness.errors.length ? (
@@ -1324,18 +1197,16 @@ export function GiftCampaignsPanel({
 
               {!draft.archived_at ? (
                 <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    disabled={saving || !isDirty}
-                    onClick={() => void submit()}
-                    className="h-11 rounded-md bg-[#111827] px-6 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {saving ? "Saving..." : draft.active ? "Save offer" : "Save draft"}
-                  </button>
+                  <GiftPublishActions
+                    active={draft.active}
+                    saving={saving}
+                    dirty={isDirty}
+                    onAction={submit}
+                  />
                   <p className="text-xs leading-5 text-[#667085]">
                     {draft.active
-                      ? "Once saved, qualifying customers receive the gift automatically."
-                      : "This remains private until you enable and save it."}
+                      ? "Save changes updates the published offer. Unpublish stops it and keeps it as a draft."
+                      : "Save draft keeps it private. Publish offer saves and enables it for customers, starting at the scheduled time if set."}
                   </p>
                 </div>
               ) : null}

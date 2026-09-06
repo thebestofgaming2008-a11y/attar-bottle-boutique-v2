@@ -59,3 +59,8 @@ The isolated browser fixture is served only by `npx vite --config tests/browser.
 - International WhatsApp includes the selected eligible rewards as availability requests, not automatic backend orders.
 - Verification: 43 existing checkout regression tests + 16 Convex integration tests passed; TypeScript, lint (existing Fast Refresh warnings only), build and deployment dry-runs passed. Browser fixture verified clearing both quantity fields, typing 2, saving a local choice-offer draft, and selecting two different rewards at 390px with no overflow/errors. No paid live order or live campaign write was performed.
 - Scope limits: at most 50 explicitly selected reward products; all-product reward pools support up to 200 active products. Existing campaign, per-award and repeat caps remain.
+# Publishing controls update
+
+The admin sample-cart tester and enable toggle have been removed. Use **Save draft** to save privately or **Publish offer** beside it to save and enable in one action. Publishing validates with `active: true` before submitting; server validation remains unchanged. A future start date is respected. Published offers show **Save changes** and **Unpublish**; unpublishing keeps the saved offer as a draft and leaves previous orders intact. If unsaved edits exist, unpublishing asks before discarding those edits.
+
+Verified the saved-draft → published → unpublished flow in the local browser fixture at 390px with no overflow; 59 regression tests, TypeScript, targeted lint, production build and deployment dry-run passed. No actual campaign was published/unpublished during verification. Developer regression tests remain in place; they are not part of the live admin interface.
