@@ -135,6 +135,22 @@ test("cart comparison preserves subsequently changed cart contents", () => {
 
 const register = (definition) => definition;
 const validators = new Proxy({}, { get: () => () => ({}) });
+const giftLib = compileModule(
+  "../convex/lib.ts",
+  { process: { env: { ADMIN_EMAIL: "admin@example.com" } } },
+  {
+    "@convex-dev/auth/server": { getAuthUserId: async (ctx) => ctx.userId ?? null },
+  },
+);
+const gifts = compileModule(
+  "../convex/gifts.ts",
+  {},
+  {
+    "convex/values": { v: validators, ConvexError },
+    "./_generated/server": { query: register, mutation: register },
+    "./lib": giftLib,
+  },
+);
 const backend = compileModule(
   "../convex/orders.ts",
   {
@@ -174,6 +190,7 @@ const backend = compileModule(
       internal: { orders: new Proxy({}, { get: (_, key) => key }) },
     },
     "./lib": { nowIso: () => new Date().toISOString(), publicOrder: (order) => order },
+    "./gifts": gifts,
     "./shipping": {
       checkoutShippingForCountry: () => ({
         countryType: "india",
@@ -247,6 +264,7 @@ function storeHarness() {
     return tables.get(name);
   };
   const db = {
+    normalizeId: (name, id) => (typeof id === "string" && id.startsWith(`${name}_`) ? id : null),
     get: async (id) => {
       for (const rows of tables.values()) if (rows.has(id)) return structuredClone(rows.get(id));
       return null;
@@ -275,6 +293,10 @@ function storeHarness() {
           predicates.push((row) => row[key] <= value);
           return index;
         },
+        gt: (key, value) => {
+          predicates.push((row) => row[key] != null && (value === null || row[key] > value));
+          return index;
+        },
       };
       const rows = () =>
         [...table(name).values()]
@@ -282,7 +304,7 @@ function storeHarness() {
           .map((row) => structuredClone(row));
       const query = {
         withIndex: (_, callback) => {
-          callback(index);
+          callback?.(index);
           return query;
         },
         first: async () => rows()[0] || null,
@@ -347,6 +369,293 @@ const captured = {
   amount_paise: 99800,
   currency: "INR",
 };
+
+async function giftFixture(overrides = {}, giftStock = 5) {
+  const f = await fixture();
+  const giftId = await f.h.db.insert("products", {
+    name: "Gift sample",
+    slug: "gift-sample",
+    price_inr: 199,
+    price: 199,
+    stock_quantity: giftStock,
+    is_active: true,
+    in_stock: giftStock > 0,
+    size_options: ["2 ml"],
+  });
+  const campaignId = await f.h.db.insert("gift_campaigns", {
+    name: "Buy two, get a sample",
+    active: true,
+    match_mode: "all",
+    requirements: [
+      {
+        label: "Two attars",
+        scope_type: "products",
+        collection_slugs: [],
+        category_ids: [],
+        product_ids: [f.productId],
+        required_quantity: 2,
+      },
+    ],
+    gift_product_id: giftId,
+    gift_quantity: 1,
+    gift_color: null,
+    gift_size: "2 ml",
+    sort_order: 1,
+    priority: 100,
+    repeatable: false,
+    max_awards_per_order: 1,
+    combines_with_other_gifts: false,
+    allow_discount_codes: true,
+    starts_at: null,
+    ends_at: null,
+    archived_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  });
+  return { ...f, giftId, campaignId };
+}
+
+test("gifts reserve at zero, survive campaign edits, and duplicate webhooks deduct once", async () => {
+  const f = await giftFixture();
+  await backend.reserveCheckoutIntent.handler(f.h, f.args);
+  await backend.reserveCheckoutIntent.handler(f.h, f.args);
+  assert.equal((await f.h.db.get(f.giftId)).stock_quantity, 4);
+  const intent = [...f.h.table("checkout_intents").values()][0];
+  assert.equal(intent.cart.at(-1).priceInr, 0);
+  assert.equal(intent.amount_paise, 99800);
+  await f.h.db.patch(f.campaignId, { active: false, archived_at: new Date().toISOString() });
+  await f.h.db.patch(f.giftId, { name: "Edited gift", price_inr: 999, size_options: [] });
+  await backend.recordRazorpayWebhook.handler(f.h, captured);
+  await backend.recordRazorpayWebhook.handler(f.h, { ...captured, event_id: "second-capture" });
+  const items = [...f.h.table("order_items").values()];
+  assert.equal(items.length, 3);
+  const gift = items.find((line) => line.is_gift);
+  assert.equal(gift.unit_price, 0);
+  assert.equal(gift.subtotal, 0);
+  assert.equal(gift.product_name, "Free gift: Gift sample (Size: 2 ml)");
+  assert.equal(gift.gift_campaign_id, f.campaignId);
+  assert.equal((await f.h.db.get(f.giftId)).stock_quantity, 4);
+  assert.equal([...f.h.table("orders").values()][0].total, 998);
+});
+
+test("cancelled and expired attempts restore gift stock once", async () => {
+  for (const expired of [false, true]) {
+    const f = await giftFixture();
+    await backend.reserveCheckoutIntent.handler(f.h, f.args);
+    if (expired) {
+      await f.h.db.patch([...f.h.table("checkout_intents").values()][0]._id, { expires_at: 0 });
+      await backend.cleanupExpiredCheckoutIntents.handler(f.h, {});
+      await backend.cleanupExpiredCheckoutIntents.handler(f.h, {});
+    } else {
+      const args = { razorpay_order_id: "order_fixture", checkout_attempt_id: payment.attemptId };
+      await backend.cancelRazorpayCheckout.handler(f.h, args);
+      await backend.cancelRazorpayCheckout.handler(f.h, args);
+    }
+    assert.equal((await f.h.db.get(f.giftId)).stock_quantity, 5);
+    assert.equal((await f.h.db.get(f.productId)).stock_quantity, 10);
+  }
+});
+
+test("late capture retains promised gift and flags insufficient stock for fulfillment", async () => {
+  const f = await giftFixture();
+  await backend.reserveCheckoutIntent.handler(f.h, f.args);
+  await backend.cancelRazorpayCheckout.handler(f.h, {
+    razorpay_order_id: "order_fixture",
+    checkout_attempt_id: payment.attemptId,
+  });
+  await f.h.db.patch(f.giftId, { stock_quantity: 0, in_stock: false });
+  await backend.recordRazorpayWebhook.handler(f.h, captured);
+  assert.equal([...f.h.table("orders").values()][0].inventory_attention, true);
+  assert.equal([...f.h.table("order_items").values()].filter((line) => line.is_gift).length, 1);
+});
+
+test("draft, expired, scheduled, archived and out-of-stock gifts are never awarded", async () => {
+  for (const overrides of [
+    { active: false },
+    { starts_at: "2099-01-01" },
+    { ends_at: "2000-01-01" },
+    { archived_at: "2026-01-01" },
+  ]) {
+    const f = await giftFixture(overrides);
+    assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart)).length, 0);
+  }
+  const f = await giftFixture({}, 0);
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart))[0].earned, false);
+  await backend.reserveCheckoutIntent.handler(f.h, f.args);
+  assert.equal([...f.h.table("checkout_intents").values()][0].cart.length, 2);
+});
+
+test("removing purchased items removes qualification; gifts never qualify themselves", async () => {
+  const f = await giftFixture();
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart))[0].earned, true);
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart.slice(0, 1)))[0].earned, false);
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, []))[0].earned, false);
+});
+
+test("minimum spend uses catalog prices rather than client totals", async () => {
+  const f = await giftFixture({
+    requirements: [
+      {
+        label: "Spend INR 900",
+        scope_type: "subtotal",
+        collection_slugs: [],
+        product_ids: [],
+        required_quantity: 900,
+      },
+    ],
+  });
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart))[0].earned, true);
+  await f.h.db.patch(f.productId, { sale_price_inr: 400 });
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart))[0].earned, false);
+});
+
+test("categories match both stable IDs and renamed slugs", async () => {
+  const f = await giftFixture();
+  const categoryId = await f.h.db.insert("categories", {
+    slug: "oud",
+    name: "Oud",
+    type: "category",
+  });
+  await f.h.db.patch(f.campaignId, {
+    requirements: [
+      {
+        label: "Oud",
+        scope_type: "collection",
+        collection_slugs: ["old-oud"],
+        category_ids: [categoryId],
+        product_ids: [],
+        required_quantity: 2,
+      },
+    ],
+  });
+  for (const category_id of [categoryId, "oud"]) {
+    await f.h.db.patch(f.productId, { category_id });
+    assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart))[0].earned, true);
+  }
+});
+
+test("repeat awards are capped and competing campaigns share gift stock safely", async () => {
+  const f = await giftFixture(
+    { repeatable: true, max_awards_per_order: 2, combines_with_other_gifts: true },
+    3,
+  );
+  const cart = f.cart.map((line) => ({ ...line, qty: 3 }));
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, cart))[0].gift.quantity, 2);
+  const original = await f.h.db.get(f.campaignId);
+  const { _id, _creationTime, ...copy } = original;
+  await f.h.db.insert("gift_campaigns", { ...copy, name: "Second offer", priority: 50 });
+  const offers = await gifts.evaluateGiftCampaigns(f.h, cart);
+  assert.equal(offers.filter((offer) => offer.earned).length, 1);
+  assert.match(offers[1].blocked_reason, /stock/);
+});
+
+test("gift and paid lines for the same product use combined stock", async () => {
+  const f = await giftFixture();
+  await f.h.db.patch(f.campaignId, { gift_product_id: f.productId, gift_size: "A" });
+  await f.h.db.patch(f.productId, { stock_quantity: 2 });
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart))[0].earned, false);
+  await f.h.db.patch(f.productId, { stock_quantity: 3 });
+  await backend.reserveCheckoutIntent.handler(f.h, f.args);
+  await backend.recordRazorpayWebhook.handler(f.h, captured);
+  assert.equal((await f.h.db.get(f.productId)).stock_quantity, 0);
+  assert.equal([...f.h.table("order_items").values()].length, 3);
+});
+
+test("non-combining offers honor priority and stale gift options are excluded", async () => {
+  const f = await giftFixture();
+  const { _id, _creationTime, ...copy } = await f.h.db.get(f.campaignId);
+  await f.h.db.insert("gift_campaigns", { ...copy, name: "Priority", priority: 999 });
+  const offers = await gifts.evaluateGiftCampaigns(f.h, f.cart);
+  assert.equal(offers[0].name, "Priority");
+  assert.equal(offers[0].earned, true);
+  assert.equal(offers[1].earned, false);
+  await f.h.db.patch(f.giftId, { size_options: [] });
+  assert.equal((await gifts.evaluateGiftCampaigns(f.h, f.cart)).length, 0);
+});
+
+test("reserved gift recovery requires the checkout capability", async () => {
+  const f = await giftFixture();
+  await backend.reserveCheckoutIntent.handler(f.h, f.args);
+  const args = { order_id: "order_fixture", attempt_id: payment.attemptId };
+  assert.equal(
+    (
+      await gifts.reservedForCheckout.handler(f.h, {
+        ...args,
+        attempt_id: "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee",
+      })
+    ).length,
+    0,
+  );
+  const recovered = await gifts.reservedForCheckout.handler(f.h, args);
+  assert.equal(recovered[0].name, "Gift sample");
+  assert.equal(recovered[0].quantity, 1);
+  assert.ok(!JSON.stringify(recovered).includes(customer.email));
+});
+
+test("guest and non-admin users cannot read, save, test or archive gift campaigns", async () => {
+  const f = await giftFixture();
+  const calls = [
+    [gifts.listAdmin, {}],
+    [gifts.save, {}],
+    [gifts.remove, { id: f.campaignId }],
+    [gifts.testCampaign, { id: f.campaignId, cart: [] }],
+  ];
+  for (const [fn, args] of calls) await assert.rejects(fn.handler(f.h, args), /Authentication/);
+  f.h.userId = await f.h.db.insert("users", { email: "customer@example.com" });
+  f.h.auth.getUserIdentity = async () => ({ subject: f.h.userId });
+  for (const [fn, args] of calls) await assert.rejects(fn.handler(f.h, args), /Admin access/);
+});
+
+test("admin can save, reload, edit, test without stock changes, and archive with audit history", async () => {
+  const f = await giftFixture();
+  f.h.userId = await f.h.db.insert("users", { email: "admin@example.com" });
+  f.h.auth.getUserIdentity = async () => ({ subject: f.h.userId, email: "admin@example.com" });
+  const { _id, _creationTime, created_at, updated_at, archived_at, ...input } = await f.h.db.get(
+    f.campaignId,
+  );
+  const created = await gifts.save.handler(f.h, { ...input, active: false, name: "New draft" });
+  assert.equal(created.active, false);
+  assert.equal((await gifts.listAdmin.handler(f.h, {})).length, 2);
+  const edited = await gifts.save.handler(f.h, {
+    ...input,
+    id: created.id,
+    name: "Published offer",
+  });
+  assert.equal(edited.active, true);
+  const preview = await gifts.testCampaign.handler(f.h, {
+    id: created.id,
+    cart: [{ product_id: f.productId, quantity: 2 }],
+  });
+  assert.equal(preview.earned, true);
+  assert.equal((await f.h.db.get(f.giftId)).stock_quantity, 5);
+  assert.equal(f.h.table("orders").size, 0);
+  await gifts.remove.handler(f.h, { id: created.id });
+  assert.equal((await f.h.db.get(created.id)).active, false);
+  assert.equal(f.h.table("audit_logs").size, 3);
+  await assert.rejects(gifts.save.handler(f.h, { ...input, id: created.id }), /Archived/);
+});
+
+test("admin rejects malformed quantities, dates, unavailable rewards and invalid product options", async () => {
+  const f = await giftFixture();
+  f.h.userId = await f.h.db.insert("users", { email: "admin@example.com" });
+  f.h.auth.getUserIdentity = async () => ({ subject: f.h.userId });
+  const { _id, _creationTime, created_at, updated_at, archived_at, ...input } = await f.h.db.get(
+    f.campaignId,
+  );
+  for (const change of [
+    { gift_quantity: 0 },
+    { gift_quantity: 1.5 },
+    { starts_at: "no date" },
+    { starts_at: "2099-02-02", ends_at: "2099-01-01" },
+    { gift_size: "fake" },
+    { requirements: [] },
+    { gift_quantity: 10, repeatable: true, max_awards_per_order: 10 },
+  ])
+    await assert.rejects(gifts.save.handler(f.h, { ...input, ...change }));
+  await f.h.db.patch(f.giftId, { stock_quantity: 0 });
+  await assert.rejects(gifts.save.handler(f.h, input), /stock/);
+});
 
 test("quote ignores client prices and checks combined stock across option lines", async () => {
   const f = await fixture();

@@ -6,10 +6,12 @@ import { checkoutDeadline } from "@/lib/checkoutDeadline";
 import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, MessageCircle } from "lucide-react";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { useCart } from "@/components/store/CartContext";
+import { GiftOffers } from "@/components/store/GiftOffers";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
 import {
   cancelRazorpayCheckout,
+  internationalGiftRequest,
   createRazorpayCheckoutOrder,
   verifyRazorpayPaymentWithRetry,
   type CheckoutCartLine,
@@ -545,12 +547,20 @@ function CheckoutPage() {
     await completePayment(orderNumber, payment);
   }
 
-  function submitInternational() {
+  async function submitInternational() {
     if (!whatsappOrderNumber) {
       throw new Error("International checkout is not configured yet. Contact the store directly.");
     }
     const reserved = window.open("about:blank", "_blank");
     if (!reserved) throw new Error("Allow popups so we can open your WhatsApp order message.");
+    reserved.opener = null;
+    let giftText = "";
+    try {
+      giftText = await internationalGiftRequest(await resolveCheckoutCart());
+    } catch {
+      // WhatsApp remains a manual availability enquiry even if gifts cannot be fetched.
+      giftText = "\n\nPlease also confirm whether this order qualifies for any free gifts.";
+    }
     const itemText = cart.lines
       .map(
         (line, index) =>
@@ -561,7 +571,7 @@ function CheckoutPage() {
       .join("\n\n");
     const text = `Assalamu alaikum. I would like to order to ${customer.country}.\n\nName: ${customer.name}\nEmail: ${customer.email}\nWhatsApp number: ${customer.phone}\n\nCountry: ${customer.country}\nAddress: ${customer.address_line_1}${customer.address_line_2 ? `, ${customer.address_line_2}` : ""}\nCity: ${customer.city}\nState / province / region: ${customer.state || "-"}\nPostal code: ${customer.postal_code}\n\n${itemText}\n\nProduct subtotal: ${totalLabel}\nPlease confirm availability, international shipping, and payment details.`;
     reserved.opener = null;
-    reserved.location.href = `https://wa.me/${whatsappOrderNumber}?text=${encodeURIComponent(text)}`;
+    reserved.location.href = `https://wa.me/${whatsappOrderNumber}?text=${encodeURIComponent(text + giftText)}`;
     setSuccess("WhatsApp order message opened");
   }
 
@@ -574,7 +584,7 @@ function CheckoutPage() {
     try {
       validateCheckoutCustomer(customer);
       if (isIndia) await submitIndia();
-      else submitInternational();
+      else await submitInternational();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Checkout could not be completed.");
     } finally {
@@ -831,6 +841,11 @@ function CheckoutPage() {
                   </li>
                 ))}
               </ul>
+              <GiftOffers
+                lines={cart.lines}
+                international={!isIndia}
+                reservation={pendingPayment}
+              />
               <div className="mt-5 border-t border-background/20 pt-5">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>

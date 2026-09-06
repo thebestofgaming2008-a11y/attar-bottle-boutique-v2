@@ -20,6 +20,7 @@ import {
   Shirt,
   Sparkles,
   Package,
+  Gift,
   PackageOpen,
   Tag,
   ShoppingBag,
@@ -90,6 +91,7 @@ import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmConfig } from "@/lib/hom
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
+import { GiftAdmin } from "@/components/admin/GiftAdmin";
 import { NOINDEX_ROBOTS } from "@/lib/seo";
 
 const CATEGORIES = [
@@ -160,6 +162,7 @@ const NAV = [
   { key: "orders", label: "Orders", Icon: ShoppingBag },
   { key: "products", label: "Products", Icon: Package },
   { key: "inventory", label: "Inventory", Icon: Boxes },
+  { key: "gifts", label: "Gifts", Icon: Gift },
   { key: "categories", label: "Categories", Icon: Tag },
   { key: "shipping", label: "Shipping", Icon: Truck },
   { key: "reviews", label: "Reviews", Icon: MessageSquare },
@@ -251,6 +254,7 @@ function buildDashboardAnalytics(orders: AdminOrder[], customers: AdminCustomer[
   const bestSellerMap = new Map<string, { name: string; units: number; revenue: number }>();
   for (const order of paidOrders) {
     for (const item of order.items ?? []) {
+      if (item.is_gift) continue;
       const key = item.product_id ?? item.product_name ?? "unknown";
       const current = bestSellerMap.get(key) ?? {
         name: item.product_name ?? "Unknown product",
@@ -567,7 +571,7 @@ const Admin = () => {
     {
       label: "Commerce",
       items: NAV.filter((item) =>
-        ["orders", "products", "inventory", "categories", "shipping"].includes(item.key),
+        ["orders", "products", "inventory", "gifts", "categories", "shipping"].includes(item.key),
       ),
     },
     { label: "People", items: NAV.filter((item) => ["customers", "reviews"].includes(item.key)) },
@@ -1020,6 +1024,10 @@ const Admin = () => {
               <HomepageEditor products={products} />
             )}
 
+            {!loading && !adminLoadError && tab === "gifts" && (
+              <GiftAdmin products={products} categories={categories} />
+            )}
+
             {!loading && !adminLoadError && tab === "orders" && (
               <Section
                 title="Orders"
@@ -1325,7 +1333,7 @@ function AdminLogin({
     {
       label: "Commerce",
       items: NAV.filter((item) =>
-        ["orders", "products", "inventory", "categories", "shipping"].includes(item.key),
+        ["orders", "products", "inventory", "gifts", "categories", "shipping"].includes(item.key),
       ),
     },
     { label: "People", items: NAV.filter((item) => ["customers", "reviews"].includes(item.key)) },
@@ -2002,7 +2010,7 @@ function OrderRow({
             className="h-8 px-3 rounded-md border border-border text-xs font-medium hover:bg-foreground/[0.04] transition-colors inline-flex items-center gap-1"
           >
             <Truck className="h-3.5 w-3.5" />
-            {expanded ? "Hide" : "Send tracker"}
+            {expanded ? "Hide" : "Order details"}
           </button>
         </div>
       </div>
@@ -2073,12 +2081,64 @@ function OrderRow({
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border text-sm font-medium transition-colors hover:bg-foreground/[0.04]"
         >
           <Truck className="h-4 w-4" />
-          {expanded ? "Hide tracking" : "Add or send tracking"}
+          {expanded ? "Hide details" : "Order details and tracking"}
         </button>
       </div>
 
       {expanded && (
         <div className="border-t border-border bg-foreground/[0.015] px-4 py-4 space-y-3">
+          <section
+            aria-label="Items to pack"
+            className="space-y-3 rounded-md border border-border bg-background p-4"
+          >
+            <h3 className="text-sm font-semibold">Items to pack</h3>
+            {order.inventory_attention && (
+              <p
+                role="alert"
+                className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+              >
+                Stock needs review. Verify that every purchased item and promised gift is available
+                before shipping this order.
+              </p>
+            )}
+            {(order.items ?? []).map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0"
+              >
+                {item.product_image_url && (
+                  <img
+                    src={item.product_image_url}
+                    alt=""
+                    loading="lazy"
+                    className="h-14 w-14 shrink-0 bg-white object-contain"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{item.product_name || "Product"}</p>
+                  <p className="mt-1 text-xs text-foreground/65">
+                    Qty {item.quantity}
+                    {[item.selected_color, item.selected_size].filter(Boolean).length
+                      ? ` · ${[item.selected_color, item.selected_size].filter(Boolean).join(" · ")}`
+                      : ""}
+                  </p>
+                  {item.is_gift && (
+                    <p className="mt-1 text-xs font-medium text-emerald-700">
+                      Free gift{item.gift_campaign_name ? ` — ${item.gift_campaign_name}` : ""}
+                    </p>
+                  )}
+                </div>
+                <p className="shrink-0 text-sm font-semibold">
+                  {item.is_gift ? "Free" : formatPrice(item.subtotal)}
+                </p>
+              </div>
+            ))}
+            {!order.items?.length && (
+              <p className="text-xs text-foreground/65">
+                No item details saved for this older order.
+              </p>
+            )}
+          </section>
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr] gap-2.5">
             <div>
               <label className="text-[10px] uppercase tracking-wider text-foreground/50 font-semibold">

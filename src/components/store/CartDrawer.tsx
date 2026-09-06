@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PRODUCTS } from "@/lib/products";
 import { useCart } from "./CartContext";
+import { GiftOffers } from "./GiftOffers";
 
 export function CartDrawer() {
   const { open, setOpen, lines, subtotal, setQty, add } = useCart();
@@ -113,6 +114,7 @@ export function CartDrawer() {
             </ul>
           )}
 
+          {open && lines.length > 0 && <GiftOffers lines={lines} />}
           {lines.length > 0 && suggestions.length > 0 ? (
             <div className="border-t border-border py-6">
               <p className="eyebrow">You may also like</p>

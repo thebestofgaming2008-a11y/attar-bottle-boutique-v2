@@ -12,6 +12,7 @@ import type * as addresses from "../addresses.js";
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as gifts from "../gifts.js";
 import type * as homepage from "../homepage.js";
 import type * as homepageLayout from "../homepageLayout.js";
 import type * as homepageModel from "../homepageModel.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
   crons: typeof crons;
+  gifts: typeof gifts;
   homepage: typeof homepage;
   homepageLayout: typeof homepageLayout;
   homepageModel: typeof homepageModel;

@@ -7,6 +7,107 @@ import { notifySearchEngines } from "./indexNowService";
 
 export const PRODUCT_BUCKET = "product-images";
 
+export interface GiftRequirement {
+  label: string;
+  scope_type: "collection" | "products" | "subtotal";
+  collection_slugs: string[];
+  category_ids: string[];
+  product_ids: string[];
+  required_quantity: number;
+}
+
+export interface GiftCampaign {
+  id: string;
+  name: string;
+  active: boolean;
+  match_mode: "all" | "any";
+  requirements: GiftRequirement[];
+  gift_product_id: string;
+  gift_quantity: number;
+  gift_color: string | null;
+  gift_size: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  priority: number;
+  combines_with_other_gifts: boolean;
+  repeatable: boolean;
+  max_awards_per_order: number;
+  allow_discount_codes: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type GiftCampaignInput = Omit<
+  GiftCampaign,
+  "id" | "archived_at" | "created_at" | "updated_at"
+>;
+
+export async function listGiftCampaigns(): Promise<GiftCampaign[]> {
+  return (await convex.query(api.gifts.listAdmin, {})) as GiftCampaign[];
+}
+
+export async function saveGiftCampaign(
+  input: GiftCampaignInput,
+  id?: string,
+): Promise<GiftCampaign> {
+  try {
+    return (await convex.mutation(api.gifts.save, {
+      ...input,
+      gift_product_id: input.gift_product_id as Id<"products">,
+      requirements: input.requirements.map((requirement) => ({
+        ...requirement,
+        category_ids: requirement.category_ids as Id<"categories">[],
+        product_ids: requirement.product_ids as Id<"products">[],
+      })),
+      id: id ? (id as Id<"gift_campaigns">) : undefined,
+    })) as GiftCampaign;
+  } catch (error) {
+    throw new Error(adminMutationMessage(error, "Could not save gift offer."));
+  }
+}
+
+export async function archiveGiftCampaign(id: string): Promise<boolean> {
+  try {
+    return await convex.mutation(api.gifts.remove, {
+      id: id as Id<"gift_campaigns">,
+    });
+  } catch (error) {
+    throw new Error(adminMutationMessage(error, "Could not save gift offer."));
+  }
+}
+
+export interface GiftCampaignTestResult {
+  id: string;
+  name: string;
+  earned: boolean;
+  eligible: boolean;
+  progress: number;
+  gift_available: boolean;
+  blocked_reason: string | null;
+  requirements: Array<{
+    label: string;
+    required_quantity: number;
+    current_quantity: number;
+    complete: boolean;
+  }>;
+  gift: { name: string; quantity: number };
+}
+
+export async function testGiftCampaign(
+  id: string,
+  cart: Array<{ product_id: string; quantity: number }>,
+): Promise<GiftCampaignTestResult | null> {
+  return (await convex.query(api.gifts.testCampaign, {
+    id: id as Id<"gift_campaigns">,
+    cart: cart.map((line) => ({
+      product_id: line.product_id as Id<"products">,
+      quantity: line.quantity,
+    })),
+  })) as GiftCampaignTestResult | null;
+}
+
 export interface ProductInput {
   name: string;
   slug?: string | null;
@@ -395,6 +496,7 @@ export async function listAdminNotifications(): Promise<AdminNotification[]> {
 }
 
 export interface AdminOrder {
+  inventory_attention?: boolean | null;
   id: string;
   order_number: string | null;
   user_id: string | null;
@@ -428,6 +530,8 @@ export interface AdminOrder {
   total_inr: number | null;
   created_at: string | null;
   items?: Array<{
+    is_gift?: boolean | null;
+    gift_campaign_name?: string | null;
     id: string;
     product_id?: string | null;
     product_name?: string | null;

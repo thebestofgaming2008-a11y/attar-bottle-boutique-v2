@@ -12,6 +12,7 @@ import {
 import { api, internal } from "./_generated/api";
 import { nowIso, publicOrder, requireAdmin, requireIdentity, writeAuditLog } from "./lib";
 import { checkoutShippingForCountry } from "./shipping";
+import { evaluateGiftCampaigns } from "./gifts";
 
 const cartItem = v.object({
   cartKey: v.optional(v.string()),
@@ -179,6 +180,7 @@ function checkoutContents(cart: Array<any>, customer: any) {
   return JSON.stringify({
     customer: normalizeCheckoutCustomer(customer),
     cart: cart
+      .filter((item) => item.isGift !== true)
       .map((item) => [
         String(item.productId),
         item.qty,
@@ -479,6 +481,13 @@ async function savePaidOrder(
       unitPrice,
       selectedColor,
       selectedSize,
+      isGift: args.use_reserved_snapshot === true && item.isGift === true,
+      giftCampaignId:
+        args.use_reserved_snapshot && item.isGift ? (item.giftCampaignId ?? null) : null,
+      giftCampaignName:
+        args.use_reserved_snapshot && item.isGift ? (item.giftCampaignName ?? null) : null,
+      giftCampaignSnapshot:
+        args.use_reserved_snapshot && item.isGift ? (item.giftCampaignSnapshot ?? null) : null,
     });
   }
 
@@ -518,7 +527,11 @@ async function savePaidOrder(
     await ctx.db.insert("order_items", {
       order_id: orderId,
       product_id: item.product?._id ?? item.productId,
-      product_name: productNameWithOptions(item.productName, item.selectedColor, item.selectedSize),
+      product_name: `${item.isGift ? "Free gift: " : ""}${productNameWithOptions(item.productName, item.selectedColor, item.selectedSize)}`,
+      is_gift: item.isGift,
+      gift_campaign_id: item.giftCampaignId,
+      gift_campaign_name: item.giftCampaignName,
+      gift_campaign_snapshot: item.giftCampaignSnapshot,
       product_image_url: item.productImageUrl,
       selected_color: item.selectedColor,
       selected_size: item.selectedSize,
@@ -845,6 +858,9 @@ export const reserveCheckoutIntent = internalMutation({
     const quote = await checkoutQuote(ctx, args.cart);
     if (quote.amountPaise !== args.amount_paise)
       throw new Error("Checkout total changed. Please try again.");
+    // Evaluate before any stock deduction; gifts never count toward another offer.
+    // Only this server-generated snapshot may introduce zero-price gift lines.
+    const giftOffers = await evaluateGiftCampaigns(ctx, args.cart, Date.now());
     const timestamp = nowIso();
     const reservedCart = [];
     for (const item of args.cart) {
@@ -879,6 +895,33 @@ export const reserveCheckoutIntent = internalMutation({
         shippingClass: product.shipping_class ?? null,
         selectedColor,
         selectedSize,
+      });
+      await ctx.db.patch(product._id, {
+        stock_quantity: nextStock,
+        in_stock: nextStock > 0,
+        updated_at: timestamp,
+      });
+    }
+    for (const offer of giftOffers.filter((offer) => offer.earned)) {
+      const product = await ctx.db.get(offer.gift.id);
+      if (!product) throw new Error("Gift availability changed. Please try again.");
+      const nextStock = Number(product.stock_quantity ?? 0) - offer.gift.quantity;
+      if (nextStock < 0) throw new Error("Gift availability changed. Please try again.");
+      reservedCart.push({
+        cartKey: `gift__${offer.id}`,
+        productId: String(product._id),
+        qty: offer.gift.quantity,
+        name: product.name,
+        image: product.cover_image_url ?? null,
+        slug: product.slug ?? null,
+        price: 0,
+        priceInr: 0,
+        selectedColor: offer.gift.color,
+        selectedSize: offer.gift.size,
+        isGift: true,
+        giftCampaignId: offer.id,
+        giftCampaignName: offer.name,
+        giftCampaignSnapshot: { ...offer, gift: offer.gift },
       });
       await ctx.db.patch(product._id, {
         stock_quantity: nextStock,

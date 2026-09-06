@@ -30,6 +30,28 @@ export interface CheckoutCustomer {
   country: string;
 }
 
+export async function internationalGiftRequest(cart: CheckoutCartLine[]) {
+  const offers = await checkoutDeadline(
+    convex.query(api.gifts.evaluateCart, {
+      cart: cart.map((line) => ({ product_id: line.productId, quantity: line.qty })),
+      evaluation_time: Date.now(),
+    }),
+    "Could not check gift availability. Please try again.",
+    10000,
+  );
+  const gifts = offers.filter((offer) => offer.earned);
+  if (!gifts.length) return "";
+  return (
+    "\n\nEligible gifts — please confirm availability for international delivery:\n" +
+    gifts
+      .map(
+        (offer) =>
+          `${offer.gift.quantity} × ${offer.gift.name}${[offer.gift.color, offer.gift.size].filter(Boolean).length ? ` (${[offer.gift.color, offer.gift.size].filter(Boolean).join(", ")})` : ""} — free if confirmed`,
+      )
+      .join("\n")
+  );
+}
+
 export const shippingRate = (
   _subtotal: number,
   _cart: CheckoutCartLine[] = [],

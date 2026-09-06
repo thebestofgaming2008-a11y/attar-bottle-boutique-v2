@@ -215,6 +215,10 @@ export default defineSchema({
     .index("by_event_id", ["event_id"])
     .index("by_created_at", ["created_at"]),
   order_items: defineTable({
+    is_gift: optionalBoolean,
+    gift_campaign_id: v.optional(v.union(v.id("gift_campaigns"), v.null())),
+    gift_campaign_name: optionalString,
+    gift_campaign_snapshot: v.optional(v.any()),
     order_id: v.id("orders"),
     product_id: optionalString,
     product_name: optionalString,
@@ -243,6 +247,39 @@ export default defineSchema({
     .index("by_user_product", ["user_id", "product_id"])
     .index("by_status", ["status"])
     .index("by_created_at", ["created_at"]),
+  gift_campaigns: defineTable({
+    name: v.string(),
+    active: v.boolean(),
+    match_mode: v.union(v.literal("all"), v.literal("any")),
+    requirements: v.array(
+      v.object({
+        label: v.string(),
+        scope_type: v.union(v.literal("collection"), v.literal("products"), v.literal("subtotal")),
+        collection_slugs: v.array(v.string()),
+        category_ids: v.optional(v.array(v.id("categories"))),
+        product_ids: v.array(v.id("products")),
+        required_quantity: v.number(),
+      }),
+    ),
+    gift_product_id: v.id("products"),
+    gift_quantity: v.number(),
+    gift_color: optionalString,
+    gift_size: optionalString,
+    starts_at: optionalString,
+    ends_at: optionalString,
+    sort_order: v.number(),
+    priority: optionalNumber,
+    combines_with_other_gifts: optionalBoolean,
+    repeatable: optionalBoolean,
+    max_awards_per_order: optionalNumber,
+    allow_discount_codes: optionalBoolean,
+    archived_at: optionalString,
+    created_at: v.string(),
+    updated_at: v.string(),
+  })
+    .index("by_active", ["active"])
+    .index("by_sort_order", ["sort_order"])
+    .index("by_archived_at", ["archived_at"]),
   discounts: defineTable({
     code: v.string(),
     type: v.string(),
