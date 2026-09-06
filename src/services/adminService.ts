@@ -9,7 +9,7 @@ export const PRODUCT_BUCKET = "product-images";
 
 export interface GiftRequirement {
   label: string;
-  scope_type: "collection" | "products" | "subtotal";
+  scope_type: "all" | "collection" | "products" | "subtotal";
   collection_slugs: string[];
   category_ids: string[];
   product_ids: string[];
@@ -22,7 +22,10 @@ export interface GiftCampaign {
   active: boolean;
   match_mode: "all" | "any";
   requirements: GiftRequirement[];
-  gift_product_id: string;
+  gift_product_id?: string;
+  reward_mode?: "fixed" | "choice";
+  reward_scope?: "all" | "products";
+  reward_product_ids?: string[];
   gift_quantity: number;
   gift_color: string | null;
   gift_size: string | null;
@@ -55,7 +58,10 @@ export async function saveGiftCampaign(
   try {
     return (await convex.mutation(api.gifts.save, {
       ...input,
-      gift_product_id: input.gift_product_id as Id<"products">,
+      gift_product_id: input.gift_product_id
+        ? (input.gift_product_id as Id<"products">)
+        : undefined,
+      reward_product_ids: input.reward_product_ids as Id<"products">[] | undefined,
       requirements: input.requirements.map((requirement) => ({
         ...requirement,
         category_ids: requirement.category_ids as Id<"categories">[],
@@ -79,6 +85,7 @@ export async function archiveGiftCampaign(id: string): Promise<boolean> {
 }
 
 export interface GiftCampaignTestResult {
+  selection_required?: boolean;
   id: string;
   name: string;
   earned: boolean;

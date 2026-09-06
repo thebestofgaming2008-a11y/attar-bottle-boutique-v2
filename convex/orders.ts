@@ -12,7 +12,24 @@ import {
 import { api, internal } from "./_generated/api";
 import { nowIso, publicOrder, requireAdmin, requireIdentity, writeAuditLog } from "./lib";
 import { checkoutShippingForCountry } from "./shipping";
-import { evaluateGiftCampaigns } from "./gifts";
+import { evaluateGiftCampaigns, giftSelectionsValidator, type GiftSelection } from "./gifts";
+
+function assertGiftSelectionReplay(
+  intent: { gift_selections?: GiftSelection[] },
+  selections: GiftSelection[] = [],
+) {
+  const signature = (items: GiftSelection[]) =>
+    JSON.stringify(
+      items
+        .map((s) => [s.campaign_id, s.product_id, s.quantity, s.color ?? null, s.size ?? null])
+        .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+    );
+  if (signature(intent.gift_selections ?? []) !== signature(selections))
+    throw new ConvexError({
+      code: "CHECKOUT_CHANGED",
+      message: "Free gift choices changed. Please start a fresh payment attempt.",
+    });
+}
 
 const cartItem = v.object({
   cartKey: v.optional(v.string()),
@@ -752,6 +769,7 @@ export const findCheckoutIntentByAttempt = internalQuery({
 
 export const createRazorpayCheckoutOrder = action({
   args: {
+    giftSelections: v.optional(giftSelectionsValidator),
     ...checkoutPayload,
     checkoutAttemptId: v.string(),
     turnstileToken: v.string(),
@@ -772,6 +790,7 @@ export const createRazorpayCheckoutOrder = action({
     const { keyId } = razorpayKeys();
     if (existing) {
       assertReusableCheckout(existing, args.cart, customer);
+      assertGiftSelectionReplay(existing, args.giftSelections);
       return {
         keyId,
         orderId: existing.razorpay_order_id,
@@ -782,6 +801,13 @@ export const createRazorpayCheckoutOrder = action({
     }
     await verifyTurnstileToken(args.turnstileToken);
     const quote = await ctx.runQuery(api.orders.quoteCheckout, { cart: args.cart });
+    // Validate choices before creating a provider order; reservation rechecks atomically.
+    await ctx.runQuery(api.gifts.evaluateCart, {
+      cart: args.cart.map((line) => ({ product_id: line.productId, quantity: line.qty })),
+      evaluation_time: Date.now(),
+      selections: args.giftSelections,
+      require_complete: true,
+    });
     const receipt = `BADR-${Date.now().toString(36)}-${checkoutAttemptId
       .replace(/-/g, "")
       .slice(0, 8)}`;
@@ -805,6 +831,7 @@ export const createRazorpayCheckoutOrder = action({
       checkout_attempt_id: checkoutAttemptId,
       user_id: userId,
       cart: args.cart,
+      giftSelections: args.giftSelections,
       customer,
       amount_paise: quote.amountPaise,
     });
@@ -820,6 +847,7 @@ export const createRazorpayCheckoutOrder = action({
 
 export const reserveCheckoutIntent = internalMutation({
   args: {
+    giftSelections: v.optional(giftSelectionsValidator),
     razorpay_order_id: v.string(),
     checkout_attempt_id: v.string(),
     user_id: v.optional(v.union(v.string(), v.null())),
@@ -838,6 +866,7 @@ export const reserveCheckoutIntent = internalMutation({
       .first();
     if (existingAttempt) {
       assertReusableCheckout(existingAttempt, args.cart, args.customer);
+      assertGiftSelectionReplay(existingAttempt, args.giftSelections);
       return {
         razorpay_order_id: existingAttempt.razorpay_order_id,
         amount_paise: existingAttempt.amount_paise,
@@ -860,7 +889,10 @@ export const reserveCheckoutIntent = internalMutation({
       throw new Error("Checkout total changed. Please try again.");
     // Evaluate before any stock deduction; gifts never count toward another offer.
     // Only this server-generated snapshot may introduce zero-price gift lines.
-    const giftOffers = await evaluateGiftCampaigns(ctx, args.cart, Date.now());
+    const giftOffers = await evaluateGiftCampaigns(ctx, args.cart, Date.now(), {
+      selections: args.giftSelections,
+      strict: true,
+    });
     const timestamp = nowIso();
     const reservedCart = [];
     for (const item of args.cart) {
@@ -902,33 +934,35 @@ export const reserveCheckoutIntent = internalMutation({
         updated_at: timestamp,
       });
     }
-    for (const offer of giftOffers.filter((offer) => offer.earned)) {
-      const product = await ctx.db.get(offer.gift.id);
-      if (!product) throw new Error("Gift availability changed. Please try again.");
-      const nextStock = Number(product.stock_quantity ?? 0) - offer.gift.quantity;
-      if (nextStock < 0) throw new Error("Gift availability changed. Please try again.");
-      reservedCart.push({
-        cartKey: `gift__${offer.id}`,
-        productId: String(product._id),
-        qty: offer.gift.quantity,
-        name: product.name,
-        image: product.cover_image_url ?? null,
-        slug: product.slug ?? null,
-        price: 0,
-        priceInr: 0,
-        selectedColor: offer.gift.color,
-        selectedSize: offer.gift.size,
-        isGift: true,
-        giftCampaignId: offer.id,
-        giftCampaignName: offer.name,
-        giftCampaignSnapshot: { ...offer, gift: offer.gift },
-      });
-      await ctx.db.patch(product._id, {
-        stock_quantity: nextStock,
-        in_stock: nextStock > 0,
-        updated_at: timestamp,
-      });
-    }
+    for (const evaluated of giftOffers.filter((offer) => offer.earned))
+      for (const [rewardIndex, gift] of evaluated.rewards.entries()) {
+        const offer = { ...evaluated, gift };
+        const product = await ctx.db.get(offer.gift.id);
+        if (!product) throw new Error("Gift availability changed. Please try again.");
+        const nextStock = Number(product.stock_quantity ?? 0) - offer.gift.quantity;
+        if (nextStock < 0) throw new Error("Gift availability changed. Please try again.");
+        reservedCart.push({
+          cartKey: `gift__${offer.id}__${rewardIndex}`,
+          productId: String(product._id),
+          qty: offer.gift.quantity,
+          name: product.name,
+          image: product.cover_image_url ?? null,
+          slug: product.slug ?? null,
+          price: 0,
+          priceInr: 0,
+          selectedColor: offer.gift.color,
+          selectedSize: offer.gift.size,
+          isGift: true,
+          giftCampaignId: offer.id,
+          giftCampaignName: offer.name,
+          giftCampaignSnapshot: { ...offer, gift: offer.gift },
+        });
+        await ctx.db.patch(product._id, {
+          stock_quantity: nextStock,
+          in_stock: nextStock > 0,
+          updated_at: timestamp,
+        });
+      }
     await ctx.db.insert("checkout_intents", {
       razorpay_order_id: args.razorpay_order_id,
       checkout_attempt_id: args.checkout_attempt_id,
@@ -937,6 +971,7 @@ export const reserveCheckoutIntent = internalMutation({
       status: "pending",
       stock_reserved: true,
       cart: reservedCart,
+      gift_selections: args.giftSelections ?? [],
       customer: args.customer,
       amount_paise: args.amount_paise,
       error: null,

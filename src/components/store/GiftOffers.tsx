@@ -1,7 +1,8 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import type { CartLine } from "./CartContext";
+import { useCart, type CartLine } from "./CartContext";
+import { GiftChoicePicker } from "./GiftChoicePicker";
 
 class GiftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
@@ -28,6 +29,7 @@ function OfferRows({
   international?: boolean;
   reservation?: { orderId: string; attemptId: string } | null;
 }) {
+  const { giftSelections, setGiftSelections } = useCart();
   const [now, setNow] = useState(() => Date.now());
   const result = useQuery(
     api.gifts.evaluateStorefront,
@@ -38,6 +40,7 @@ function OfferRows({
             quantity: line.qty,
           })),
           evaluation_time: now,
+          selections: giftSelections.filter((s) => s.product_id),
         }
       : "skip",
   );
@@ -57,8 +60,23 @@ function OfferRows({
     ? (reserved ?? []).map((gift) => ({ id: gift.campaign_id, gift }))
     : (result?.offers ?? [])
         .filter((offer) => offer.earned)
-        .map((offer) => ({ id: offer.id, gift: offer.gift }));
-  if (!awards.length) return null;
+        .filter((offer) => offer.reward_mode !== "choice")
+        .flatMap((offer) =>
+          offer.rewards.map((gift, index) => ({ id: `${offer.id}-${index}`, gift })),
+        );
+  const choiceOffers = reservation
+    ? []
+    : (result?.offers ?? []).filter(
+        (offer) =>
+          offer.reward_mode === "choice" &&
+          offer.eligible &&
+          (offer.earned || offer.selection_required),
+      );
+  const staleSelections =
+    !reservation &&
+    result &&
+    giftSelections.some((s) => s.product_id && !choiceOffers.some((o) => o.id === s.campaign_id));
+  if (!awards.length && !choiceOffers.length && !staleSelections) return null;
   return (
     <section aria-label="Free gifts" className="my-4 space-y-3 border border-current/20 p-4">
       <h3 className="text-sm font-semibold">
@@ -68,8 +86,44 @@ function OfferRows({
             ? "Your reserved gifts"
             : "Your free gifts"}
       </h3>
-      {awards.map(({ id, gift }) => (
-        <div key={id} className="flex items-center gap-3">
+      {staleSelections && (
+        <div className="space-y-2 text-xs leading-relaxed" role="status">
+          <p>
+            A selected offer no longer qualifies or its gift stock changed. Remove those selections
+            to continue.
+          </p>
+          <button
+            type="button"
+            className="min-h-11 underline underline-offset-4"
+            onClick={() =>
+              setGiftSelections((previous) =>
+                previous.filter((s) => choiceOffers.some((o) => o.id === s.campaign_id)),
+              )
+            }
+          >
+            Remove unavailable gift selections
+          </button>
+        </div>
+      )}
+      {choiceOffers.map((offer) => (
+        <GiftChoicePicker
+          key={offer.id}
+          campaignId={offer.id}
+          name={offer.name}
+          quantity={offer.gift.quantity}
+          choices={offer.choices}
+          selections={giftSelections}
+          message={offer.blocked_reason}
+          onChange={(rows) =>
+            setGiftSelections((previous) => [
+              ...previous.filter((s) => s.campaign_id !== offer.id),
+              ...rows,
+            ])
+          }
+        />
+      ))}
+      {awards.map(({ id, gift }, index) => (
+        <div key={`${id}-${index}`} className="flex items-center gap-3">
           {gift.image && (
             <img
               src={gift.image}

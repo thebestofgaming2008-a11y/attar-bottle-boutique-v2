@@ -6,6 +6,8 @@ import { GiftCampaignsPanel } from "../src/components/admin/gift-campaigns-panel
 import type { GiftCampaign, AdminCategory } from "../src/services/adminService";
 import type { Product } from "../src/services/productService";
 import "../src/styles.css";
+import { GiftChoicePicker } from "../src/components/store/GiftChoicePicker";
+import type { GiftSelection } from "../convex/gifts";
 
 const products = [
   {
@@ -37,6 +39,7 @@ const categories = [
 export function Fixture() {
   const [campaigns, setCampaigns] = useState<GiftCampaign[]>([]);
   const [status, setStatus] = useState("No local changes");
+  const [selections, setSelections] = useState<GiftSelection[]>([]);
   return (
     <main className="min-h-screen bg-[#f5f6f8] p-4 md:p-8">
       <p role="status" className="mb-5 text-sm">
@@ -71,6 +74,34 @@ export function Fixture() {
         }}
       />
       <Toaster />
+      <section
+        className="mx-auto mt-10 max-w-md bg-white p-5"
+        aria-label="Customer gift picker test"
+      >
+        <h2 className="mb-4 text-lg font-bold">Customer gift picker test</h2>
+        <GiftChoicePicker
+          campaignId="fixture-choice"
+          name="Buy any 2, choose any 2 free"
+          quantity={2}
+          selections={selections}
+          onChange={setSelections}
+          choices={products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            image: null,
+            available: 5,
+            colors: [],
+            sizes: p.size_options ?? [],
+          }))}
+        />
+        <p role="status" className="mt-4 text-xs">
+          Selected gifts:{" "}
+          {selections
+            .filter((s) => s.product_id)
+            .map((s) => `${s.quantity} × ${s.product_id}`)
+            .join(", ") || "none"}
+        </p>
+      </section>
     </main>
   );
 }

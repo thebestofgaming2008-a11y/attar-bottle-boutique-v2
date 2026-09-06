@@ -417,6 +417,7 @@ function CheckoutPage() {
     try {
       razorpayOrder = await createRazorpayCheckoutOrder({
         ...payload,
+        giftSelections: cart.giftSelections.filter((s) => s.product_id),
         checkoutAttemptId,
         turnstileToken,
       });
@@ -556,7 +557,7 @@ function CheckoutPage() {
     reserved.opener = null;
     let giftText = "";
     try {
-      giftText = await internationalGiftRequest(await resolveCheckoutCart());
+      giftText = await internationalGiftRequest(await resolveCheckoutCart(), cart.giftSelections);
     } catch {
       // WhatsApp remains a manual availability enquiry even if gifts cannot be fetched.
       giftText = "\n\nPlease also confirm whether this order qualifies for any free gifts.";

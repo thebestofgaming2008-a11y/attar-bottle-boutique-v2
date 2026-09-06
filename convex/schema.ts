@@ -185,6 +185,17 @@ export default defineSchema({
     .index("by_payment_id", ["payment_id"])
     .index("by_created_at", ["created_at"]),
   checkout_intents: defineTable({
+    gift_selections: v.optional(
+      v.array(
+        v.object({
+          campaign_id: v.string(),
+          product_id: v.string(),
+          quantity: v.number(),
+          color: optionalString,
+          size: optionalString,
+        }),
+      ),
+    ),
     razorpay_order_id: v.string(),
     checkout_attempt_id: optionalString,
     user_id: optionalString,
@@ -254,14 +265,22 @@ export default defineSchema({
     requirements: v.array(
       v.object({
         label: v.string(),
-        scope_type: v.union(v.literal("collection"), v.literal("products"), v.literal("subtotal")),
+        scope_type: v.union(
+          v.literal("all"),
+          v.literal("collection"),
+          v.literal("products"),
+          v.literal("subtotal"),
+        ),
         collection_slugs: v.array(v.string()),
         category_ids: v.optional(v.array(v.id("categories"))),
         product_ids: v.array(v.id("products")),
         required_quantity: v.number(),
       }),
     ),
-    gift_product_id: v.id("products"),
+    gift_product_id: v.optional(v.id("products")),
+    reward_mode: v.optional(v.union(v.literal("fixed"), v.literal("choice"))),
+    reward_scope: v.optional(v.union(v.literal("all"), v.literal("products"))),
+    reward_product_ids: v.optional(v.array(v.id("products"))),
     gift_quantity: v.number(),
     gift_color: optionalString,
     gift_size: optionalString,

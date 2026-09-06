@@ -35,6 +35,9 @@ export function blankGiftCampaign(sortOrder: number): GiftCampaignDraft {
     match_mode: "all",
     requirements: [blankGiftRequirement()],
     gift_product_id: "",
+    reward_mode: "fixed",
+    reward_scope: "all",
+    reward_product_ids: [],
     gift_quantity: 1,
     gift_color: null,
     gift_size: null,
@@ -58,6 +61,9 @@ export function giftCampaignDraft(campaign: GiftCampaign): GiftCampaignDraft {
     match_mode: campaign.match_mode,
     requirements: campaign.requirements,
     gift_product_id: campaign.gift_product_id,
+    reward_mode: campaign.reward_mode ?? "fixed",
+    reward_scope: campaign.reward_scope ?? "all",
+    reward_product_ids: campaign.reward_product_ids ?? [],
     gift_quantity: campaign.gift_quantity,
     gift_color: campaign.gift_color,
     gift_size: campaign.gift_size,
@@ -88,6 +94,8 @@ export function giftCampaignStatus(campaign: {
 }
 
 function requirementPhrase(requirement: GiftRequirement) {
+  if (requirement.scope_type === "all")
+    return `buy any ${requirement.required_quantity} items across the store (mix and match)`;
   if (requirement.scope_type === "subtotal") {
     return `spend ${new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -105,7 +113,12 @@ function requirementPhrase(requirement: GiftRequirement) {
 export function giftCampaignSummary(draft: GiftCampaignDraft, giftName = "the selected gift") {
   const joiner = draft.match_mode === "all" ? " and " : " or ";
   const conditions = draft.requirements.map(requirementPhrase).join(joiner);
-  const giftWord = draft.gift_quantity === 1 ? giftName : `${draft.gift_quantity} x ${giftName}`;
+  const giftWord =
+    draft.reward_mode === "choice"
+      ? `${draft.gift_quantity} items of the customer's choice from ${draft.reward_scope === "all" ? "all store products" : "the selected reward products"}`
+      : draft.gift_quantity === 1
+        ? giftName
+        : `${draft.gift_quantity} x ${giftName}`;
   const repeat = draft.repeatable
     ? ` This can repeat up to ${draft.max_awards_per_order} times in one order.`
     : " The gift is awarded once per order.";
@@ -126,8 +139,13 @@ export function validateGiftCampaign(
     const prefix = draft.requirements.length > 1 ? `Condition ${index + 1}: ` : "";
     const conditionError = (message: string) =>
       `${prefix}${prefix ? message : `${message.charAt(0).toUpperCase()}${message.slice(1)}`}`;
-    if (!Number.isFinite(requirement.required_quantity) || requirement.required_quantity < 1) {
-      errors.push(conditionError("enter a quantity of at least 1."));
+    const maximum = requirement.scope_type === "subtotal" ? 10000000 : 99;
+    if (
+      !Number.isInteger(requirement.required_quantity) ||
+      requirement.required_quantity < 1 ||
+      requirement.required_quantity > maximum
+    ) {
+      errors.push(conditionError(`enter a whole number between 1 and ${maximum}.`));
     }
     if (requirement.scope_type === "collection" && !requirement.collection_slugs.length) {
       errors.push(conditionError("choose a collection."));
@@ -136,10 +154,23 @@ export function validateGiftCampaign(
       errors.push(conditionError("choose at least one product."));
     }
   });
-  if (!draft.gift_product_id) errors.push("Choose the free gift product.");
-  if (!Number.isInteger(draft.gift_quantity) || draft.gift_quantity < 1) {
-    errors.push("Gift quantity must be at least 1.");
+  if (draft.reward_mode === "choice") {
+    if (draft.reward_scope !== "all" && !draft.reward_product_ids?.length)
+      errors.push("Select the products customers may choose as gifts.");
+  } else if (!draft.gift_product_id) errors.push("Choose the free gift product.");
+  if (
+    !Number.isInteger(draft.gift_quantity) ||
+    draft.gift_quantity < 1 ||
+    draft.gift_quantity > 10
+  ) {
+    errors.push("Gift quantity must be a whole number between 1 and 10.");
   }
+  if (
+    !Number.isInteger(draft.max_awards_per_order) ||
+    draft.max_awards_per_order < 1 ||
+    draft.max_awards_per_order > 10
+  )
+    errors.push("Maximum repeats must be a whole number between 1 and 10.");
 
   const start = draft.starts_at ? Date.parse(draft.starts_at) : null;
   const end = draft.ends_at ? Date.parse(draft.ends_at) : null;
@@ -170,7 +201,7 @@ export function validateGiftCampaign(
     errors.push("Choose a future end date before making this offer live.");
   }
 
-  if (draft.gift_product_id && giftStock !== null) {
+  if (draft.reward_mode !== "choice" && draft.gift_product_id && giftStock !== null) {
     if (draft.active && giftStock < draft.gift_quantity) {
       errors.push("Add gift stock before making this offer live.");
     } else if (giftStock < draft.gift_quantity) {

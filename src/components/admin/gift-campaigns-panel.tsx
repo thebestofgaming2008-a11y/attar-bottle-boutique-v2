@@ -305,7 +305,9 @@ export function GiftCampaignsPanel({
                   "Selected category"
                 : requirement.scope_type === "products"
                   ? "Selected products"
-                  : "Cart total"),
+                  : requirement.scope_type === "all"
+                    ? "All store products"
+                    : "Cart total"),
           })),
         },
         id,
@@ -606,7 +608,7 @@ export function GiftCampaignsPanel({
                             onChange={(event) =>
                               updateRequirement(index, {
                                 scope_type: event.target.value as
-                                  "collection" | "products" | "subtotal",
+                                  "all" | "collection" | "products" | "subtotal",
                                 collection_slugs: [],
                                 category_ids: [],
                                 product_ids: [],
@@ -615,6 +617,7 @@ export function GiftCampaignsPanel({
                             }
                             className={inputClass}
                           >
+                            <option value="all">Any attars (all products)</option>
                             <option value="collection">From a category</option>
                             <option value="products">Specific products</option>
                             <option value="subtotal">Minimum cart total</option>
@@ -629,10 +632,10 @@ export function GiftCampaignsPanel({
                             type="number"
                             min={1}
                             max={requirement.scope_type === "subtotal" ? 10000000 : 99}
-                            value={requirement.required_quantity}
+                            value={requirement.required_quantity || ""}
                             onChange={(event) =>
                               updateRequirement(index, {
-                                required_quantity: Math.max(1, Number(event.target.value) || 1),
+                                required_quantity: Number(event.target.value),
                               })
                             }
                             className={inputClass}
@@ -737,7 +740,9 @@ export function GiftCampaignsPanel({
                           </div>
                         ) : (
                           <div className="flex h-11 items-center self-end rounded-md border border-[#DDE2E8] bg-white px-3 text-xs leading-5 text-[#667085]">
-                            Calculated from the verified cart total before shipping.
+                            {requirement.scope_type === "all"
+                              ? "Mix any products together. Quantities are added up; gifts do not count."
+                              : "Calculated from the verified cart total before shipping."}
                           </div>
                         )}
                       </div>
@@ -820,39 +825,76 @@ export function GiftCampaignsPanel({
               />
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <label>
-                  <span className={labelClass}>Gift product</span>
+                <label className="md:col-span-2">
+                  <span className={labelClass}>Who chooses the free items?</span>
                   <GiftSelect
-                    value={draft.gift_product_id}
+                    value={draft.reward_mode ?? "fixed"}
                     onChange={(event) =>
                       setDraft({
                         ...draft,
-                        gift_product_id: event.target.value,
+                        reward_mode: event.target.value as "fixed" | "choice",
                         gift_color: null,
                         gift_size: null,
                       })
                     }
                     className={inputClass}
                   >
-                    <option value="">Choose a product</option>
-                    {activeProducts.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} · {product.stock_quantity ?? 0} in stock
-                      </option>
-                    ))}
+                    <option value="fixed">Give a fixed product automatically</option>
+                    <option value="choice">Customer chooses their free items</option>
                   </GiftSelect>
                 </label>
+                {draft.reward_mode === "choice" ? (
+                  <label>
+                    <span className={labelClass}>Customer can choose from</span>
+                    <GiftSelect
+                      value={draft.reward_scope ?? "all"}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          reward_scope: event.target.value as "all" | "products",
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="all">Any attars (all products)</option>
+                      <option value="products">Selected products only</option>
+                    </GiftSelect>
+                  </label>
+                ) : (
+                  <label>
+                    <span className={labelClass}>Gift product</span>
+                    <GiftSelect
+                      value={draft.gift_product_id ?? ""}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          gift_product_id: event.target.value,
+                          gift_color: null,
+                          gift_size: null,
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="">Choose a product</option>
+                      {activeProducts.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} · {product.stock_quantity ?? 0} in stock
+                        </option>
+                      ))}
+                    </GiftSelect>
+                  </label>
+                )}
                 <label>
                   <span className={labelClass}>How many to give</span>
                   <input
                     type="number"
                     min={1}
                     max={10}
-                    value={draft.gift_quantity}
+                    value={draft.gift_quantity || ""}
                     onChange={(event) =>
                       setDraft({
                         ...draft,
-                        gift_quantity: Math.min(10, Math.max(1, Number(event.target.value) || 1)),
+                        gift_quantity: Number(event.target.value),
                       })
                     }
                     className={inputClass}
@@ -860,7 +902,54 @@ export function GiftCampaignsPanel({
                 </label>
               </div>
 
-              {reward ? (
+              {draft.reward_mode === "choice" && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm leading-6 text-[#475467]">
+                    Customers choose these extra items in their bag or at checkout. They can mix
+                    fragrances or choose the same one twice, subject to stock. Gifts do not count
+                    towards the qualifying purchase. “All products” includes new products added
+                    later.
+                  </p>
+                  {draft.reward_scope === "products" && (
+                    <>
+                      <input
+                        className={inputClass}
+                        aria-label="Search reward products"
+                        placeholder="Search reward products…"
+                        value={productQuery}
+                        onChange={(e) => setProductQuery(e.target.value)}
+                      />
+                      <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-[#CBD1D8] p-3">
+                        {visibleProducts.map((product) => (
+                          <label key={product.id} className="flex items-center gap-3 py-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={(draft.reward_product_ids ?? []).includes(product.id)}
+                              onChange={(e) =>
+                                setDraft({
+                                  ...draft,
+                                  reward_product_ids: e.target.checked
+                                    ? [...(draft.reward_product_ids ?? []), product.id]
+                                    : (draft.reward_product_ids ?? []).filter(
+                                        (id) => id !== product.id,
+                                      ),
+                                })
+                              }
+                            />
+                            <span>
+                              {product.name} · {product.stock_quantity ?? 0} in stock
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs">
+                        {draft.reward_product_ids?.length ?? 0} reward products selected
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+              {reward && draft.reward_mode !== "choice" ? (
                 <div className="mt-4 flex flex-wrap items-center gap-4 rounded-md border border-[#DDE2E8] bg-[#F8FAFC] p-4">
                   {reward.cover_image_url ? (
                     <img
@@ -1003,19 +1092,18 @@ export function GiftCampaignsPanel({
                   />
                   {draft.repeatable ? (
                     <label className="block py-3">
-                      <span className={labelClass}>Maximum gifts from this offer per order</span>
+                      <span className={labelClass}>
+                        Maximum times this offer can repeat per order
+                      </span>
                       <input
                         type="number"
                         min={1}
                         max={10}
-                        value={draft.max_awards_per_order}
+                        value={draft.max_awards_per_order || ""}
                         onChange={(event) =>
                           setDraft({
                             ...draft,
-                            max_awards_per_order: Math.min(
-                              10,
-                              Math.max(1, Number(event.target.value) || 1),
-                            ),
+                            max_awards_per_order: Number(event.target.value),
                           })
                         }
                         className={cn(inputClass, "max-w-[160px]")}
@@ -1096,17 +1184,20 @@ export function GiftCampaignsPanel({
                     type="number"
                     min={1}
                     max={99}
-                    value={testQuantity}
-                    onChange={(event) =>
-                      setTestQuantity(Math.min(99, Math.max(1, Number(event.target.value) || 1)))
-                    }
+                    value={testQuantity || ""}
+                    onChange={(event) => setTestQuantity(Number(event.target.value))}
                     className={inputClass}
                     aria-label="Test quantity"
                   />
                   <button
                     type="button"
                     onClick={addTestItem}
-                    disabled={!testProductId}
+                    disabled={
+                      !testProductId ||
+                      !Number.isInteger(testQuantity) ||
+                      testQuantity < 1 ||
+                      testQuantity > 99
+                    }
                     className={secondaryButton}
                   >
                     Add to test
@@ -1165,16 +1256,18 @@ export function GiftCampaignsPanel({
                   <div
                     className={cn(
                       "mt-4 rounded-md border p-4",
-                      testResult.earned
+                      testResult.earned || testResult.selection_required
                         ? "border-emerald-200 bg-emerald-50"
                         : "border-amber-200 bg-amber-50",
                     )}
                     role="status"
                   >
                     <p className="text-sm font-semibold text-[#111827]">
-                      {testResult.earned
-                        ? `Pass: ${testResult.gift.quantity} x ${testResult.gift.name} is awarded`
-                        : `Not earned yet: ${testResult.progress}% complete`}
+                      {testResult.selection_required
+                        ? `Pass: customer qualifies to choose ${testResult.gift.quantity} free items`
+                        : testResult.earned
+                          ? `Pass: ${testResult.gift.quantity} x ${testResult.gift.name} is awarded`
+                          : `Not earned yet: ${testResult.progress}% complete`}
                     </p>
                     <div className="mt-2 grid gap-1 text-xs text-[#4B5563]">
                       {testResult.requirements.map((requirement) => (

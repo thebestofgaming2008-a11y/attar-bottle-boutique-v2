@@ -18,6 +18,178 @@ const customer = {
 };
 afterEach(() => vi.unstubAllEnvs());
 
+async function choiceSetup() {
+  const f = await setup();
+  await f.t.run((ctx) => ctx.db.patch(f.giftId, { stock_quantity: 10 }));
+  const choiceInput = {
+    ...f.input,
+    id: f.campaign.id,
+    gift_product_id: undefined,
+    gift_size: undefined,
+    reward_mode: "choice" as const,
+    reward_scope: "all" as const,
+    gift_quantity: 2,
+    requirements: [{ ...f.input.requirements[0], scope_type: "all" as const, product_ids: [] }],
+  };
+  await f.admin.mutation(api.gifts.save, choiceInput);
+  const selections = [
+    { campaign_id: f.campaign.id, product_id: f.productId, quantity: 1 },
+    { campaign_id: f.campaign.id, product_id: f.giftId, quantity: 1, size: "2 ml" },
+  ];
+  return { ...f, choiceInput, selections };
+}
+
+test("buy any two supports mixed paid fragrances and two different customer-selected free gifts", async () => {
+  const f = await choiceSetup();
+  const mixed = [
+    f.cart[0],
+    { productId: f.giftId, qty: 1, name: "Sample", price: 99, selectedSize: "2 ml" },
+  ].map((l) => ({ ...l, qty: 1 }));
+  const preview = await f.t.query(api.gifts.evaluateCart, {
+    cart: mixed.map((l) => ({ product_id: l.productId, quantity: l.qty })),
+    evaluation_time: Date.now(),
+    selections: f.selections,
+  });
+  expect(preview[0].earned).toBe(true);
+  expect(preview[0].rewards).toHaveLength(2);
+  await f.t.mutation(internal.orders.reserveCheckoutIntent, {
+    ...f.reservation,
+    cart: mixed,
+    amount_paise: 59800,
+    giftSelections: f.selections,
+  });
+  await f.t.mutation(internal.orders.finalizeCheckoutIntent, {
+    razorpay_order_id: f.reservation.razorpay_order_id,
+    razorpay_payment_id: "pay_choice",
+    amount_paise: 59800,
+    currency: "INR",
+  });
+  const rows = await f.t.run((ctx) => ctx.db.query("order_items").collect());
+  expect(rows.filter((r) => r.is_gift).map((r) => r.unit_price)).toEqual([0, 0]);
+  expect(rows.find((r) => r.is_gift && r.product_id === f.giftId)?.selected_size).toBe("2 ml");
+  expect((await f.t.run((ctx) => ctx.db.get(f.productId)))?.stock_quantity).toBe(8);
+  expect((await f.t.run((ctx) => ctx.db.get(f.giftId)))?.stock_quantity).toBe(8);
+});
+
+test("two of the same gift works, repeats cannot deduct stock twice, and changed choice cannot replay", async () => {
+  const f = await choiceSetup();
+  const giftSelections = [{ campaign_id: f.campaign.id, product_id: f.giftId, quantity: 2 }];
+  const args = { ...f.reservation, giftSelections };
+  await f.t.mutation(internal.orders.reserveCheckoutIntent, args);
+  await f.t.mutation(internal.orders.reserveCheckoutIntent, args);
+  expect((await f.t.run((ctx) => ctx.db.get(f.giftId)))?.stock_quantity).toBe(8);
+  await expect(
+    f.t.mutation(internal.orders.reserveCheckoutIntent, { ...args, giftSelections: f.selections }),
+  ).rejects.toThrow(/choices changed/);
+  await f.t.mutation(api.orders.cancelRazorpayCheckout, {
+    razorpay_order_id: args.razorpay_order_id,
+    checkout_attempt_id: args.checkout_attempt_id,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(f.giftId)))?.stock_quantity).toBe(10);
+});
+
+test("missing, partial, excessive, invented and invalid-option choices cannot start a paid checkout", async () => {
+  const f = await choiceSetup();
+  for (const giftSelections of [
+    [],
+    f.selections.slice(0, 1),
+    [...f.selections, f.selections[0]],
+    [{ ...f.selections[0], product_id: "invented", quantity: 2 }],
+    [{ ...f.selections[1], size: "invented", quantity: 2 }],
+  ]) {
+    await expect(
+      f.t.mutation(internal.orders.reserveCheckoutIntent, { ...f.reservation, giftSelections }),
+    ).rejects.toThrow(/Choose/);
+  }
+  expect((await f.t.run((ctx) => ctx.db.get(f.productId)))?.stock_quantity).toBe(10);
+  expect(await f.t.run((ctx) => ctx.db.query("checkout_intents").first())).toBeNull();
+});
+
+test("selected reward pool cannot be bypassed and only paid products qualify", async () => {
+  const f = await choiceSetup();
+  await f.admin.mutation(api.gifts.save, {
+    ...f.choiceInput,
+    reward_scope: "products",
+    reward_product_ids: [f.giftId],
+  });
+  await expect(
+    f.t.mutation(internal.orders.reserveCheckoutIntent, {
+      ...f.reservation,
+      giftSelections: f.selections,
+    }),
+  ).rejects.toThrow(/Choose/);
+  const preview = await f.t.query(api.gifts.evaluateCart, {
+    cart: [{ product_id: f.productId, quantity: 1 }],
+    evaluation_time: Date.now(),
+    selections: [{ ...f.selections[1], quantity: 2 }],
+  });
+  expect(preview[0].eligible).toBe(false);
+  expect(preview[0].earned).toBe(false);
+});
+
+test("combined paid and gift stock is checked, including split selections for the same product", async () => {
+  const f = await choiceSetup();
+  await f.t.run((ctx) => ctx.db.patch(f.productId, { stock_quantity: 3 }));
+  await expect(
+    f.t.mutation(internal.orders.reserveCheckoutIntent, {
+      ...f.reservation,
+      giftSelections: [f.selections[0], f.selections[0]],
+    }),
+  ).rejects.toThrow(/Choose/);
+  expect((await f.t.run((ctx) => ctx.db.get(f.productId)))?.stock_quantity).toBe(3);
+});
+
+test("repeatable buy-two get-two caps selected rewards and validates admin quantities", async () => {
+  const f = await choiceSetup();
+  await f.admin.mutation(api.gifts.save, {
+    ...f.choiceInput,
+    repeatable: true,
+    max_awards_per_order: 2,
+  });
+  const preview = await f.t.query(api.gifts.evaluateCart, {
+    cart: [{ product_id: f.productId, quantity: 6 }],
+    evaluation_time: Date.now(),
+    selections: [{ ...f.selections[1], quantity: 4 }],
+  });
+  expect(preview[0].award_count).toBe(2);
+  expect(preview[0].rewards[0].quantity).toBe(4);
+  for (const quantity of [0, 1.5, 11])
+    await expect(
+      f.admin.mutation(api.gifts.save, { ...f.choiceInput, gift_quantity: quantity }),
+    ).rejects.toThrow(/quantity/);
+});
+
+test("choice promises survive campaign edits, and captured order remains idempotent", async () => {
+  const f = await choiceSetup();
+  await f.t.mutation(internal.orders.reserveCheckoutIntent, {
+    ...f.reservation,
+    giftSelections: f.selections,
+  });
+  await f.admin.mutation(api.gifts.remove, { id: f.campaign.id });
+  const finalize = {
+    razorpay_order_id: f.reservation.razorpay_order_id,
+    razorpay_payment_id: "pay_choice_snapshot",
+    amount_paise: 99800,
+    currency: "INR",
+  };
+  await f.t.mutation(internal.orders.finalizeCheckoutIntent, finalize);
+  await f.t.mutation(internal.orders.finalizeCheckoutIntent, finalize);
+  const rows = await f.t.run((ctx) => ctx.db.query("order_items").collect());
+  expect(rows.filter((r) => r.is_gift)).toHaveLength(2);
+  expect((await f.t.run((ctx) => ctx.db.get(f.productId)))?.stock_quantity).toBe(7);
+});
+
+test("stale selected gifts cannot disappear silently at checkout", async () => {
+  const f = await choiceSetup();
+  await f.admin.mutation(api.gifts.remove, { id: f.campaign.id });
+  await expect(
+    f.t.mutation(internal.orders.reserveCheckoutIntent, {
+      ...f.reservation,
+      giftSelections: f.selections,
+    }),
+  ).rejects.toThrow(/ended/);
+});
+
 test("gifts remain visible to admin, account owner and guest tracking", async () => {
   const f = await setup();
   await f.t.mutation(internal.orders.reserveCheckoutIntent, f.reservation);

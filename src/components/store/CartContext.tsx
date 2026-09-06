@@ -9,6 +9,7 @@ import {
 } from "react";
 import { PRODUCTS } from "@/lib/products";
 import { writePreference } from "@/lib/safeStorage";
+import type { GiftSelection } from "../../../convex/gifts";
 
 export type CartLine = {
   id: string;
@@ -26,6 +27,8 @@ export type CartLine = {
 export type CartProductInput = Omit<CartLine, "id" | "qty"> & { id?: string };
 
 type CartValue = {
+  giftSelections: GiftSelection[];
+  setGiftSelections: React.Dispatch<React.SetStateAction<GiftSelection[]>>;
   lines: CartLine[];
   subtotal: number;
   count: number;
@@ -65,6 +68,7 @@ function readStoredCart() {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const [giftSelections, setGiftSelections] = useState<GiftSelection[]>([]);
   // Match the server render first, then restore the persisted cart after hydration.
   const [lines, setLines] = useState<CartLine[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -72,6 +76,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setLines(readStoredCart());
+    try {
+      const stored: unknown = JSON.parse(
+        window.localStorage.getItem("badr_gift_choices_v1") || "[]",
+      );
+      if (Array.isArray(stored))
+        setGiftSelections(
+          stored
+            .slice(0, 100)
+            .filter(
+              (s) =>
+                s &&
+                typeof s.campaign_id === "string" &&
+                typeof s.product_id === "string" &&
+                Number.isInteger(s.quantity) &&
+                s.quantity > 0 &&
+                s.quantity <= 99 &&
+                (s.color == null || typeof s.color === "string") &&
+                (s.size == null || typeof s.size === "string"),
+            ),
+        );
+    } catch {
+      /* Optional storage must never block shopping. */
+    }
     setHydrated(true);
   }, []);
 
@@ -79,6 +106,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     writePreference(STORAGE_KEY, JSON.stringify(lines));
   }, [hydrated, lines]);
+  useEffect(() => {
+    if (hydrated) writePreference("badr_gift_choices_v1", JSON.stringify(giftSelections));
+  }, [hydrated, giftSelections]);
 
   const addProduct = useCallback((product: CartProductInput, qty = 1) => {
     const safeQty = Math.max(1, Math.floor(qty));
@@ -122,12 +152,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const clear = useCallback(() => setLines([]), []);
+  const clear = useCallback(() => {
+    setLines([]);
+    setGiftSelections([]);
+  }, []);
   const subtotal = lines.reduce((total, line) => total + line.price * line.qty, 0);
   const count = lines.reduce((total, line) => total + line.qty, 0);
   const value = useMemo(
-    () => ({ lines, subtotal, count, add, addProduct, setQty, clear, open, setOpen }),
-    [add, addProduct, clear, count, lines, open, setQty, subtotal],
+    () => ({
+      lines,
+      subtotal,
+      count,
+      add,
+      addProduct,
+      setQty,
+      clear,
+      open,
+      setOpen,
+      giftSelections,
+      setGiftSelections,
+    }),
+    [add, addProduct, clear, count, lines, open, setQty, subtotal, giftSelections],
   );
 
   return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;

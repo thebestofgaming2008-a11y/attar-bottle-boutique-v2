@@ -47,3 +47,15 @@ An offer may be eligible but not awarded when gift stock is unavailable or a hig
 Keep the additive gift schema fields and server snapshot finalization support if any gifted checkout has been reserved. Archive active campaigns to stop new awards first. Do not roll back to a backend that rejects gift order fields or loses promised reserved gifts. Historical pre-gift orders require no migration.
 
 The isolated browser fixture is served only by `npx vite --config tests/browser.vite.ts` at `/tests/gift-editor.html`; it is not a production route and writes only to React memory.
+# Follow-up: mix-and-match rewards and editable quantities
+
+- Quantity inputs can be cleared and retyped. Empty/invalid values cannot be saved as valid offer quantities.
+- Qualifying purchase supports all store products, a category, selected products, or minimum INR subtotal.
+- Rewards support a fixed product or customer choice from all active store products / selected products.
+- Example: Type of purchase → Any attars (all products), Quantity → 2; Who chooses → Customer chooses their free items; Customer can choose from → Any attars (all products); How many to give → 2.
+- “All products” includes future active products, not only today's fragrances. Use selected products for exclusions. Repeated fragrances are allowed if combined purchased/reward stock permits.
+- Customer selections persist with optional browser storage and are selected in the cart/checkout. Backend validation checks the reward pool, quantities, variants, qualification and stock, both before creating a Razorpay order and during atomic reservation. Selections never count as purchased products or reduce the payable subtotal.
+- Missing/invalid choice for a qualifying available offer blocks payment preparation; obsolete selected offers require clearing/review rather than silently disappearing. Completed reservations retain their gift snapshot after catalogue/campaign edits.
+- International WhatsApp includes the selected eligible rewards as availability requests, not automatic backend orders.
+- Verification: 43 existing checkout regression tests + 16 Convex integration tests passed; TypeScript, lint (existing Fast Refresh warnings only), build and deployment dry-runs passed. Browser fixture verified clearing both quantity fields, typing 2, saving a local choice-offer draft, and selecting two different rewards at 390px with no overflow/errors. No paid live order or live campaign write was performed.
+- Scope limits: at most 50 explicitly selected reward products; all-product reward pools support up to 200 active products. Existing campaign, per-award and repeat caps remain.

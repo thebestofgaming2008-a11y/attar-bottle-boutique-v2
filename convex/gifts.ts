@@ -36,7 +36,42 @@ export const reservedForCheckout = query({
   },
 });
 const matchMode = v.union(v.literal("all"), v.literal("any"));
-const scopeType = v.union(v.literal("collection"), v.literal("products"), v.literal("subtotal"));
+const scopeType = v.union(
+  v.literal("all"),
+  v.literal("collection"),
+  v.literal("products"),
+  v.literal("subtotal"),
+);
+const rewardFields = {
+  reward_mode: v.optional(v.union(v.literal("fixed"), v.literal("choice"))),
+  reward_scope: v.optional(v.union(v.literal("all"), v.literal("products"))),
+  reward_product_ids: v.optional(v.array(v.id("products"))),
+};
+export const giftSelectionsValidator = v.array(
+  v.object({
+    campaign_id: v.string(),
+    product_id: v.string(),
+    quantity: v.number(),
+    color: v.optional(v.union(v.string(), v.null())),
+    size: v.optional(v.union(v.string(), v.null())),
+  }),
+);
+export type GiftSelection = {
+  campaign_id: string;
+  product_id: string;
+  quantity: number;
+  color?: string | null;
+  size?: string | null;
+};
+const giftDisplay = v.object({
+  id: v.id("products"),
+  name: v.string(),
+  slug: v.union(v.string(), v.null()),
+  image: v.union(v.string(), v.null()),
+  quantity: v.number(),
+  color: v.union(v.string(), v.null()),
+  size: v.union(v.string(), v.null()),
+});
 
 const requirementInputValidator = v.object({
   label: v.string(),
@@ -62,7 +97,8 @@ const campaignValidator = v.object({
   active: v.boolean(),
   match_mode: matchMode,
   requirements: v.array(requirementValidator),
-  gift_product_id: v.id("products"),
+  gift_product_id: v.optional(v.id("products")),
+  ...rewardFields,
   gift_quantity: v.number(),
   gift_color: v.union(v.string(), v.null()),
   gift_size: v.union(v.string(), v.null()),
@@ -80,6 +116,19 @@ const campaignValidator = v.object({
 });
 
 const evaluatedCampaignValidator = v.object({
+  reward_mode: v.string(),
+  selection_required: v.boolean(),
+  rewards: v.array(giftDisplay),
+  choices: v.array(
+    v.object({
+      id: v.id("products"),
+      name: v.string(),
+      image: v.union(v.string(), v.null()),
+      available: v.number(),
+      colors: v.array(v.string()),
+      sizes: v.array(v.string()),
+    }),
+  ),
   id: v.id("gift_campaigns"),
   name: v.string(),
   match_mode: matchMode,
@@ -116,7 +165,8 @@ const campaignInput = {
   active: v.boolean(),
   match_mode: matchMode,
   requirements: v.array(requirementInputValidator),
-  gift_product_id: v.id("products"),
+  gift_product_id: v.optional(v.id("products")),
+  ...rewardFields,
   gift_quantity: v.number(),
   gift_color: nullableString,
   gift_size: nullableString,
@@ -159,7 +209,10 @@ function publicCampaign(campaign: Doc<"gift_campaigns">) {
       ...requirement,
       category_ids: requirement.category_ids ?? [],
     })),
-    gift_product_id: campaign.gift_product_id,
+    ...(campaign.gift_product_id ? { gift_product_id: campaign.gift_product_id } : {}),
+    reward_mode: campaign.reward_mode ?? "fixed",
+    reward_scope: campaign.reward_scope ?? "products",
+    reward_product_ids: campaign.reward_product_ids ?? [],
     gift_quantity: campaign.gift_quantity,
     gift_color: campaign.gift_color ?? null,
     gift_size: campaign.gift_size ?? null,
@@ -232,11 +285,30 @@ async function validatedValues(
     throw new ConvexError("Add between 1 and 6 requirements.");
   validateDateRange(args.starts_at, args.ends_at);
 
-  const gift = await ctx.db.get(args.gift_product_id);
-  if (!gift) throw new ConvexError("Choose a valid gift product.");
+  const choiceMode = args.reward_mode === "choice";
+  const rewardIds = Array.from(new Set(args.reward_product_ids ?? []));
+  if (rewardIds.length > 50) throw new ConvexError("Select at most 50 reward products.");
+  if (choiceMode && args.reward_scope !== "all" && !rewardIds.length)
+    throw new ConvexError("Choose the products customers may receive free.");
+  const pool = choiceMode
+    ? await rewardProducts(ctx, { ...args, reward_product_ids: rewardIds })
+    : [];
+  const gift = args.gift_product_id ? await ctx.db.get(args.gift_product_id) : null;
+  if (!choiceMode && !gift) throw new ConvexError("Choose a valid gift product.");
+  if (
+    choiceMode &&
+    args.active &&
+    pool.reduce(
+      (sum, p) => sum + (p.in_stock === false ? 0 : Math.max(0, p.stock_quantity ?? 0)),
+      0,
+    ) < args.gift_quantity
+  )
+    throw new ConvexError("Add enough active reward stock before publishing this offer.");
   const giftColor = cleanNullable(args.gift_color, 60);
   const giftSize = cleanNullable(args.gift_size, 60);
   if (
+    !choiceMode &&
+    gift &&
     args.active &&
     (gift.is_active === false ||
       gift.in_stock === false ||
@@ -250,11 +322,15 @@ async function validatedValues(
   if (args.active && args.ends_at && Date.parse(args.ends_at) <= Date.now())
     throw new ConvexError("Choose a future end date before publishing this offer.");
   if (
+    !choiceMode &&
+    gift &&
     giftColor &&
     !(gift.color_options ?? []).some((option) => option.toLowerCase() === giftColor.toLowerCase())
   )
     throw new ConvexError("Choose a colour available on the gift product.");
   if (
+    !choiceMode &&
+    gift &&
     giftSize &&
     !(gift.size_options ?? []).some((option) => option.toLowerCase() === giftSize.toLowerCase())
   )
@@ -262,9 +338,9 @@ async function validatedValues(
 
   const requirements = [];
   for (const requirement of args.requirements) {
-    const quantity = Math.floor(requirement.required_quantity);
+    const quantity = requirement.required_quantity;
     const maximum = requirement.scope_type === "subtotal" ? 10_000_000 : 99;
-    if (!Number.isFinite(quantity) || quantity < 1 || quantity > maximum)
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > maximum)
       throw new ConvexError(
         requirement.scope_type === "subtotal"
           ? "Minimum spend must be between INR 1 and INR 10,000,000."
@@ -326,7 +402,10 @@ async function validatedValues(
     active: args.active,
     match_mode: args.match_mode,
     requirements,
-    gift_product_id: args.gift_product_id,
+    ...(args.gift_product_id ? { gift_product_id: args.gift_product_id } : {}),
+    reward_mode: args.reward_mode ?? "fixed",
+    reward_scope: args.reward_scope ?? "products",
+    reward_product_ids: rewardIds,
     gift_quantity: args.gift_quantity,
     gift_color: giftColor,
     gift_size: giftSize,
@@ -343,13 +422,49 @@ async function validatedValues(
 
 type CartLine = { productId: string; qty: number };
 
+async function rewardProducts(
+  ctx: QueryCtx | MutationCtx,
+  campaign: { reward_scope?: string; reward_product_ids?: Id<"products">[] },
+) {
+  const products =
+    campaign.reward_scope === "all"
+      ? await ctx.db
+          .query("products")
+          .withIndex("by_active", (q) => q.eq("is_active", true))
+          .take(201)
+      : await Promise.all(
+          (campaign.reward_product_ids ?? []).slice(0, 50).map((id) => ctx.db.get(id)),
+        );
+  if (products.length > 200)
+    throw new ConvexError("Choose specific reward products for catalogues over 200 products.");
+  return products.filter((p): p is Doc<"products"> => Boolean(p && p.is_active !== false));
+}
+
 export async function evaluateGiftCampaigns(
   ctx: QueryCtx | MutationCtx,
   cart: CartLine[],
   evaluationTime = Date.now(),
-  options: { hasDiscount?: boolean; campaigns?: Doc<"gift_campaigns">[] } = {},
+  options: {
+    hasDiscount?: boolean;
+    campaigns?: Doc<"gift_campaigns">[];
+    selections?: GiftSelection[];
+    strict?: boolean;
+  } = {},
 ) {
   const campaigns = options.campaigns ?? (await activeGiftCampaigns(ctx));
+  const selections = options.selections ?? [];
+  if (
+    selections.length > 100 ||
+    selections.some(
+      (s) =>
+        !Number.isInteger(s.quantity) ||
+        s.quantity < 1 ||
+        s.quantity > 99 ||
+        s.campaign_id.length > 100 ||
+        s.product_id.length > 100,
+    )
+  )
+    throw new ConvexError("Invalid free gift selection.");
   if (
     cart.length > 50 ||
     cart.some((line) => !Number.isInteger(line.qty) || line.qty < 0 || line.qty > 99)
@@ -363,7 +478,13 @@ export async function evaluateGiftCampaigns(
         left.sort_order - right.sort_order ||
         left._creationTime - right._creationTime,
     );
-  if (!liveCampaigns.length) return [];
+  if (!liveCampaigns.length) {
+    if (options.strict && selections.length)
+      throw new ConvexError(
+        "Your selected gift offer has ended. Clear the unavailable gifts and review checkout.",
+      );
+    return [];
+  }
 
   cart = await Promise.all(
     cart.map(async (line) => {
@@ -392,7 +513,15 @@ export async function evaluateGiftCampaigns(
         productMap.set(key, product);
     }
   }
+  const pools = new Map<string, Doc<"products">[]>();
   for (const campaign of liveCampaigns) {
+    if (campaign.reward_mode === "choice") {
+      const pool = await rewardProducts(ctx, campaign);
+      pools.set(String(campaign._id), pool);
+      for (const product of pool) productMap.set(String(product._id), product);
+      continue;
+    }
+    if (!campaign.gift_product_id) continue;
     const key = String(campaign.gift_product_id);
     if (productMap.has(key)) continue;
     const product = await ctx.db.get(campaign.gift_product_id);
@@ -419,13 +548,25 @@ export async function evaluateGiftCampaigns(
   }, 0);
 
   const preliminary = [];
+  const selectableCampaignIds = new Set<string>();
   for (const campaign of liveCampaigns) {
-    const giftProduct = productMap.get(String(campaign.gift_product_id));
+    const giftProduct =
+      campaign.reward_mode === "choice"
+        ? pools.get(String(campaign._id))?.[0]
+        : productMap.get(String(campaign.gift_product_id));
     if (!giftProduct || giftProduct.is_active === false) continue;
     // An edited/removed option must not silently turn into a different gift.
-    if (campaign.gift_color && !(giftProduct.color_options ?? []).includes(campaign.gift_color))
+    if (
+      campaign.reward_mode !== "choice" &&
+      campaign.gift_color &&
+      !(giftProduct.color_options ?? []).includes(campaign.gift_color)
+    )
       continue;
-    if (campaign.gift_size && !(giftProduct.size_options ?? []).includes(campaign.gift_size))
+    if (
+      campaign.reward_mode !== "choice" &&
+      campaign.gift_size &&
+      !(giftProduct.size_options ?? []).includes(campaign.gift_size)
+    )
       continue;
     const requirements = campaign.requirements.map((requirement) => {
       const productIds = new Set(requirement.product_ids.map(String));
@@ -439,11 +580,13 @@ export async function evaluateGiftCampaigns(
               if (!product) return sum;
               const productCategory = normalize(product.category_id ?? product.category);
               const matches =
-                requirement.scope_type === "products"
-                  ? productIds.has(String(product._id))
-                  : stableCategoryIds.has(String(product.category_id ?? "")) ||
-                    collections.has(productCategory) ||
-                    stableCategoryIds.has(categoryIdBySlug.get(productCategory) ?? "");
+                requirement.scope_type === "all"
+                  ? true
+                  : requirement.scope_type === "products"
+                    ? productIds.has(String(product._id))
+                    : stableCategoryIds.has(String(product.category_id ?? "")) ||
+                      collections.has(productCategory) ||
+                      stableCategoryIds.has(categoryIdBySlug.get(productCategory) ?? "");
               return matches ? sum + Math.max(0, Math.floor(line.qty)) : sum;
             }, 0);
       return {
@@ -486,33 +629,115 @@ export async function evaluateGiftCampaigns(
       awardCount,
       requirements,
     });
+    if (campaign.reward_mode === "choice") selectableCampaignIds.add(String(campaign._id));
   }
 
   const allocatedGiftStock = new Map<string, number>();
+  if (options.strict && selections.some((s) => !selectableCampaignIds.has(s.campaign_id)))
+    throw new ConvexError(
+      "Your selected gift offer changed or is unavailable. Clear those selections and review checkout.",
+    );
   const selectedCampaigns: Doc<"gift_campaigns">[] = [];
   return preliminary.map(
     ({ campaign, giftProduct, eligible, progress, awardCount, requirements }) => {
       const productId = String(giftProduct._id);
       const requestedGiftQuantity = campaign.gift_quantity * Math.max(1, awardCount);
+      const choiceMode = campaign.reward_mode === "choice";
+      const choices = (choiceMode ? (pools.get(String(campaign._id)) ?? []) : []).map((p) => ({
+        id: p._id,
+        name: p.name,
+        image: p.cover_image_url ?? null,
+        available:
+          p.in_stock === false
+            ? 0
+            : Math.max(
+                0,
+                (p.stock_quantity ?? 0) -
+                  (purchasedQuantity.get(String(p._id)) ?? 0) -
+                  (allocatedGiftStock.get(String(p._id)) ?? 0),
+              ),
+        colors: p.color_options ?? [],
+        sizes: p.size_options ?? [],
+      }));
+      const requested = selections.filter((s) => s.campaign_id === String(campaign._id));
+      const quantities = new Map<string, number>();
+      const rewards: Array<{
+        id: Id<"products">;
+        name: string;
+        slug: string | null;
+        image: string | null;
+        quantity: number;
+        color: string | null;
+        size: string | null;
+      }> = [];
+      let selectionValid = true;
+      if (choiceMode)
+        for (const selection of requested) {
+          const choice = choices.find((c) => String(c.id) === selection.product_id);
+          if (!choice) {
+            selectionValid = false;
+            continue;
+          }
+          const p = productMap.get(selection.product_id)!;
+          const color = selection.color ?? choice.colors[0] ?? null;
+          const size = selection.size ?? choice.sizes[0] ?? null;
+          if ((color && !choice.colors.includes(color)) || (size && !choice.sizes.includes(size)))
+            selectionValid = false;
+          quantities.set(
+            selection.product_id,
+            (quantities.get(selection.product_id) ?? 0) + selection.quantity,
+          );
+          rewards.push({
+            id: p._id,
+            name: p.name,
+            slug: p.slug ?? null,
+            image: p.cover_image_url ?? null,
+            quantity: selection.quantity,
+            color,
+            size,
+          });
+        }
+      if (
+        choiceMode &&
+        (rewards.reduce((sum, r) => sum + r.quantity, 0) !== requestedGiftQuantity ||
+          choices.some((c) => (quantities.get(String(c.id)) ?? 0) > c.available))
+      )
+        selectionValid = false;
       const availableForGifts =
         Number(giftProduct.stock_quantity ?? 0) -
         (purchasedQuantity.get(productId) ?? 0) -
         (allocatedGiftStock.get(productId) ?? 0);
-      const giftAvailable =
-        giftProduct.in_stock !== false && availableForGifts >= requestedGiftQuantity;
+      const giftAvailable = choiceMode
+        ? choices.reduce((sum, c) => sum + c.available, 0) >= requestedGiftQuantity
+        : giftProduct.in_stock !== false && availableForGifts >= requestedGiftQuantity;
       const discountBlocked = options.hasDiscount && campaign.allow_discount_codes === false;
       const stackingBlocked =
         selectedCampaigns.length > 0 &&
         (!(campaign.combines_with_other_gifts ?? false) ||
           selectedCampaigns.some((selected) => !(selected.combines_with_other_gifts ?? false)));
-      const earned = eligible && giftAvailable && !discountBlocked && !stackingBlocked;
-      if (earned) {
-        allocatedGiftStock.set(
-          productId,
-          (allocatedGiftStock.get(productId) ?? 0) + requestedGiftQuantity,
+      const selectable = eligible && giftAvailable && !discountBlocked && !stackingBlocked;
+      const selectionRequired = Boolean(choiceMode && selectable && !selectionValid);
+      if (options.strict && selectionRequired)
+        throw new ConvexError(
+          `Choose ${requestedGiftQuantity} available free items for "${campaign.name}" before paying.`,
         );
-        selectedCampaigns.push(campaign);
+      if (options.strict && choiceMode && requested.length && !selectable)
+        throw new ConvexError(
+          `The offer "${campaign.name}" or its stock changed. Review your free gifts before paying.`,
+        );
+      const earned = selectable && (!choiceMode || selectionValid);
+      if (earned) {
+        if (choiceMode)
+          for (const [id, qty] of quantities)
+            allocatedGiftStock.set(id, (allocatedGiftStock.get(id) ?? 0) + qty);
+        else
+          allocatedGiftStock.set(
+            productId,
+            (allocatedGiftStock.get(productId) ?? 0) + requestedGiftQuantity,
+          );
       }
+      // Reserve offer priority even while its customer choice is incomplete.
+      if (selectable) selectedCampaigns.push(campaign);
       const blockedReason = !eligible
         ? null
         : !giftAvailable
@@ -521,7 +746,18 @@ export async function evaluateGiftCampaigns(
             ? "This gift cannot be combined with the applied discount."
             : stackingBlocked
               ? "Another gift offer has already been applied."
-              : null;
+              : selectionRequired
+                ? `Choose ${requestedGiftQuantity} free items.`
+                : null;
+      const gift = {
+        id: giftProduct._id,
+        name: choiceMode ? "Your choice of free attars" : giftProduct.name,
+        slug: giftProduct.slug ?? null,
+        image: choiceMode ? null : (giftProduct.cover_image_url ?? null),
+        quantity: requestedGiftQuantity,
+        color: campaign.gift_color ?? (giftProduct.color_options ?? [])[0] ?? null,
+        size: campaign.gift_size ?? (giftProduct.size_options ?? [])[0] ?? null,
+      };
       return {
         ...publicCampaign(campaign),
         earned,
@@ -531,15 +767,11 @@ export async function evaluateGiftCampaigns(
         gift_available: giftAvailable,
         blocked_reason: blockedReason,
         requirements,
-        gift: {
-          id: giftProduct._id,
-          name: giftProduct.name,
-          slug: giftProduct.slug ?? null,
-          image: giftProduct.cover_image_url ?? null,
-          quantity: campaign.gift_quantity * Math.max(1, awardCount),
-          color: campaign.gift_color ?? (giftProduct.color_options ?? [])[0] ?? null,
-          size: campaign.gift_size ?? (giftProduct.size_options ?? [])[0] ?? null,
-        },
+        reward_mode: choiceMode ? "choice" : "fixed",
+        selection_required: selectionRequired,
+        choices,
+        rewards: earned ? (choiceMode ? rewards : [gift]) : [],
+        gift,
       };
     },
   );
@@ -553,8 +785,12 @@ function storefrontEvaluations(results: Awaited<ReturnType<typeof evaluateGiftCa
         right.progress - left.progress ||
         right.priority - left.priority,
     )
-    .filter((result, index) => result.earned || index < 6)
+    .filter((result, index) => result.earned || result.selection_required || index < 6)
     .map((result) => ({
+      reward_mode: result.reward_mode,
+      selection_required: result.selection_required,
+      choices: result.choices,
+      rewards: result.rewards,
       id: result.id,
       name: result.name,
       match_mode: result.match_mode,
@@ -641,6 +877,8 @@ export const testCampaign = query({
 
 export const evaluateCart = query({
   args: {
+    selections: v.optional(giftSelectionsValidator),
+    require_complete: v.optional(v.boolean()),
     cart: v.array(v.object({ product_id: v.string(), quantity: v.number() })),
     evaluation_time: v.number(),
     has_discount: v.optional(v.boolean()),
@@ -654,7 +892,11 @@ export const evaluateCart = query({
         qty: Math.min(99, Math.max(0, Math.floor(line.quantity))),
       })),
       args.evaluation_time,
-      { hasDiscount: args.has_discount ?? false },
+      {
+        hasDiscount: args.has_discount ?? false,
+        selections: args.selections,
+        strict: args.require_complete,
+      },
     );
     return storefrontEvaluations(results);
   },
@@ -662,6 +904,7 @@ export const evaluateCart = query({
 
 export const evaluateStorefront = query({
   args: {
+    selections: v.optional(giftSelectionsValidator),
     cart: v.array(v.object({ product_id: v.string(), quantity: v.number() })),
     evaluation_time: v.number(),
     has_discount: v.optional(v.boolean()),
@@ -683,7 +926,7 @@ export const evaluateStorefront = query({
         qty: Math.min(99, Math.max(0, Math.floor(line.quantity))),
       })),
       evaluationTime,
-      { hasDiscount: args.has_discount ?? false, campaigns },
+      { hasDiscount: args.has_discount ?? false, campaigns, selections: args.selections },
     );
     return {
       offers: storefrontEvaluations(results),

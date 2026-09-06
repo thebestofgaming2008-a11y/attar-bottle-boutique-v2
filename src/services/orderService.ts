@@ -2,6 +2,7 @@ import { api } from "../../convex/_generated/api";
 import { convex } from "@/integrations/convex/client";
 import { checkoutShippingForCountry } from "./shipping";
 import { checkoutDeadline } from "@/lib/checkoutDeadline";
+import type { GiftSelection } from "../../convex/gifts";
 
 export interface CheckoutCartLine {
   cartKey?: string;
@@ -30,11 +31,15 @@ export interface CheckoutCustomer {
   country: string;
 }
 
-export async function internationalGiftRequest(cart: CheckoutCartLine[]) {
+export async function internationalGiftRequest(
+  cart: CheckoutCartLine[],
+  selections: GiftSelection[] = [],
+) {
   const offers = await checkoutDeadline(
     convex.query(api.gifts.evaluateCart, {
       cart: cart.map((line) => ({ product_id: line.productId, quantity: line.qty })),
       evaluation_time: Date.now(),
+      selections: selections.filter((s) => s.product_id),
     }),
     "Could not check gift availability. Please try again.",
     10000,
@@ -44,6 +49,7 @@ export async function internationalGiftRequest(cart: CheckoutCartLine[]) {
   return (
     "\n\nEligible gifts — please confirm availability for international delivery:\n" +
     gifts
+      .flatMap((offer) => offer.rewards.map((gift) => ({ gift })))
       .map(
         (offer) =>
           `${offer.gift.quantity} × ${offer.gift.name}${[offer.gift.color, offer.gift.size].filter(Boolean).length ? ` (${[offer.gift.color, offer.gift.size].filter(Boolean).join(", ")})` : ""} — free if confirmed`,
@@ -59,6 +65,7 @@ export const shippingRate = (
 ) => checkoutShippingForCountry(country).amount;
 
 export async function createRazorpayCheckoutOrder(args: {
+  giftSelections?: GiftSelection[];
   cart: CheckoutCartLine[];
   customer: CheckoutCustomer;
   subtotal: number;
