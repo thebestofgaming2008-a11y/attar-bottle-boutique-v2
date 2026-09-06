@@ -34,6 +34,7 @@ export interface Address {
 }
 
 export interface OrderItem {
+  bundle_contents?: import("@/components/store/BundleContents").BundlePart[];
   id: string;
   order_id: string;
   product_id: string | null;

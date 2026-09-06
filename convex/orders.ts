@@ -1,4 +1,7 @@
 import { ConvexError, v } from "convex/values";
+import { adjustInventory, inventoryParts, resolveBundle } from "./bundles";
+import { pricePromotions } from "./promotions";
+import { normalizeCoupon } from "./promotionModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   action,
@@ -59,6 +62,7 @@ const checkoutCustomer = v.object({
 });
 
 const checkoutPayload = {
+  coupon: v.optional(v.string()),
   cart: v.array(cartItem),
   customer: checkoutCustomer,
   subtotal: v.number(),
@@ -271,7 +275,7 @@ async function orderWithItems(ctx: any, order: any): Promise<Record<string, any>
   };
 }
 
-async function checkoutQuote(ctx: any, cart: Array<any>) {
+async function checkoutQuote(ctx: any, cart: Array<any>, coupon?: string) {
   if (!cart.length) throw new Error("Cart is empty.");
   if (cart.length > MAX_CART_LINES)
     throw new Error(`Cart cannot contain more than ${MAX_CART_LINES} different items.`);
@@ -284,11 +288,24 @@ async function checkoutQuote(ctx: any, cart: Array<any>) {
     const product = (await ctx.db.get(item.productId as any)) as any;
     if (!product || product.is_active === false)
       throw new Error(`Product is no longer available: ${cleanText(item.name, 80)}`);
-    const stock = product.stock_quantity ?? 0;
-    const combinedQty = (quantities.get(item.productId) ?? 0) + qty;
-    quantities.set(item.productId, combinedQty);
-    if (stock < combinedQty || product.in_stock === false)
-      throw new Error(`Not enough stock for ${product.name}.`);
+    const bundle = await resolveBundle(ctx, product);
+    if (bundle.stock < qty) throw new Error(`Not enough stock for ${product.name}.`);
+    for (const part of inventoryParts({
+      productId: item.productId,
+      qty,
+      bundleContents: bundle.contents,
+    })) {
+      const p = await ctx.db.get(part.productId);
+      const combinedQty = (quantities.get(part.productId) ?? 0) + part.qty;
+      quantities.set(part.productId, combinedQty);
+      if (
+        !p ||
+        p.is_active === false ||
+        p.in_stock === false ||
+        Number(p.stock_quantity ?? 0) < combinedQty
+      )
+        throw new Error(`Not enough stock for ${p?.name ?? product.name}.`);
+    }
     const unitPrice = product.sale_price_inr ?? product.price_inr ?? product.price;
     if (!Number.isFinite(unitPrice) || unitPrice < 0)
       throw new Error(`Invalid price for ${product.name}.`);
@@ -297,28 +314,27 @@ async function checkoutQuote(ctx: any, cart: Array<any>) {
     subtotal += unitPrice * qty;
     itemCount += qty;
   }
+  const pricing = await pricePromotions(ctx, cart, coupon);
+  subtotal = pricing.subtotal;
   const shipping = 0;
-  const total = subtotal + shipping;
+  const total = pricing.total + shipping;
   const amountPaise = Math.round(total * 100);
   if (!Number.isSafeInteger(amountPaise) || amountPaise < 100)
     throw new Error("Razorpay orders must have a valid total of at least ₹1.");
-  return { subtotal, shipping, total, amountPaise, itemCount };
+  return {
+    subtotal,
+    shipping,
+    total,
+    amountPaise,
+    itemCount,
+    pricingSnapshot: pricing.snapshot,
+    discount: pricing.discount,
+  };
 }
 
 async function restoreReservedStock(ctx: any, cart: Array<any>) {
-  const timestamp = nowIso();
   for (const item of cart) {
-    const product = (await ctx.db.get(item.productId as any)) as any;
-    if (!product) continue;
-    const nextStock = Math.max(
-      0,
-      Number(product.stock_quantity ?? 0) + Math.max(1, Math.floor(item.qty)),
-    );
-    await ctx.db.patch(product._id, {
-      stock_quantity: nextStock,
-      in_stock: nextStock > 0,
-      updated_at: timestamp,
-    });
+    await adjustInventory(ctx, item, 1);
   }
 }
 
@@ -415,6 +431,13 @@ async function savePaidOrder(
     razorpay_payment_id: string;
     razorpay_signature: string;
     use_reserved_snapshot?: boolean;
+    pricing_snapshot?: {
+      subtotal_paise: number;
+      discount_paise: number;
+      label: string;
+      coupon_code?: string;
+      coupon_id?: any;
+    };
   },
 ) {
   const existingByPayment = await ctx.db
@@ -468,10 +491,19 @@ async function savePaidOrder(
     if (!args.use_reserved_snapshot && (!product || product.is_active === false)) {
       throw new Error(`Product is no longer available: ${cleanText(item.name, 80)}`);
     }
-    const stock = remainingByProduct.get(item.productId) ?? Number(product?.stock_quantity ?? 0);
-    remainingByProduct.set(item.productId, stock - qty);
-    if (!args.use_reserved_snapshot && (stock < qty || product?.in_stock === false)) {
-      throw new Error(`Not enough stock for ${product.name}.`);
+    const bundleContents = args.use_reserved_snapshot
+      ? (item.bundleContents ?? [])
+      : (await resolveBundle(ctx, product)).contents;
+    for (const part of inventoryParts({ productId: item.productId, qty, bundleContents })) {
+      const p = await ctx.db.get(part.productId);
+      const stock = remainingByProduct.get(part.productId) ?? Number(p?.stock_quantity ?? 0);
+      remainingByProduct.set(part.productId, stock - part.qty);
+      if (!p || stock < part.qty) inventoryAttention = true;
+      if (
+        !args.use_reserved_snapshot &&
+        (!p || stock < part.qty || p.in_stock === false || p.is_active === false)
+      )
+        throw new Error(`Not enough stock for ${p?.name ?? product.name}.`);
     }
     const unitPrice = args.use_reserved_snapshot
       ? Number(item.priceInr ?? item.price)
@@ -485,10 +517,11 @@ async function savePaidOrder(
     const selectedSize = args.use_reserved_snapshot
       ? cleanNullable(item.selectedSize, 60)
       : cleanVariantSelection(item.selectedSize, product.size_options, "Size", product.name);
-    if (!product || stock < qty) inventoryAttention = true;
+    if (!product) inventoryAttention = true;
     computedSubtotal += unitPrice * qty;
     normalizedItems.push({
       product,
+      bundleContents,
       productId: cleanText(item.productId, 120),
       productName,
       productImageUrl: args.use_reserved_snapshot
@@ -510,7 +543,17 @@ async function savePaidOrder(
 
   const shippingMeta = requireIndiaShipping(customer.country);
   const computedShipping = shippingMeta.amount;
-  const computedTotal = computedSubtotal + computedShipping;
+  const snapshot = args.use_reserved_snapshot ? args.pricing_snapshot : undefined;
+  const discount = snapshot ? snapshot.discount_paise / 100 : 0;
+  if (
+    snapshot &&
+    (Math.abs(Math.round(computedSubtotal * 100) - snapshot.subtotal_paise) > 1 ||
+      !Number.isSafeInteger(snapshot.discount_paise) ||
+      discount < 0 ||
+      discount >= computedSubtotal)
+  )
+    throw new Error("Reserved discount snapshot is invalid.");
+  const computedTotal = Math.round((computedSubtotal + computedShipping - discount) * 100) / 100;
   const timestamp = nowIso();
   const orderNumber = await nextOrderNumber(ctx);
   const orderId = await ctx.db.insert("orders", {
@@ -527,7 +570,8 @@ async function savePaidOrder(
     shipping_payment_status: shippingMeta.paymentStatus,
     shipping_payment_note: shippingMeta.note,
     customer_country_type: shippingMeta.countryType,
-    discount: 0,
+    discount,
+    ...(snapshot ? { pricing_snapshot: snapshot } : {}),
     total: computedTotal,
     total_inr: computedTotal,
     currency: "INR",
@@ -543,6 +587,7 @@ async function savePaidOrder(
   for (const item of normalizedItems) {
     await ctx.db.insert("order_items", {
       order_id: orderId,
+      bundle_contents: item.bundleContents,
       product_id: item.product?._id ?? item.productId,
       product_name: `${item.isGift ? "Free gift: " : ""}${productNameWithOptions(item.productName, item.selectedColor, item.selectedSize)}`,
       is_gift: item.isGift,
@@ -556,17 +601,11 @@ async function savePaidOrder(
       unit_price: item.unitPrice,
       subtotal: item.unitPrice * item.qty,
     });
-    if (item.product) {
-      // Multiple option lines may share a product. Read this transaction's
-      // latest stock instead of overwriting it from an earlier snapshot.
-      const currentProduct = await ctx.db.get(item.product._id);
-      const nextStock = Math.max(0, (currentProduct.stock_quantity ?? 0) - item.qty);
-      await ctx.db.patch(item.product._id, {
-        stock_quantity: nextStock,
-        in_stock: nextStock > 0,
-        updated_at: timestamp,
-      });
-    }
+    await adjustInventory(ctx, item, -1);
+  }
+  if (snapshot?.coupon_id) {
+    const coupon = await ctx.db.get(snapshot.coupon_id);
+    if (coupon) await ctx.db.patch(coupon._id, { used_count: (coupon.used_count ?? 0) + 1 });
   }
 
   if (args.user_id) {
@@ -588,16 +627,10 @@ async function savePaidOrder(
 }
 
 export const quoteCheckout = query({
-  args: { cart: v.array(cartItem) },
-  returns: v.object({
-    subtotal: v.number(),
-    shipping: v.number(),
-    total: v.number(),
-    amountPaise: v.number(),
-    itemCount: v.number(),
-  }),
+  args: { cart: v.array(cartItem), coupon: v.optional(v.string()) },
+  returns: v.any(),
   handler: async (ctx, args) => {
-    return await checkoutQuote(ctx, args.cart);
+    return await checkoutQuote(ctx, args.cart, args.coupon);
   },
 });
 
@@ -791,6 +824,11 @@ export const createRazorpayCheckoutOrder = action({
     if (existing) {
       assertReusableCheckout(existing, args.cart, customer);
       assertGiftSelectionReplay(existing, args.giftSelections);
+      if (normalizeCoupon(args.coupon) !== (existing.coupon_code ?? ""))
+        throw new ConvexError({
+          code: "CHECKOUT_CHANGED",
+          message: "Coupon changed. Start a fresh checkout.",
+        });
       return {
         keyId,
         orderId: existing.razorpay_order_id,
@@ -800,13 +838,17 @@ export const createRazorpayCheckoutOrder = action({
       };
     }
     await verifyTurnstileToken(args.turnstileToken);
-    const quote = await ctx.runQuery(api.orders.quoteCheckout, { cart: args.cart });
+    const quote = await ctx.runQuery(api.orders.quoteCheckout, {
+      cart: args.cart,
+      coupon: args.coupon,
+    });
     // Validate choices before creating a provider order; reservation rechecks atomically.
     await ctx.runQuery(api.gifts.evaluateCart, {
       cart: args.cart.map((line) => ({ product_id: line.productId, quantity: line.qty })),
       evaluation_time: Date.now(),
       selections: args.giftSelections,
       require_complete: true,
+      has_discount: Boolean(quote.pricingSnapshot.coupon_id),
     });
     const receipt = `BADR-${Date.now().toString(36)}-${checkoutAttemptId
       .replace(/-/g, "")
@@ -832,6 +874,7 @@ export const createRazorpayCheckoutOrder = action({
       user_id: userId,
       cart: args.cart,
       giftSelections: args.giftSelections,
+      coupon: args.coupon,
       customer,
       amount_paise: quote.amountPaise,
     });
@@ -847,6 +890,7 @@ export const createRazorpayCheckoutOrder = action({
 
 export const reserveCheckoutIntent = internalMutation({
   args: {
+    coupon: v.optional(v.string()),
     giftSelections: v.optional(giftSelectionsValidator),
     razorpay_order_id: v.string(),
     checkout_attempt_id: v.string(),
@@ -867,6 +911,11 @@ export const reserveCheckoutIntent = internalMutation({
     if (existingAttempt) {
       assertReusableCheckout(existingAttempt, args.cart, args.customer);
       assertGiftSelectionReplay(existingAttempt, args.giftSelections);
+      if (normalizeCoupon(args.coupon) !== (existingAttempt.coupon_code ?? ""))
+        throw new ConvexError({
+          code: "CHECKOUT_CHANGED",
+          message: "Coupon changed. Start a fresh checkout.",
+        });
       return {
         razorpay_order_id: existingAttempt.razorpay_order_id,
         amount_paise: existingAttempt.amount_paise,
@@ -884,12 +933,13 @@ export const reserveCheckoutIntent = internalMutation({
         amount_paise: existing.amount_paise,
       };
     }
-    const quote = await checkoutQuote(ctx, args.cart);
+    const quote = await checkoutQuote(ctx, args.cart, args.coupon);
     if (quote.amountPaise !== args.amount_paise)
       throw new Error("Checkout total changed. Please try again.");
     // Evaluate before any stock deduction; gifts never count toward another offer.
     // Only this server-generated snapshot may introduce zero-price gift lines.
     const giftOffers = await evaluateGiftCampaigns(ctx, args.cart, Date.now(), {
+      hasDiscount: Boolean(quote.pricingSnapshot.coupon_id),
       selections: args.giftSelections,
       strict: true,
     });
@@ -899,9 +949,10 @@ export const reserveCheckoutIntent = internalMutation({
       const product = (await ctx.db.get(item.productId as any)) as any;
       if (!product) throw new Error("Product is no longer available.");
       const qty = Math.max(1, Math.floor(item.qty));
-      const nextStock = Number(product.stock_quantity ?? 0) - qty;
-      if (nextStock < 0) throw new Error(`Not enough stock for ${product.name}.`);
-      const unitPrice = product.sale_price_inr ?? product.price_inr ?? product.price;
+      const { contents: bundleContents } = await resolveBundle(ctx, product);
+      const unitPrice =
+        Math.round(Number(product.sale_price_inr ?? product.price_inr ?? product.price) * 100) /
+        100;
       const selectedColor = cleanVariantSelection(
         item.selectedColor,
         product.color_options,
@@ -916,6 +967,7 @@ export const reserveCheckoutIntent = internalMutation({
       );
       reservedCart.push({
         cartKey: item.cartKey,
+        bundleContents,
         productId: String(product._id),
         qty,
         name: cleanText(product.name, 160),
@@ -928,11 +980,7 @@ export const reserveCheckoutIntent = internalMutation({
         selectedColor,
         selectedSize,
       });
-      await ctx.db.patch(product._id, {
-        stock_quantity: nextStock,
-        in_stock: nextStock > 0,
-        updated_at: timestamp,
-      });
+      await adjustInventory(ctx, { productId: product._id, qty, bundleContents }, -1, true);
     }
     for (const evaluated of giftOffers.filter((offer) => offer.earned))
       for (const [rewardIndex, gift] of evaluated.rewards.entries()) {
@@ -971,6 +1019,8 @@ export const reserveCheckoutIntent = internalMutation({
       status: "pending",
       stock_reserved: true,
       cart: reservedCart,
+      pricing_snapshot: quote.pricingSnapshot,
+      coupon_code: normalizeCoupon(args.coupon),
       gift_selections: args.giftSelections ?? [],
       customer: args.customer,
       amount_paise: args.amount_paise,
@@ -1134,6 +1184,7 @@ async function finalizeCheckoutIntentHandler(
     razorpay_payment_id: args.razorpay_payment_id,
     razorpay_signature: "verified-by-server",
     use_reserved_snapshot: true,
+    pricing_snapshot: intent.pricing_snapshot,
   });
   await ctx.db.patch(intent._id, {
     status: "completed",
@@ -2144,17 +2195,16 @@ export const closeOrder = mutation({
           inventoryAttention = true;
           continue;
         }
-        const product: any = await ctx.db.get(item.product_id as any);
-        if (!product) {
-          inventoryAttention = true;
-          continue;
-        }
-        const nextStock = Math.max(0, Number(product.stock_quantity ?? 0) + item.quantity);
-        await ctx.db.patch(product._id, {
-          stock_quantity: nextStock,
-          in_stock: nextStock > 0,
-          updated_at: timestamp,
-        });
+        inventoryAttention =
+          (await adjustInventory(
+            ctx,
+            {
+              productId: item.product_id,
+              qty: item.quantity,
+              bundleContents: item.bundle_contents,
+            },
+            1,
+          )) || inventoryAttention;
       }
       restocked = true;
     }

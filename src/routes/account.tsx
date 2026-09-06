@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { BundleContents } from "@/components/store/BundleContents";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { LogOut, MapPin, Package, UserRound } from "lucide-react";
@@ -313,6 +314,11 @@ function AccountPage() {
                               {order.status}
                             </span>
                           </summary>
+                          {order.discount ? (
+                            <p className="mt-3 text-sm">
+                              Discount applied: −{inr(order.discount)}. Included in the order total.
+                            </p>
+                          ) : null}
                           <ul className="mt-4 grid gap-3 border-t border-foreground/10 pt-4">
                             {(order.items || []).map((item: any) => (
                               <li
@@ -330,13 +336,17 @@ function AccountPage() {
                                 ) : (
                                   <div className="h-12 w-12 bg-secondary" />
                                 )}
-                                <span>
+                                <div>
                                   {item.product_name}
+                                  <BundleContents
+                                    items={item.bundle_contents}
+                                    quantity={item.quantity}
+                                  />
                                   <small className="mt-1 block text-muted-foreground">
                                     Qty {item.quantity}
                                     {item.selected_size ? ` · ${item.selected_size}` : ""}
                                   </small>
-                                </span>
+                                </div>
                                 <span>{inr(item.subtotal)}</span>
                               </li>
                             ))}

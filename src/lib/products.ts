@@ -35,6 +35,7 @@ export const BOTTLE_IMAGES: Record<string, string> = {
 export type Occasion = "evening" | "everyday" | "morning" | "close";
 
 export type Product = {
+  bundleContents?: import("@/components/store/BundleContents").BundlePart[];
   id: string;
   backendId?: string;
   name: string;
@@ -306,6 +307,9 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
   return {
     id: slug,
     backendId: text(source.id),
+    bundleContents: Array.isArray(source.bundle_contents)
+      ? (source.bundle_contents as Product["bundleContents"])
+      : [],
     name: text(source.name) || fallback?.name || "BADR Attar",
     category:
       text(source.product_type) || fallback?.category || text(source.category) || "Unisex Attar",
@@ -341,7 +345,11 @@ export function resolveStoreProduct(source: ProductSource, fallback?: Product): 
     longevity: text(source.longevity) || fallback?.longevity || "Long-lasting",
     faqs: liveFaqs.length ? liveFaqs.slice(0, 3) : fallback?.faqs || [],
     gallery,
-    volume: text(source.volume_label) || fallback?.volume || "6 ml",
+    volume:
+      text(source.volume_label) ||
+      (source.bundle_kind === "combo" || source.bundle_kind === "pack"
+        ? "Attar set"
+        : fallback?.volume || "6 ml"),
     format: text(source.format_label) || fallback?.format || "Roll-on attar",
     countryOfOrigin: text(source.country_of_origin) || fallback?.countryOfOrigin || "India",
     stockQuantity: Number.isFinite(rawStock) ? rawStock : 0,

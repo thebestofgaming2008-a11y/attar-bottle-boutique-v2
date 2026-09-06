@@ -7,6 +7,7 @@ import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, MessageCircle } from "lu
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { useCart } from "@/components/store/CartContext";
 import { GiftOffers } from "@/components/store/GiftOffers";
+import { PromotionOffers, usePromotionQuote } from "@/components/store/PromotionOffers";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
 import {
@@ -182,6 +183,7 @@ const RAZORPAY_IS_AVAILABLE =
 
 function CheckoutPage() {
   const cart = useCart();
+  const pricing = usePromotionQuote();
   const auth = useAuth();
   const addresses = useQuery(api.addresses.listMine, auth.user ? {} : "skip");
   const navigate = useNavigate();
@@ -362,8 +364,11 @@ function CheckoutPage() {
   );
 
   const totalLabel = useMemo(
-    () => (isIndia || rateSource === "fallback" ? inr(cart.subtotal) : format(cart.subtotal)),
-    [cart.subtotal, format, isIndia, rateSource],
+    () =>
+      isIndia || rateSource === "fallback"
+        ? inr(pricing?.total ?? cart.subtotal)
+        : format(pricing?.total ?? cart.subtotal),
+    [cart.subtotal, pricing?.total, format, isIndia, rateSource],
   );
 
   const update = (field: keyof CheckoutCustomer, value: string) => {
@@ -399,6 +404,7 @@ function CheckoutPage() {
   }
 
   async function submitIndia() {
+    if (pricing?.error) throw new Error(pricing.error);
     if (!TURNSTILE_SITE_KEY || !turnstileToken) {
       throw new Error("Complete the security check before paying.");
     }
@@ -407,11 +413,12 @@ function CheckoutPage() {
       throw new Error("Razorpay Checkout did not load. Check your connection and try again.");
     const checkoutCart = await resolveCheckoutCart();
     const payload = {
+      coupon: cart.coupon,
       cart: checkoutCart,
       customer,
-      subtotal: cart.subtotal,
+      subtotal: pricing?.subtotal ?? cart.subtotal,
       shipping: 0,
-      total: cart.subtotal,
+      total: pricing?.total ?? cart.subtotal,
     };
     let razorpayOrder: Awaited<ReturnType<typeof createRazorpayCheckoutOrder>>;
     try {
@@ -549,6 +556,7 @@ function CheckoutPage() {
   }
 
   async function submitInternational() {
+    if (pricing?.error) throw new Error(pricing.error);
     if (!whatsappOrderNumber) {
       throw new Error("International checkout is not configured yet. Contact the store directly.");
     }
@@ -557,7 +565,11 @@ function CheckoutPage() {
     reserved.opener = null;
     let giftText = "";
     try {
-      giftText = await internationalGiftRequest(await resolveCheckoutCart(), cart.giftSelections);
+      giftText = await internationalGiftRequest(
+        await resolveCheckoutCart(),
+        cart.giftSelections,
+        Boolean(pricing?.snapshot?.coupon_id),
+      );
     } catch {
       // WhatsApp remains a manual availability enquiry even if gifts cannot be fetched.
       giftText = "\n\nPlease also confirm whether this order qualifies for any free gifts.";
@@ -567,12 +579,13 @@ function CheckoutPage() {
         (line, index) =>
           `${index + 1}. ${line.name}\n   Quantity: ${line.qty}\n   Variant/options: ${
             [line.selectedColor, line.selectedSize].filter(Boolean).join(", ") || "Standard"
-          }\n   Product page: ${window.location.origin}/product/${line.slug}`,
+          }${line.bundleSummary ? `\n   Contents per pack: ${line.bundleSummary}` : ""}\n   Product page: ${window.location.origin}/product/${line.slug}`,
       )
       .join("\n\n");
-    const text = `Assalamu alaikum. I would like to order to ${customer.country}.\n\nName: ${customer.name}\nEmail: ${customer.email}\nWhatsApp number: ${customer.phone}\n\nCountry: ${customer.country}\nAddress: ${customer.address_line_1}${customer.address_line_2 ? `, ${customer.address_line_2}` : ""}\nCity: ${customer.city}\nState / province / region: ${customer.state || "-"}\nPostal code: ${customer.postal_code}\n\n${itemText}\n\nProduct subtotal: ${totalLabel}\nPlease confirm availability, international shipping, and payment details.`;
+    const text = `Assalamu alaikum. I would like to order to ${customer.country}.\n\nName: ${customer.name}\nEmail: ${customer.email}\nWhatsApp number: ${customer.phone}\n\nCountry: ${customer.country}\nAddress: ${customer.address_line_1}${customer.address_line_2 ? `, ${customer.address_line_2}` : ""}\nCity: ${customer.city}\nState / province / region: ${customer.state || "-"}\nPostal code: ${customer.postal_code}\n\n${itemText}\n\nProduct subtotal: ${format(pricing?.subtotal ?? cart.subtotal)}\nPlease confirm availability, international shipping, and payment details.`;
     reserved.opener = null;
-    reserved.location.href = `https://wa.me/${whatsappOrderNumber}?text=${encodeURIComponent(text + giftText)}`;
+    const offerText = `${cart.coupon ? `\nCoupon requested: ${cart.coupon}` : ""}${pricing?.discount ? `\nProvisional offer: ${pricing.snapshot.label}. Savings: ${format(pricing.discount)}. Product total after savings: ${totalLabel}. Please confirm this offer with international shipping.` : ""}`;
+    reserved.location.href = `https://wa.me/${whatsappOrderNumber}?text=${encodeURIComponent(text + giftText + offerText)}`;
     setSuccess("WhatsApp order message opened");
   }
 
@@ -790,6 +803,7 @@ function CheckoutPage() {
                 type="submit"
                 disabled={
                   busy ||
+                  Boolean(pricing?.error) ||
                   Boolean(pendingPayment) ||
                   cart.lines.length === 0 ||
                   (!isIndia && whatsappConfigLoading) ||
@@ -810,13 +824,14 @@ function CheckoutPage() {
                     ? "Preparing WhatsApp"
                     : isIndia
                       ? RAZORPAY_IS_AVAILABLE
-                        ? `Pay ${inr(cart.subtotal)} with Razorpay`
+                        ? `Pay ${inr(pricing?.total ?? cart.subtotal)} with Razorpay`
                         : "Online payments activating"
                       : "Continue on WhatsApp"}
               </button>
             </form>
 
             <aside className="bg-foreground p-5 text-background sm:p-7 lg:sticky lg:top-24">
+              <PromotionOffers disabled={busy || Boolean(pendingPayment)} />
               <p className="eyebrow text-background/50">Your order</p>
               <ul className="mt-5 divide-y divide-background/15">
                 {cart.lines.map((line) => (
@@ -830,6 +845,11 @@ function CheckoutPage() {
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{line.name}</p>
+                      {line.bundleSummary ? (
+                        <p className="mt-2 text-xs leading-5 text-background/75">
+                          Per pack: {line.bundleSummary}
+                        </p>
+                      ) : null}
                       <p className="mt-1 text-xs text-background/55">
                         Qty {line.qty} · {line.selectedSize || "Standard"}
                       </p>
@@ -850,8 +870,18 @@ function CheckoutPage() {
               <div className="mt-5 border-t border-background/20 pt-5">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
-                  <span>{totalLabel}</span>
+                  <span>
+                    {isIndia
+                      ? inr(pricing?.subtotal ?? cart.subtotal)
+                      : format(pricing?.subtotal ?? cart.subtotal)}
+                  </span>
                 </div>
+                {pricing && pricing.discount > 0 ? (
+                  <div className="mt-3 flex justify-between gap-3 text-sm">
+                    <span>{pricing.snapshot.label}</span>
+                    <span>−{isIndia ? inr(pricing.discount) : format(pricing.discount)}</span>
+                  </div>
+                ) : null}
                 <div className="mt-3 flex justify-between text-sm text-background/65">
                   <span>Shipping</span>
                   <span>{isIndia ? "Included" : "Confirmed on WhatsApp"}</span>

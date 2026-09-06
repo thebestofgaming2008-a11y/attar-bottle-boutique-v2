@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import { bundleKind, bundleItem, validateBundleEdit, withBundle } from "./bundles";
 import {
   BOOK_SUBJECT_KEYS,
   BOOK_SUBJECT_LABELS,
@@ -11,6 +12,8 @@ import {
 } from "./lib";
 
 const productInput = {
+  bundle_kind: v.optional(bundleKind),
+  bundle_items: v.optional(v.array(bundleItem)),
   name: v.string(),
   slug: v.optional(v.union(v.string(), v.null())),
   product_type: v.optional(v.union(v.string(), v.null())),
@@ -80,6 +83,8 @@ const productInput = {
 };
 
 const productPatch = {
+  bundle_kind: v.optional(bundleKind),
+  bundle_items: v.optional(v.array(bundleItem)),
   name: v.optional(v.string()),
   slug: v.optional(v.union(v.string(), v.null())),
   product_type: v.optional(v.union(v.string(), v.null())),
@@ -803,7 +808,8 @@ export const listActiveProducts = query({
       .query("products")
       .withIndex("by_active", (q) => q.eq("is_active", true))
       .take(500);
-    return rows
+    const decorated = await Promise.all(rows.map((p) => withBundle(ctx, p)));
+    return decorated
       .filter(isLaunchReady)
       .sort(
         (a, b) =>
@@ -820,7 +826,8 @@ export const listAllProducts = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const rows = await ctx.db.query("products").take(1000);
-    return rows
+    const decorated = await Promise.all(rows.map((p) => withBundle(ctx, p)));
+    return decorated
       .map(publicProduct)
       .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
   },
@@ -831,7 +838,7 @@ export const getProductById = query({
   handler: async (ctx, args) => {
     const doc = (await ctx.db.get(args.id as any)) as any;
     if (!doc || doc.is_active === false || !isLaunchReady(doc)) return null;
-    return publicProduct(doc);
+    return publicProduct(await withBundle(ctx, doc));
   },
 });
 
@@ -843,7 +850,7 @@ export const getProductBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
     if (!doc || doc.is_active === false || !isLaunchReady(doc)) return null;
-    return publicProduct(doc);
+    return publicProduct(await withBundle(ctx, doc));
   },
 });
 
@@ -852,7 +859,8 @@ export const listByCategory = query({
   handler: async (ctx, args) => {
     const requested = args.category === "essentials" ? "children" : args.category;
     const rows = await ctx.db.query("products").take(500);
-    return rows
+    const decorated = await Promise.all(rows.map((p) => withBundle(ctx, p)));
+    return decorated
       .filter(
         (p) => p.is_active !== false && isLaunchReady(p) && topCategoryForProduct(p) === requested,
       )
@@ -863,7 +871,13 @@ export const listByCategory = query({
 export const listByIds = query({
   args: { ids: v.array(v.string()) },
   handler: async (ctx, args) => {
-    const docs = await Promise.all(args.ids.map((id) => ctx.db.get(id as any)));
+    if (args.ids.length > 100) throw new Error("Request at most 100 products.");
+    const docs = await Promise.all(
+      args.ids.map(async (id) => {
+        const p: any = await ctx.db.get(id as any);
+        return p ? withBundle(ctx, p) : null;
+      }),
+    );
     return docs
       .filter((doc) => doc && (doc as any).is_active !== false && isLaunchReady(doc))
       .map((doc) => publicProductCard(doc as any));
@@ -876,6 +890,7 @@ export const createProduct = mutation({
     await requireAdmin(ctx);
     const timestamp = nowIso();
     const payload = normalize(args);
+    Object.assign(payload, await validateBundleEdit(ctx, args));
     const existing = await ctx.db
       .query("products")
       .withIndex("by_slug", (q) => q.eq("slug", payload.slug))
@@ -894,7 +909,7 @@ export const createProduct = mutation({
       },
     });
     const doc = await ctx.db.get(id);
-    return doc ? publicProduct(doc) : null;
+    return doc ? publicProduct(await withBundle(ctx, doc)) : null;
   },
 });
 
@@ -905,6 +920,7 @@ export const updateProduct = mutation({
     const current = (await ctx.db.get(args.id as any)) as any;
     if (!current) throw new Error("Product not found.");
     const payload = normalize(args.patch, true, current.price_inr ?? current.price);
+    Object.assign(payload, await validateBundleEdit(ctx, args.patch, current));
     if (payload.slug) {
       const existing = await ctx.db
         .query("products")
@@ -922,7 +938,7 @@ export const updateProduct = mutation({
       metadata: { changed: Object.keys(payload).filter((key) => key !== "updated_at") },
     });
     const doc = (await ctx.db.get(args.id as any)) as any;
-    return doc ? publicProduct(doc) : null;
+    return doc ? publicProduct(await withBundle(ctx, doc)) : null;
   },
 });
 

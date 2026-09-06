@@ -12,6 +12,7 @@ import { writePreference } from "@/lib/safeStorage";
 import type { GiftSelection } from "../../../convex/gifts";
 
 export type CartLine = {
+  bundleSummary?: string;
   id: string;
   productId?: string;
   slug: string;
@@ -27,6 +28,8 @@ export type CartLine = {
 export type CartProductInput = Omit<CartLine, "id" | "qty"> & { id?: string };
 
 type CartValue = {
+  coupon: string;
+  setCoupon: (value: string) => void;
   giftSelections: GiftSelection[];
   setGiftSelections: React.Dispatch<React.SetStateAction<GiftSelection[]>>;
   lines: CartLine[];
@@ -68,6 +71,7 @@ function readStoredCart() {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const [coupon, setCoupon] = useState("");
   const [giftSelections, setGiftSelections] = useState<GiftSelection[]>([]);
   // Match the server render first, then restore the persisted cart after hydration.
   const [lines, setLines] = useState<CartLine[]>([]);
@@ -153,6 +157,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clear = useCallback(() => {
+    setCoupon("");
     setLines([]);
     setGiftSelections([]);
   }, []);
@@ -160,6 +165,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const count = lines.reduce((total, line) => total + line.qty, 0);
   const value = useMemo(
     () => ({
+      coupon,
+      setCoupon,
       lines,
       subtotal,
       count,
@@ -172,7 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       giftSelections,
       setGiftSelections,
     }),
-    [add, addProduct, clear, count, lines, open, setQty, subtotal, giftSelections],
+    [add, addProduct, clear, count, lines, open, setQty, subtotal, giftSelections, coupon],
   );
 
   return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;

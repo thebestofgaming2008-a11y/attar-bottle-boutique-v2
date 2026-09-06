@@ -1,4 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { BundleEditor } from "@/components/admin/BundleEditor";
+import { PromotionsAdmin } from "@/components/admin/PromotionsAdmin";
+import { BundleContents } from "@/components/store/BundleContents";
 import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
@@ -163,6 +166,7 @@ const NAV = [
   { key: "products", label: "Products", Icon: Package },
   { key: "inventory", label: "Inventory", Icon: Boxes },
   { key: "gifts", label: "Gifts", Icon: Gift },
+  { key: "offers", label: "Offers & coupons", Icon: Tag },
   { key: "categories", label: "Categories", Icon: Tag },
   { key: "shipping", label: "Shipping", Icon: Truck },
   { key: "reviews", label: "Reviews", Icon: MessageSquare },
@@ -571,7 +575,9 @@ const Admin = () => {
     {
       label: "Commerce",
       items: NAV.filter((item) =>
-        ["orders", "products", "inventory", "gifts", "categories", "shipping"].includes(item.key),
+        ["orders", "products", "inventory", "gifts", "offers", "categories", "shipping"].includes(
+          item.key,
+        ),
       ),
     },
     { label: "People", items: NAV.filter((item) => ["customers", "reviews"].includes(item.key)) },
@@ -1027,6 +1033,9 @@ const Admin = () => {
             {!loading && !adminLoadError && tab === "gifts" && (
               <GiftAdmin products={products} categories={categories} />
             )}
+            {!loading && !adminLoadError && tab === "offers" && (
+              <PromotionsAdmin products={products} />
+            )}
 
             {!loading && !adminLoadError && tab === "orders" && (
               <Section
@@ -1284,6 +1293,7 @@ const Admin = () => {
 
       {(creating || editing) && (
         <ProductDrawer
+          products={products}
           product={editing ?? undefined}
           onClose={() => {
             setCreating(false);
@@ -1333,7 +1343,9 @@ function AdminLogin({
     {
       label: "Commerce",
       items: NAV.filter((item) =>
-        ["orders", "products", "inventory", "gifts", "categories", "shipping"].includes(item.key),
+        ["orders", "products", "inventory", "gifts", "offers", "categories", "shipping"].includes(
+          item.key,
+        ),
       ),
     },
     { label: "People", items: NAV.filter((item) => ["customers", "reviews"].includes(item.key)) },
@@ -2092,6 +2104,12 @@ function OrderRow({
             className="space-y-3 rounded-md border border-border bg-background p-4"
           >
             <h3 className="text-sm font-semibold">Items to pack</h3>
+            {order.discount ? (
+              <p className="text-sm">
+                {order.pricing_snapshot?.label || "Discount"}: −{formatPrice(order.discount)}. Order
+                total already includes this saving.
+              </p>
+            ) : null}
             {order.inventory_attention && (
               <p
                 role="alert"
@@ -2127,6 +2145,7 @@ function OrderRow({
                       Free gift{item.gift_campaign_name ? ` — ${item.gift_campaign_name}` : ""}
                     </p>
                   )}
+                  <BundleContents items={item.bundle_contents} quantity={item.quantity} />
                 </div>
                 <p className="shrink-0 text-sm font-semibold">
                   {item.is_gift ? "Free" : formatPrice(item.subtotal)}
@@ -3565,15 +3584,19 @@ function ProductThumb({ product }: { product: Product }) {
 }
 
 function ProductDrawer({
+  products,
   product,
   onClose,
   onSaved,
 }: {
   product?: Product;
+  products: Product[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<ProductInput>({
+    bundle_kind: product?.bundle_kind ?? "single",
+    bundle_items: product?.bundle_items ?? [],
     name: product?.name ?? "",
     slug: product?.slug ?? null,
     product_type: product?.product_type ?? "Unisex Attar",
@@ -4071,6 +4094,31 @@ function ProductDrawer({
             onChange={(v) => setForm({ ...form, name: v })}
             required
           />
+          <BundleEditor
+            kind={form.bundle_kind ?? "single"}
+            items={form.bundle_items ?? []}
+            products={products}
+            locked={Boolean(product)}
+            onChange={(patch) =>
+              setForm((current) => ({
+                ...current,
+                ...patch,
+                ...(patch.bundle_kind && patch.bundle_kind !== "single"
+                  ? {
+                      size_options: [],
+                      color_options: [],
+                      volume_label: "",
+                      format_label: "Attar set",
+                      product_type:
+                        patch.bundle_kind === "combo" ? "Attar combo" : "Attar multipack",
+                    }
+                  : {}),
+              }))
+            }
+          />
+          {product?.bundle_error ? (
+            <p className="text-sm text-red-700">{product.bundle_error}</p>
+          ) : null}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label="Slug"
@@ -4147,11 +4195,13 @@ function ProductDrawer({
                 })
               }
             />
-            <NumberField
-              label="Stock"
-              value={form.stock_quantity ?? 0}
-              onChange={(v) => setForm({ ...form, stock_quantity: v })}
-            />
+            {!form.bundle_kind || form.bundle_kind === "single" ? (
+              <NumberField
+                label="Stock"
+                value={form.stock_quantity ?? 0}
+                onChange={(v) => setForm({ ...form, stock_quantity: v })}
+              />
+            ) : null}
             <Field
               label="Badge"
               value={form.badge ?? ""}

@@ -1,4 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { BundleContents, bundleSummary } from "@/components/store/BundleContents";
+import { BundleBuilder } from "@/components/store/BundleBuilder";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, Star } from "lucide-react";
 import {
@@ -166,6 +168,7 @@ function ProductPage() {
         productId: product.backendId,
         slug: product.id,
         name: product.name,
+        bundleSummary: bundleSummary(product.bundleContents),
         image: product.image,
         price: product.price,
         mrp: product.mrp,
@@ -403,6 +406,10 @@ function ProductInformation({
         {product.hook}
       </p>
 
+      <BundleContents items={product.bundleContents} />
+      {!product.bundleContents?.length ? (
+        <BundleBuilder initialProductId={product.backendId} />
+      ) : null}
       <div className="mt-7 flex items-center gap-4">
         <div className="flex items-baseline gap-3">
           <span className="text-2xl font-medium">{format(product.price)}</span>

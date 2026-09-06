@@ -191,13 +191,15 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         return new Intl.NumberFormat("en-IN", {
           style: "currency",
           currency: "INR",
-          maximumFractionDigits: 0,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
         }).format(amountInr);
       }
       return new Intl.NumberFormat("en", {
         style: "currency",
         currency,
-        maximumFractionDigits: currency === "INR" ? 0 : 2,
+        minimumFractionDigits: currency === "INR" ? 0 : 2,
+        maximumFractionDigits: 2,
       }).format(converted);
     },
     [convertFromInr, currency],

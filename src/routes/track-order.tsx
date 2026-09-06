@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { BundleContents, type BundlePart } from "@/components/store/BundleContents";
 import { useState, type FormEvent } from "react";
 import { PackageSearch } from "lucide-react";
 import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
@@ -21,10 +22,12 @@ type TrackedOrder = {
   tracking_number?: string | null;
   tracking_url?: string | null;
   total: number;
+  discount?: number;
   items?: Array<{
     id: string;
     product_id?: string | null;
     product_name?: string | null;
+    bundle_contents?: BundlePart[];
     product_image_url?: string | null;
     quantity: number;
     subtotal: number;
@@ -146,6 +149,11 @@ function TrackOrderPage() {
                 </p>
               )}
               <ul className="mt-6 grid gap-3">
+                {result.discount ? (
+                  <li className="text-sm">
+                    Discount applied: −{inr(result.discount)}. Included in the order total.
+                  </li>
+                ) : null}
                 {(result.items || []).map((item) => (
                   <li
                     key={item.id}
@@ -160,6 +168,7 @@ function TrackOrderPage() {
                     />
                     <div className="text-sm">
                       {item.product_name}
+                      <BundleContents items={item.bundle_contents} quantity={item.quantity} />
                       <small className="block text-muted-foreground">Qty {item.quantity}</small>
                       {result.payment_status === "paid" && item.product_id ? (
                         <button

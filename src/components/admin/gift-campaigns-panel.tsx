@@ -888,11 +888,13 @@ export function GiftCampaignsPanel({
                       className={inputClass}
                     >
                       <option value="">Choose a product</option>
-                      {activeProducts.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name} · {product.stock_quantity ?? 0} in stock
-                        </option>
-                      ))}
+                      {activeProducts
+                        .filter((p) => !p.bundle_kind || p.bundle_kind === "single")
+                        .map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} · {product.stock_quantity ?? 0} in stock
+                          </option>
+                        ))}
                     </GiftSelect>
                   </label>
                 )}
@@ -932,27 +934,32 @@ export function GiftCampaignsPanel({
                         onChange={(e) => setProductQuery(e.target.value)}
                       />
                       <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-[#CBD1D8] p-3">
-                        {visibleProducts.map((product) => (
-                          <label key={product.id} className="flex items-center gap-3 py-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={(draft.reward_product_ids ?? []).includes(product.id)}
-                              onChange={(e) =>
-                                setDraft({
-                                  ...draft,
-                                  reward_product_ids: e.target.checked
-                                    ? [...(draft.reward_product_ids ?? []), product.id]
-                                    : (draft.reward_product_ids ?? []).filter(
-                                        (id) => id !== product.id,
-                                      ),
-                                })
-                              }
-                            />
-                            <span>
-                              {product.name} · {product.stock_quantity ?? 0} in stock
-                            </span>
-                          </label>
-                        ))}
+                        {visibleProducts
+                          .filter((p) => !p.bundle_kind || p.bundle_kind === "single")
+                          .map((product) => (
+                            <label
+                              key={product.id}
+                              className="flex items-center gap-3 py-2 text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={(draft.reward_product_ids ?? []).includes(product.id)}
+                                onChange={(e) =>
+                                  setDraft({
+                                    ...draft,
+                                    reward_product_ids: e.target.checked
+                                      ? [...(draft.reward_product_ids ?? []), product.id]
+                                      : (draft.reward_product_ids ?? []).filter(
+                                          (id) => id !== product.id,
+                                        ),
+                                  })
+                                }
+                              />
+                              <span>
+                                {product.name} · {product.stock_quantity ?? 0} in stock
+                              </span>
+                            </label>
+                          ))}
                       </div>
                       <p className="text-xs">
                         {draft.reward_product_ids?.length ?? 0} reward products selected

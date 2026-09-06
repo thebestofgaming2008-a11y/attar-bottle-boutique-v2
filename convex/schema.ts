@@ -2,6 +2,8 @@ import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { homepageLayout } from "./homepageModel";
+import { bundleKind, bundleItem, bundleContent } from "./bundles";
+import { pricingSnapshot } from "./promotionModel";
 
 const optionalString = v.optional(v.union(v.string(), v.null()));
 const optionalNumber = v.optional(v.union(v.number(), v.null()));
@@ -49,6 +51,8 @@ export default defineSchema({
     .index("by_user_id", ["user_id"])
     .index("by_user_product", ["user_id", "product_id"]),
   products: defineTable({
+    bundle_kind: v.optional(bundleKind),
+    bundle_items: v.optional(v.array(bundleItem)),
     name: v.string(),
     slug: optionalString,
     product_type: optionalString,
@@ -130,6 +134,7 @@ export default defineSchema({
     .index("by_category", ["category"])
     .index("by_active", ["is_active"]),
   orders: defineTable({
+    pricing_snapshot: v.optional(pricingSnapshot),
     order_number: v.string(),
     user_id: optionalString,
     customer_email: optionalString,
@@ -185,6 +190,8 @@ export default defineSchema({
     .index("by_payment_id", ["payment_id"])
     .index("by_created_at", ["created_at"]),
   checkout_intents: defineTable({
+    pricing_snapshot: v.optional(pricingSnapshot),
+    coupon_code: optionalString,
     gift_selections: v.optional(
       v.array(
         v.object({
@@ -226,6 +233,7 @@ export default defineSchema({
     .index("by_event_id", ["event_id"])
     .index("by_created_at", ["created_at"]),
   order_items: defineTable({
+    bundle_contents: v.optional(v.array(bundleContent)),
     is_gift: optionalBoolean,
     gift_campaign_id: v.optional(v.union(v.id("gift_campaigns"), v.null())),
     gift_campaign_name: optionalString,
@@ -300,6 +308,8 @@ export default defineSchema({
     .index("by_sort_order", ["sort_order"])
     .index("by_archived_at", ["archived_at"]),
   discounts: defineTable({
+    minimum_subtotal_inr: optionalNumber,
+    label: optionalString,
     code: v.string(),
     type: v.string(),
     value: v.number(),
@@ -314,6 +324,7 @@ export default defineSchema({
     updated_at: v.string(),
   })
     .index("by_code", ["code"])
+    .index("by_scope", ["scope_type"])
     .index("by_active", ["active"]),
   shipping_rates: defineTable({
     carrier: v.string(),

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { type Product } from "@/lib/products";
 import { useCart } from "./CartContext";
+import { bundleSummary } from "./BundleContents";
 
 export function ProductCard({
   product,
@@ -63,7 +64,19 @@ export function ProductCard({
         <button
           type="button"
           disabled={product.inStock === false}
-          onClick={() => cart.add(product.id)}
+          onClick={() =>
+            cart.addProduct({
+              productId: product.backendId,
+              slug: product.id,
+              name: product.name,
+              image: product.image,
+              price: product.price,
+              mrp: product.mrp,
+              selectedSize: product.sizeOptions?.[0] ?? null,
+              selectedColor: product.colorOptions?.[0] ?? null,
+              bundleSummary: bundleSummary(product.bundleContents),
+            })
+          }
           className={`mt-4 min-h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] disabled:cursor-not-allowed disabled:opacity-40 ${
             dark ? "bg-white text-black hover:bg-white/75" : "bg-black text-white hover:bg-black/70"
           }`}

@@ -6,6 +6,21 @@ if (!convexUrl) throw new Error("Missing VITE_CONVEX_URL.");
 const convex = new ConvexHttpClient(convexUrl);
 
 export interface Product {
+  bundle_kind?: "single" | "combo" | "pack";
+  bundle_items?: Array<{
+    product_id: string;
+    quantity: number;
+    selected_color?: string;
+    selected_size?: string;
+  }>;
+  bundle_contents?: Array<{
+    product_id: string;
+    quantity: number;
+    name: string;
+    selected_color?: string;
+    selected_size?: string;
+  }>;
+  bundle_error?: string;
   id: string;
   name: string;
   slug: string | null;

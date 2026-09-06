@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useCart, type CartLine } from "./CartContext";
 import { GiftChoicePicker } from "./GiftChoicePicker";
+import { usePromotionQuote } from "./PromotionOffers";
 
 class GiftBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
@@ -30,6 +31,7 @@ function OfferRows({
   reservation?: { orderId: string; attemptId: string } | null;
 }) {
   const { giftSelections, setGiftSelections } = useCart();
+  const pricing = usePromotionQuote();
   const [now, setNow] = useState(() => Date.now());
   const result = useQuery(
     api.gifts.evaluateStorefront,
@@ -40,6 +42,7 @@ function OfferRows({
             quantity: line.qty,
           })),
           evaluation_time: now,
+          has_discount: Boolean(pricing?.snapshot?.coupon_id),
           selections: giftSelections.filter((s) => s.product_id),
         }
       : "skip",

@@ -11,6 +11,7 @@
 import type * as addresses from "../addresses.js";
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as bundles from "../bundles.js";
 import type * as crons from "../crons.js";
 import type * as gifts from "../gifts.js";
 import type * as homepage from "../homepage.js";
@@ -21,6 +22,8 @@ import type * as lib from "../lib.js";
 import type * as media from "../media.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
+import type * as promotionModel from "../promotionModel.js";
+import type * as promotions from "../promotions.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as shipping from "../shipping.js";
@@ -37,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   addresses: typeof addresses;
   admin: typeof admin;
   auth: typeof auth;
+  bundles: typeof bundles;
   crons: typeof crons;
   gifts: typeof gifts;
   homepage: typeof homepage;
@@ -47,6 +51,8 @@ declare const fullApi: ApiFromModules<{
   media: typeof media;
   orders: typeof orders;
   products: typeof products;
+  promotionModel: typeof promotionModel;
+  promotions: typeof promotions;
   reviews: typeof reviews;
   seed: typeof seed;
   shipping: typeof shipping;

@@ -1,4 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { AnnouncementBanner } from "./AnnouncementBanner";
 import { Menu, ShoppingBag, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SearchSelect } from "@/components/ui/search-select";
@@ -24,6 +27,8 @@ const CURRENCY_NAMES: Record<string, string> = {
 };
 
 export function StoreShell({ children }: { children: ReactNode }) {
+  const offers = useQuery(api.promotions.publicConfig);
+  const hasBanner = Boolean(offers?.banner_active && offers.banner_messages.length);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -89,7 +94,17 @@ export function StoreShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div ref={rootRef} className="store-motion min-h-screen bg-background text-foreground">
+    <div
+      ref={rootRef}
+      className="store-motion min-h-screen bg-background text-foreground"
+      style={
+        {
+          "--announcement-height": hasBanner ? "36px" : "0px",
+          paddingTop: hasBanner ? 36 : 0,
+        } as React.CSSProperties
+      }
+    >
+      <AnnouncementBanner />
       <SiteHeader />
       <div className="page-enter">{children}</div>
       <CartDrawer />
@@ -139,6 +154,7 @@ function SiteHeader() {
   return (
     <>
       <header
+        style={{ marginTop: "var(--announcement-height, 0px)" }}
         data-scrolled={scrolled || undefined}
         className={`pointer-events-none fixed inset-x-0 z-50 grid grid-cols-[1fr_auto_1fr] items-center px-4 text-white mix-blend-difference transition-[top,padding] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:px-6 ${
           scrolled ? "top-2" : "top-4 sm:top-6"

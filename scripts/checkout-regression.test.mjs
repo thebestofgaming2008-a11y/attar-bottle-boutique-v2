@@ -142,6 +142,23 @@ const giftLib = compileModule(
     "@convex-dev/auth/server": { getAuthUserId: async (ctx) => ctx.userId ?? null },
   },
 );
+const bundles = compileModule("../convex/bundles.ts", {}, { "convex/values": { v: validators } });
+const promotionModel = compileModule(
+  "../convex/promotionModel.ts",
+  {},
+  { "convex/values": { v: validators } },
+);
+const promotions = compileModule(
+  "../convex/promotions.ts",
+  {},
+  {
+    "convex/values": { v: validators },
+    "./_generated/server": { query: register, mutation: register },
+    "./lib": giftLib,
+    "./bundles": bundles,
+    "./promotionModel": promotionModel,
+  },
+);
 const gifts = compileModule(
   "../convex/gifts.ts",
   {},
@@ -149,6 +166,7 @@ const gifts = compileModule(
     "convex/values": { v: validators, ConvexError },
     "./_generated/server": { query: register, mutation: register },
     "./lib": giftLib,
+    "./bundles": bundles,
   },
 );
 const backend = compileModule(
@@ -191,6 +209,9 @@ const backend = compileModule(
     },
     "./lib": { nowIso: () => new Date().toISOString(), publicOrder: (order) => order },
     "./gifts": gifts,
+    "./bundles": bundles,
+    "./promotions": promotions,
+    "./promotionModel": promotionModel,
     "./shipping": {
       checkoutShippingForCountry: () => ({
         countryType: "india",

@@ -5,8 +5,10 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { PRODUCTS } from "@/lib/products";
 import { useCart } from "./CartContext";
 import { GiftOffers } from "./GiftOffers";
+import { PromotionOffers, usePromotionQuote } from "./PromotionOffers";
 
 export function CartDrawer() {
+  const quote = usePromotionQuote();
   const { open, setOpen, lines, subtotal, setQty, add } = useCart();
   const { format } = useCurrency();
   const onClose = () => setOpen(false);
@@ -57,6 +59,7 @@ export function CartDrawer() {
         </header>
 
         <div className="no-scrollbar flex-1 overflow-y-auto px-5">
+          {open && lines.length > 0 ? <PromotionOffers /> : null}
           {lines.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-sm text-muted-foreground">Your cart is empty.</p>
@@ -87,7 +90,15 @@ export function CartDrawer() {
                     <p className="truncate text-sm font-semibold uppercase tracking-wide">
                       {line.name}
                     </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">6 ml roll-on</p>
+                    {line.bundleSummary ? (
+                      <p className="mt-1 text-xs leading-5 text-foreground/65">
+                        Per pack: {line.bundleSummary}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {line.selectedSize || "Attar"}
+                      </p>
+                    )}
                     <div className="mt-2 inline-flex items-center border border-border">
                       <button
                         aria-label={`Decrease ${line.name}`}
@@ -149,8 +160,8 @@ export function CartDrawer() {
         {lines.length > 0 ? (
           <footer className="border-t border-border bg-secondary px-5 pb-6 pt-5">
             <div className="flex items-center justify-between text-sm">
-              <span className="uppercase tracking-widest">Subtotal</span>
-              <span className="text-lg font-semibold">{format(subtotal)}</span>
+              <span className="uppercase tracking-widest">Product total</span>
+              <span className="text-lg font-semibold">{format(quote?.total ?? subtotal)}</span>
             </div>
             <Link
               to="/checkout"

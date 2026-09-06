@@ -116,6 +116,13 @@ export async function testGiftCampaign(
 }
 
 export interface ProductInput {
+  bundle_kind?: "single" | "combo" | "pack";
+  bundle_items?: Array<{
+    product_id: string;
+    quantity: number;
+    selected_color?: string;
+    selected_size?: string;
+  }>;
   name: string;
   slug?: string | null;
   product_type?: string | null;
@@ -195,6 +202,10 @@ function slugify(s: string): string {
 export async function createProduct(input: ProductInput): Promise<Product | null> {
   const payload = {
     ...input,
+    bundle_items: input.bundle_items?.map((item) => ({
+      ...item,
+      product_id: item.product_id as Id<"products">,
+    })),
     slug: input.slug || slugify(input.name) || null,
     price: input.price ?? input.price_inr,
   };
@@ -512,6 +523,8 @@ export interface AdminOrder {
   status: string | null;
   payment_status: string | null;
   refund_amount_inr?: number | null;
+  discount?: number | null;
+  pricing_snapshot?: { label: string; coupon_code?: string };
   refund_status?: string | null;
   refund_id?: string | null;
   refund_requested_at?: string | null;
@@ -537,6 +550,7 @@ export interface AdminOrder {
   created_at: string | null;
   items?: Array<{
     is_gift?: boolean | null;
+    bundle_contents?: import("@/components/store/BundleContents").BundlePart[];
     gift_campaign_name?: string | null;
     id: string;
     product_id?: string | null;

@@ -87,6 +87,8 @@ export function publicProductCard(doc: Record<string, any>): Record<string, any>
 
   return {
     id: product.id,
+    bundle_kind: product.bundle_kind ?? "single",
+    bundle_contents: product.bundle_contents ?? [],
     name: product.name ?? null,
     slug: product.slug ?? null,
     product_type: product.product_type ?? null,

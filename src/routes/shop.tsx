@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { bundleSummary } from "@/components/store/BundleContents";
+import { BundleBuilder } from "@/components/store/BundleBuilder";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
@@ -150,6 +152,7 @@ function ShopPage() {
       <main className="min-h-screen bg-white px-3 pb-24 pt-14 sm:px-6 sm:pt-20">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-center font-display text-3xl sm:text-5xl">Shop the collection</h1>
+          <BundleBuilder />
           <div className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
             <label className="flex h-12 items-center gap-3 border border-foreground/20 bg-background px-4">
               <Search className="h-4 w-4" />
@@ -220,10 +223,12 @@ function ShopPage() {
                             productId: product.id,
                             slug,
                             name: product.name,
+                            bundleSummary: bundleSummary(product.bundle_contents),
                             image: displayImage,
                             price,
                             mrp: product.price_inr,
                             selectedSize: product.size_options?.[0] || null,
+                            selectedColor: product.color_options?.[0] || null,
                           })
                         }
                         className="mt-4 min-h-10 bg-black px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-black/70 disabled:cursor-not-allowed disabled:opacity-40"

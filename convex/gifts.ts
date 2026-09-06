@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { isBundle, resolveBundle, inventoryParts } from "./bundles";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { nowIso, requireAdmin, writeAuditLog } from "./lib";
@@ -295,6 +296,8 @@ async function validatedValues(
     : [];
   const gift = args.gift_product_id ? await ctx.db.get(args.gift_product_id) : null;
   if (!choiceMode && !gift) throw new ConvexError("Choose a valid gift product.");
+  if (!choiceMode && isBundle(gift))
+    throw new ConvexError("Choose an individual attar as a free gift, not a combo or pack.");
   if (
     choiceMode &&
     args.active &&
@@ -437,7 +440,9 @@ async function rewardProducts(
         );
   if (products.length > 200)
     throw new ConvexError("Choose specific reward products for catalogues over 200 products.");
-  return products.filter((p): p is Doc<"products"> => Boolean(p && p.is_active !== false));
+  return products.filter((p): p is Doc<"products"> =>
+    Boolean(p && p.is_active !== false && !isBundle(p)),
+  );
 }
 
 export async function evaluateGiftCampaigns(
@@ -503,10 +508,24 @@ export async function evaluateGiftCampaigns(
     const productId = ctx.db.normalizeId("products", cleanText(line.productId, 200));
     if (!productId) continue;
     const key = String(productId);
-    purchasedQuantity.set(
-      key,
-      (purchasedQuantity.get(key) ?? 0) + Math.min(99, Math.max(0, Math.floor(line.qty))),
-    );
+    const paidProduct = await ctx.db.get(productId);
+    if (paidProduct) {
+      let contents = [];
+      try {
+        contents = (await resolveBundle(ctx, paidProduct)).contents;
+      } catch {
+        continue;
+      }
+      for (const part of inventoryParts({
+        productId: key,
+        qty: Math.min(99, Math.max(0, Math.floor(line.qty))),
+        bundleContents: contents,
+      }))
+        purchasedQuantity.set(
+          String(part.productId),
+          (purchasedQuantity.get(String(part.productId)) ?? 0) + part.qty,
+        );
+    }
     if (!productMap.has(key)) {
       const product = await ctx.db.get(productId);
       if (product && product.is_active !== false && product.in_stock !== false)

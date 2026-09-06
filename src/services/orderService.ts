@@ -34,11 +34,13 @@ export interface CheckoutCustomer {
 export async function internationalGiftRequest(
   cart: CheckoutCartLine[],
   selections: GiftSelection[] = [],
+  hasDiscount = false,
 ) {
   const offers = await checkoutDeadline(
     convex.query(api.gifts.evaluateCart, {
       cart: cart.map((line) => ({ product_id: line.productId, quantity: line.qty })),
       evaluation_time: Date.now(),
+      has_discount: hasDiscount,
       selections: selections.filter((s) => s.product_id),
     }),
     "Could not check gift availability. Please try again.",
@@ -65,6 +67,7 @@ export const shippingRate = (
 ) => checkoutShippingForCountry(country).amount;
 
 export async function createRazorpayCheckoutOrder(args: {
+  coupon?: string;
   giftSelections?: GiftSelection[];
   cart: CheckoutCartLine[];
   customer: CheckoutCustomer;
@@ -92,6 +95,7 @@ export async function cancelRazorpayCheckout(razorpayOrderId: string, checkoutAt
 }
 
 export interface RazorpayVerificationArgs {
+  coupon?: string;
   cart: CheckoutCartLine[];
   customer: CheckoutCustomer;
   subtotal: number;
