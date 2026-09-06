@@ -3,17 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { checkoutDeadline } from "@/lib/checkoutDeadline";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ChevronDown,
-  Loader2,
-  LockKeyhole,
-  MessageCircle,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, MessageCircle } from "lucide-react";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { useCart } from "@/components/store/CartContext";
 import { GiftOffers } from "@/components/store/GiftOffers";
+import { CheckoutOrderSummary } from "@/components/store/CheckoutOrderSummary";
 import { PromotionOffers, usePromotionQuote } from "@/components/store/PromotionOffers";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { listActiveProducts } from "@/services/productService";
@@ -207,8 +201,6 @@ function CheckoutPage() {
     postal_code: "",
   });
   const [busy, setBusy] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(false);
-  const summaryExpanded = summaryOpen || Boolean(pricing?.error);
   const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null);
   const [failureReference, setFailureReference] = useState("");
   const completingRef = useRef(false);
@@ -843,96 +835,76 @@ function CheckoutPage() {
               </button>
             </form>
 
-            <aside className="checkout-summary order-first min-w-0 border-y border-foreground/15 py-5 text-foreground lg:sticky lg:top-28 lg:order-last lg:border-0 lg:bg-secondary/40 lg:p-8">
-              <button
-                type="button"
-                aria-expanded={summaryExpanded}
-                aria-controls="checkout-order-summary"
-                onClick={() => setSummaryOpen(!summaryOpen)}
-                className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm lg:hidden"
-              >
-                <span className="flex items-center gap-2">
-                  Order summary & discount code
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 transition-transform ${summaryExpanded ? "rotate-180" : ""}`}
-                  />
-                </span>
-                <span className="shrink-0 font-semibold">{totalLabel}</span>
-              </button>
-              <div
-                id="checkout-order-summary"
-                className={`${summaryExpanded ? "block" : "hidden"} pt-6 lg:block lg:pt-0`}
-              >
-                <h2 className="text-lg font-semibold">Your order</h2>
-                <PromotionOffers variant="progress" />
-                <ul className="mt-6 space-y-5">
-                  {cart.lines.map((line) => (
-                    <li
-                      key={line.id}
-                      className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 py-2"
-                    >
-                      <img
-                        src={line.image}
-                        alt=""
-                        className="h-20 w-16 bg-white object-contain"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{line.name}</p>
-                        {line.bundleSummary ? (
-                          <p className="mt-2 text-xs leading-5 text-foreground/65">
-                            Per pack: {line.bundleSummary}
-                          </p>
-                        ) : null}
-                        <p className="mt-2 text-xs text-foreground/60">
-                          Qty {line.qty} · {line.selectedSize || "Standard"}
+            <CheckoutOrderSummary total={totalLabel} error={pricing?.error} busy={busy}>
+              <PromotionOffers variant="progress" />
+              <ul className="mt-6 space-y-5">
+                {cart.lines.map((line) => (
+                  <li
+                    key={line.id}
+                    className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 py-2"
+                  >
+                    <img
+                      src={line.image}
+                      alt=""
+                      className="h-20 w-16 bg-white object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{line.name}</p>
+                      {line.bundleSummary ? (
+                        <p className="mt-2 text-xs leading-5 text-foreground/65">
+                          Per pack: {line.bundleSummary}
                         </p>
-                      </div>
-                      <p className="text-sm">
-                        {isIndia || rateSource === "fallback"
-                          ? inr(line.price * line.qty)
-                          : format(line.price * line.qty)}
+                      ) : null}
+                      <p className="mt-2 text-xs text-foreground/60">
+                        Qty {line.qty} · {line.selectedSize || "Standard"}
                       </p>
-                    </li>
-                  ))}
-                </ul>
-                <GiftOffers
-                  lines={cart.lines}
-                  international={!isIndia}
-                  reservation={pendingPayment}
-                />
-                <PromotionOffers variant="coupon" disabled={busy || Boolean(pendingPayment)} />
-                <div className="mt-8 border-t border-foreground/15 pt-6">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span>
-                      {isIndia
-                        ? inr(pricing?.subtotal ?? cart.subtotal)
-                        : format(pricing?.subtotal ?? cart.subtotal)}
-                    </span>
-                  </div>
-                  {pricing && pricing.discount > 0 ? (
-                    <div className="mt-3 flex justify-between gap-3 text-sm">
-                      <span>{pricing.snapshot.label}</span>
-                      <span>−{isIndia ? inr(pricing.discount) : format(pricing.discount)}</span>
                     </div>
-                  ) : null}
-                  <div className="mt-4 flex justify-between gap-4 text-sm text-foreground/65">
-                    <span>Shipping</span>
-                    <span>{isIndia ? "Included" : "Confirmed on WhatsApp"}</span>
+                    <p className="text-sm">
+                      {isIndia || rateSource === "fallback"
+                        ? inr(line.price * line.qty)
+                        : format(line.price * line.qty)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <GiftOffers
+                lines={cart.lines}
+                international={!isIndia}
+                reservation={pendingPayment}
+              />
+              <PromotionOffers variant="coupon" disabled={busy || Boolean(pendingPayment)} />
+              <div className="mt-8 border-t border-foreground/15 pt-6">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>
+                    {isIndia
+                      ? inr(pricing?.subtotal ?? cart.subtotal)
+                      : format(pricing?.subtotal ?? cart.subtotal)}
+                  </span>
+                </div>
+                {pricing && pricing.discount > 0 ? (
+                  <div className="mt-3 flex justify-between gap-3 text-sm">
+                    <span>{pricing.snapshot.label}</span>
+                    <span>−{isIndia ? inr(pricing.discount) : format(pricing.discount)}</span>
                   </div>
-                  <div className="mt-6 flex justify-between border-t border-foreground/15 pt-6 text-xl font-semibold">
-                    <span>Total</span>
-                    <span>{totalLabel}</span>
-                  </div>
+                ) : null}
+                <div className="mt-4 flex justify-between gap-4 text-sm text-foreground/65">
+                  <span>Shipping</span>
+                  <span>{isIndia ? "Included" : "Confirmed on WhatsApp"}</span>
+                </div>
+                <div className="mt-6 flex justify-between border-t border-foreground/15 pt-6 text-xl font-semibold">
+                  <span>Total</span>
+                  <span>{totalLabel}</span>
                 </div>
               </div>
-            </aside>
+            </CheckoutOrderSummary>
           </div>
         </div>
       </main>
       <SiteFooter />
+      <div aria-hidden="true" className="h-[calc(5rem+env(safe-area-inset-bottom))] lg:hidden" />
     </StoreShell>
   );
 }
