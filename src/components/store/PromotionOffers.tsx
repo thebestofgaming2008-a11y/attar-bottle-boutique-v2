@@ -1,6 +1,5 @@
 import { Component, useEffect, useId, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { Link } from "@tanstack/react-router";
 import { api } from "../../../convex/_generated/api";
 import { useCart } from "./CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -35,36 +34,48 @@ class OfferBoundary extends Component<{ children: ReactNode }, { failed: boolean
     );
   }
 }
-export function PromotionOffers({ disabled = false }: { disabled?: boolean }) {
+export function PromotionOffers({
+  disabled = false,
+  variant = "all",
+}: {
+  disabled?: boolean;
+  variant?: "all" | "progress" | "coupon";
+}) {
   return (
     <OfferBoundary>
-      <OfferContent disabled={disabled} />
+      <OfferContent disabled={disabled} variant={variant} />
     </OfferBoundary>
   );
 }
-function OfferContent({ disabled }: { disabled: boolean }) {
+function OfferContent({
+  disabled,
+  variant,
+}: {
+  disabled: boolean;
+  variant: "all" | "progress" | "coupon";
+}) {
   const inputId = useId();
   const config = useQuery(api.promotions.publicConfig);
   const quote = usePromotionQuote();
   const cart = useCart();
   const [input, setInput] = useState(cart.coupon);
   useEffect(() => setInput(cart.coupon), [cart.coupon]);
-  const { format, detectedCountry } = useCurrency();
+  const { format } = useCurrency();
   const tiers = config?.active ? config.tiers : [];
   const count = quote?.eligibleQuantity ?? 0;
   const next = tiers.find((t) => t.quantity > count);
+  if (variant === "progress" && !tiers.length) return null;
   return (
     <section
-      aria-label="Bundle savings and coupon"
-      className="my-4 space-y-4 border border-current/20 p-4 text-sm"
+      aria-label={variant === "progress" ? "Bundle savings" : "Discount code"}
+      className="my-6 space-y-5 text-sm"
     >
-      {tiers.length ? (
+      {variant !== "coupon" && tiers.length ? (
         <div>
-          <p className="font-semibold">Mix fragrances. Unlock savings.</p>
-          <p className="mt-2 text-xs leading-5">
+          <p className="text-sm leading-6">
             {next
-              ? `Add ${next.quantity - count} more eligible attar${next.quantity - count === 1 ? "" : "s"} to reach ${tierLabel(next)}.`
-              : "You’ve reached the highest quantity tier."}
+              ? `Add ${next.quantity - count} more for ${next.type === "percent" ? `${next.value}%` : `up to ₹${next.value}`} off.`
+              : `Bundle complete${quote?.discount ? ` · You save ${format(quote.discount)}` : ""}.`}
           </p>
           <div
             className="my-3 h-1.5 overflow-hidden bg-current/15"
@@ -89,94 +100,70 @@ function OfferContent({ disabled }: { disabled: boolean }) {
               </span>
             ))}
           </div>
-          <Link
-            to="/shop"
-            className="mt-3 inline-block underline underline-offset-4"
-            onClick={() => cart.setOpen(false)}
-          >
-            Choose more fragrances
-          </Link>
         </div>
       ) : null}
-      {detectedCountry === "IN" ? (
-        <p className="text-xs">Delivery included in India—even for one attar.</p>
-      ) : (
-        <p className="text-xs">
-          Delivery included in India. International shipping confirmed on WhatsApp.
-        </p>
-      )}
-      <div>
-        <label className="mb-2 block text-xs font-semibold" htmlFor={inputId}>
-          Have a coupon?
-        </label>
-        <div className="flex gap-2">
-          <input
-            id={inputId}
-            value={input}
-            maxLength={32}
-            disabled={disabled}
-            autoCapitalize="characters"
-            autoComplete="off"
-            placeholder="Coupon code"
-            className="min-w-0 flex-1 border border-current/30 bg-transparent px-3 py-3 text-sm"
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                cart.setCoupon(input.trim().toUpperCase());
-              }
-            }}
-          />
-          <button
-            type="button"
-            disabled={disabled || !input.trim()}
-            className="border border-current px-4 font-semibold disabled:opacity-40"
-            onClick={() => cart.setCoupon(input.trim().toUpperCase())}
-          >
-            Apply
-          </button>
-        </div>
-        {cart.coupon ? (
-          <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-            <span>{cart.coupon}</span>
+      {variant !== "progress" ? (
+        <div>
+          <label className="sr-only" htmlFor={inputId}>
+            Discount code
+          </label>
+          <div className="flex gap-2">
+            <input
+              id={inputId}
+              value={input}
+              maxLength={32}
+              disabled={disabled}
+              autoCapitalize="characters"
+              autoComplete="off"
+              placeholder="Discount code"
+              className="h-12 min-w-0 flex-1 border border-current/25 bg-transparent px-3 text-base outline-none focus:border-current"
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  cart.setCoupon(input.trim().toUpperCase());
+                }
+              }}
+            />
             <button
               type="button"
-              disabled={disabled}
-              className="underline"
-              onClick={() => {
-                cart.setCoupon("");
-                setInput("");
-              }}
+              disabled={disabled || !input.trim()}
+              className="min-h-12 border border-current/25 px-5 text-sm font-medium disabled:opacity-40"
+              onClick={() => cart.setCoupon(input.trim().toUpperCase())}
             >
-              Remove code
+              Apply
             </button>
           </div>
-        ) : null}
-        {quote?.error ? (
-          <p role="alert" className="mt-2 text-xs leading-5">
-            {quote.error} Remove or correct the code before paying.
-          </p>
-        ) : quote?.couponMessage ? (
-          <p role="status" className="mt-2 text-xs leading-5">
-            {quote.couponMessage}
-          </p>
-        ) : null}
-      </div>
-      {quote && quote.discount > 0 ? (
-        <p className="font-semibold">
-          {quote.snapshot.label}: save {format(quote.discount)}
-        </p>
+          {cart.coupon ? (
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+              <span className="font-medium">{cart.coupon}</span>
+              <button
+                type="button"
+                disabled={disabled}
+                className="underline"
+                onClick={() => {
+                  cart.setCoupon("");
+                  setInput("");
+                }}
+              >
+                Remove code
+              </button>
+            </div>
+          ) : null}
+          {quote?.error ? (
+            <p role="alert" className="mt-2 text-xs leading-5">
+              {quote.error}
+            </p>
+          ) : quote?.couponMessage ? (
+            <p role="status" className="mt-2 text-xs leading-5">
+              {quote.couponMessage}
+            </p>
+          ) : null}
+          {disabled ? (
+            <p className="mt-2 text-xs opacity-70">Code locked while payment is pending.</p>
+          ) : null}
+        </div>
       ) : null}
-      {disabled ? (
-        <p className="text-xs">
-          An existing payment keeps its reserved price and offer. Finish or cancel it before
-          changing the coupon.
-        </p>
-      ) : (
-        <p className="text-xs opacity-70">
-          Best available discount applied. Coupon and quantity savings do not stack.
-        </p>
-      )}
     </section>
   );
 }

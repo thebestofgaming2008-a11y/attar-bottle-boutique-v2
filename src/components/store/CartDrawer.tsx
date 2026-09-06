@@ -59,7 +59,7 @@ export function CartDrawer() {
         </header>
 
         <div className="no-scrollbar flex-1 overflow-y-auto px-5">
-          {open && lines.length > 0 ? <PromotionOffers /> : null}
+          {open && lines.length > 0 ? <PromotionOffers variant="progress" /> : null}
           {lines.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-sm text-muted-foreground">Your cart is empty.</p>
@@ -126,6 +126,7 @@ export function CartDrawer() {
           )}
 
           {open && lines.length > 0 && <GiftOffers lines={lines} />}
+          {open && lines.length > 0 ? <PromotionOffers variant="coupon" /> : null}
           {lines.length > 0 && suggestions.length > 0 ? (
             <div className="border-t border-border py-6">
               <p className="eyebrow">You may also like</p>
@@ -159,6 +160,12 @@ export function CartDrawer() {
 
         {lines.length > 0 ? (
           <footer className="border-t border-border bg-secondary px-5 pb-6 pt-5">
+            {quote && quote.discount > 0 ? (
+              <div className="mb-3 flex justify-between text-sm">
+                <span>Savings</span>
+                <span>−{format(quote.discount)}</span>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between text-sm">
               <span className="uppercase tracking-widest">Product total</span>
               <span className="text-lg font-semibold">{format(quote?.total ?? subtotal)}</span>

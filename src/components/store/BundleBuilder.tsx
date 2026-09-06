@@ -91,15 +91,15 @@ export function BundleBuilder({ initialProductId }: { initialProductId?: string 
     setOpen(false);
   };
   return (
-    <section className="my-6 border border-current/20 p-4 text-sm">
-      <h3 className="font-semibold">Build your own bundle</h3>
-      <p className="mt-2 leading-6">
-        Mix your favourites. {config.tiers.map(tierLabel).join(" · ")}
-      </p>
+    <section className="my-8 flex flex-wrap items-center justify-between gap-5 border-y border-current/15 py-6 text-sm">
+      <div>
+        <h3 className="font-semibold">Build your own bundle</h3>
+        <p className="mt-2 text-xs leading-6 text-current/65">{tierLabel(config.tiers[0])}</p>
+      </div>
       <button
         type="button"
         onClick={() => void begin()}
-        className="mt-4 min-h-11 bg-black px-5 font-semibold text-white"
+        className="min-h-12 border border-current px-6 text-xs font-semibold uppercase tracking-wider"
       >
         Choose fragrances
       </button>
@@ -108,8 +108,7 @@ export function BundleBuilder({ initialProductId }: { initialProductId?: string 
           <DialogHeader>
             <DialogTitle>Make it yours</DialogTitle>
             <DialogDescription>
-              Choose your attars. Savings apply automatically to your full cart. Free gifts are
-              chosen in the cart when eligible.
+              Choose your fragrances. Savings apply automatically.
             </DialogDescription>
           </DialogHeader>
           {loading ? (

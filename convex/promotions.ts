@@ -36,10 +36,29 @@ export const adminConfig = query({
   },
 });
 export const saveConfig = mutation({
-  args: { config: promotionConfig, publish: v.boolean() },
+  args: {
+    config: promotionConfig,
+    publish: v.boolean(),
+    section: v.optional(v.union(v.literal("bundles"), v.literal("announcement"))),
+  },
   returns: v.null(),
-  handler: async (ctx, { config, publish }) => {
+  handler: async (ctx, { config: input, publish, section }) => {
     await requireAdmin(ctx);
+    const row = await ctx.db
+      .query("store_settings")
+      .withIndex("by_key", (q) => q.eq("key", KEY))
+      .unique();
+    const currentDraft: Infer<typeof promotionConfig> = row?.value?.draft ?? emptyPromotions;
+    const currentLive: Infer<typeof promotionConfig> = row?.value?.published ?? emptyPromotions;
+    // Scope both draft saves and publication. An unrelated unfinished draft must
+    // never be published (or overwritten) from another editor.
+    const sectionFields =
+      section === "announcement"
+        ? { banner_active: input.banner_active, banner_messages: input.banner_messages }
+        : section === "bundles"
+          ? { active: input.active, tiers: input.tiers, product_ids: input.product_ids }
+          : input;
+    const config = { ...currentDraft, ...sectionFields };
     if (
       config.tiers.length > 8 ||
       config.product_ids.length > 100 ||
@@ -47,16 +66,16 @@ export const saveConfig = mutation({
     )
       throw new Error("Use at most eight tiers, 100 eligible products and six banner messages.");
     const tiers = [...config.tiers].sort((a, b) => a.quantity - b.quantity);
-    for (const tier of tiers) {
+    for (const tier of section === "announcement" ? [] : tiers) {
       if (!Number.isInteger(tier.quantity) || tier.quantity < 2 || tier.quantity > 99)
         throw new Error("Tier quantity must be a whole number from 2 to 99.");
       validateDiscount(tier.type, tier.value);
     }
-    if (new Set(tiers.map((t) => t.quantity)).size !== tiers.length)
+    if (section !== "announcement" && new Set(tiers.map((t) => t.quantity)).size !== tiers.length)
       throw new Error("Each tier needs a different quantity.");
-    if (publish && config.active && !tiers.length)
+    if (section !== "announcement" && publish && config.active && !tiers.length)
       throw new Error("Add a quantity tier before enabling bundle savings.");
-    for (const id of config.product_ids) {
+    for (const id of section === "announcement" ? [] : config.product_ids) {
       const p = await ctx.db.get(id);
       if (!p || isBundle(p))
         throw new Error("Mix-and-match eligibility must use individual attars, not fixed packs.");
@@ -66,7 +85,7 @@ export const saveConfig = mutation({
       .filter(Boolean);
     if (messages.some((m) => m.length > 160))
       throw new Error("Keep each banner message under 160 characters.");
-    if (publish && config.banner_active && !messages.length)
+    if (section !== "bundles" && publish && config.banner_active && !messages.length)
       throw new Error("Add a banner message first.");
     const clean = {
       ...config,
@@ -74,20 +93,22 @@ export const saveConfig = mutation({
       banner_messages: messages,
       product_ids: [...new Set(config.product_ids)],
     };
-    const row = await ctx.db
-      .query("store_settings")
-      .withIndex("by_key", (q) => q.eq("key", KEY))
-      .unique();
+    const publishedFields =
+      section === "announcement"
+        ? { banner_active: clean.banner_active, banner_messages: clean.banner_messages }
+        : section === "bundles"
+          ? { active: clean.active, tiers: clean.tiers, product_ids: clean.product_ids }
+          : clean;
     const value = {
       draft: clean,
-      published: publish ? clean : (row?.value?.published ?? emptyPromotions),
+      published: publish ? { ...currentLive, ...publishedFields } : currentLive,
     };
     if (row) await ctx.db.patch(row._id, { value, updated_at: nowIso() });
     else await ctx.db.insert("store_settings", { key: KEY, value, updated_at: nowIso() });
     await writeAuditLog(ctx, {
       action: publish ? "promotions.publish" : "promotions.draft",
       entityType: "promotions",
-      summary: "Quantity offers and announcement banner",
+      summary: section ?? "Quantity offers and announcement banner",
     });
     return null;
   },

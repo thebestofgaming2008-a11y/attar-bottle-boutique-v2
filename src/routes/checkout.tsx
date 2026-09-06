@@ -3,7 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { checkoutDeadline } from "@/lib/checkoutDeadline";
-import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, MessageCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronDown,
+  Loader2,
+  LockKeyhole,
+  MessageCircle,
+} from "lucide-react";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
 import { useCart } from "@/components/store/CartContext";
 import { GiftOffers } from "@/components/store/GiftOffers";
@@ -200,6 +207,8 @@ function CheckoutPage() {
     postal_code: "",
   });
   const [busy, setBusy] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const summaryExpanded = summaryOpen || Boolean(pricing?.error);
   const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null);
   const [failureReference, setFailureReference] = useState("");
   const completingRef = useRef(false);
@@ -609,7 +618,7 @@ function CheckoutPage() {
 
   return (
     <StoreShell>
-      <main className="min-h-screen bg-[#f5f2ec] px-4 pb-24 pt-28 sm:px-6">
+      <main className="checkout-page min-h-screen bg-background px-5 pb-24 pt-28 sm:px-8 sm:pt-36">
         <div className="mx-auto max-w-6xl">
           <Link
             to="/"
@@ -618,16 +627,12 @@ function CheckoutPage() {
             <ArrowLeft className="h-3.5 w-3.5" /> Continue shopping
           </Link>
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-            <form onSubmit={onSubmit} className="bg-background p-5 shadow-sm sm:p-8">
-              <p className="eyebrow">Secure checkout</p>
-              <h1 className="mt-4 font-display text-4xl sm:text-5xl">Where should we send it?</h1>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                India orders pay securely with Razorpay. International orders continue on WhatsApp
-                so shipping and payment can be confirmed first.
-              </p>
+          <h1 className="mt-8 text-3xl font-semibold tracking-tight">Checkout</h1>
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-16">
+            <form onSubmit={onSubmit} className="min-w-0">
+              <h2 className="text-lg font-semibold">Contact & delivery</h2>
 
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <div className="mt-6 grid gap-x-5 gap-y-6 sm:grid-cols-2">
                 {addresses?.length ? (
                   <SearchSelect
                     label="Saved address"
@@ -675,6 +680,7 @@ function CheckoutPage() {
                 <SearchSelect
                   label="Country"
                   name="country"
+                  className="[&>span]:text-sm [&>span]:font-medium [&>span]:normal-case [&>span]:tracking-normal"
                   value={customer.country}
                   options={COUNTRY_OPTIONS}
                   searchPlaceholder="Type a country or code…"
@@ -726,18 +732,25 @@ function CheckoutPage() {
                       please try again shortly.
                     </p>
                   ) : null}
-                  <div className="mt-6 border border-foreground/15 bg-[#faf8f4] p-3">
+                  <h2 className="mt-10 text-lg font-semibold">Payment</h2>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Secure payment with Razorpay.
+                  </p>
+                  <div className="mt-6">
                     {TURNSTILE_SITE_KEY ? (
                       <div ref={turnstileHostRef} />
                     ) : (
                       <p className="text-sm text-red-800">Checkout security is not configured.</p>
                     )}
                   </div>
-                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                    Paying with UPI? Choose your app in Razorpay, complete approval there, then
-                    return here. If the app does not open, use Show All Options for another
-                    available method. If money was debited, do not pay again.
-                  </p>
+                  <details className="mt-4 text-xs leading-6 text-muted-foreground">
+                    <summary className="cursor-pointer py-2">Paying with UPI?</summary>
+                    <p className="mt-2">
+                      Paying with UPI? Choose your app in Razorpay, complete approval there, then
+                      return here. If the app does not open, use Show All Options for another
+                      available method. If money was debited, do not pay again.
+                    </p>
+                  </details>
                 </>
               ) : null}
 
@@ -830,65 +843,89 @@ function CheckoutPage() {
               </button>
             </form>
 
-            <aside className="bg-foreground p-5 text-background sm:p-7 lg:sticky lg:top-24">
-              <PromotionOffers disabled={busy || Boolean(pendingPayment)} />
-              <p className="eyebrow text-background/50">Your order</p>
-              <ul className="mt-5 divide-y divide-background/15">
-                {cart.lines.map((line) => (
-                  <li key={line.id} className="grid grid-cols-[56px_minmax(0,1fr)_auto] gap-3 py-4">
-                    <img
-                      src={line.image}
-                      alt=""
-                      className="h-14 w-14 bg-white object-contain"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{line.name}</p>
-                      {line.bundleSummary ? (
-                        <p className="mt-2 text-xs leading-5 text-background/75">
-                          Per pack: {line.bundleSummary}
+            <aside className="checkout-summary order-first min-w-0 border-y border-foreground/15 py-5 text-foreground lg:sticky lg:top-28 lg:order-last lg:border-0 lg:bg-secondary/40 lg:p-8">
+              <button
+                type="button"
+                aria-expanded={summaryExpanded}
+                aria-controls="checkout-order-summary"
+                onClick={() => setSummaryOpen(!summaryOpen)}
+                className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm lg:hidden"
+              >
+                <span className="flex items-center gap-2">
+                  Order summary & discount code
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 transition-transform ${summaryExpanded ? "rotate-180" : ""}`}
+                  />
+                </span>
+                <span className="shrink-0 font-semibold">{totalLabel}</span>
+              </button>
+              <div
+                id="checkout-order-summary"
+                className={`${summaryExpanded ? "block" : "hidden"} pt-6 lg:block lg:pt-0`}
+              >
+                <h2 className="text-lg font-semibold">Your order</h2>
+                <PromotionOffers variant="progress" />
+                <ul className="mt-6 space-y-5">
+                  {cart.lines.map((line) => (
+                    <li
+                      key={line.id}
+                      className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 py-2"
+                    >
+                      <img
+                        src={line.image}
+                        alt=""
+                        className="h-20 w-16 bg-white object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{line.name}</p>
+                        {line.bundleSummary ? (
+                          <p className="mt-2 text-xs leading-5 text-foreground/65">
+                            Per pack: {line.bundleSummary}
+                          </p>
+                        ) : null}
+                        <p className="mt-2 text-xs text-foreground/60">
+                          Qty {line.qty} · {line.selectedSize || "Standard"}
                         </p>
-                      ) : null}
-                      <p className="mt-1 text-xs text-background/55">
-                        Qty {line.qty} · {line.selectedSize || "Standard"}
+                      </div>
+                      <p className="text-sm">
+                        {isIndia || rateSource === "fallback"
+                          ? inr(line.price * line.qty)
+                          : format(line.price * line.qty)}
                       </p>
-                    </div>
-                    <p className="text-sm">
-                      {isIndia || rateSource === "fallback"
-                        ? inr(line.price * line.qty)
-                        : format(line.price * line.qty)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              <GiftOffers
-                lines={cart.lines}
-                international={!isIndia}
-                reservation={pendingPayment}
-              />
-              <div className="mt-5 border-t border-background/20 pt-5">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span>
-                    {isIndia
-                      ? inr(pricing?.subtotal ?? cart.subtotal)
-                      : format(pricing?.subtotal ?? cart.subtotal)}
-                  </span>
-                </div>
-                {pricing && pricing.discount > 0 ? (
-                  <div className="mt-3 flex justify-between gap-3 text-sm">
-                    <span>{pricing.snapshot.label}</span>
-                    <span>−{isIndia ? inr(pricing.discount) : format(pricing.discount)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <GiftOffers
+                  lines={cart.lines}
+                  international={!isIndia}
+                  reservation={pendingPayment}
+                />
+                <PromotionOffers variant="coupon" disabled={busy || Boolean(pendingPayment)} />
+                <div className="mt-8 border-t border-foreground/15 pt-6">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal</span>
+                    <span>
+                      {isIndia
+                        ? inr(pricing?.subtotal ?? cart.subtotal)
+                        : format(pricing?.subtotal ?? cart.subtotal)}
+                    </span>
                   </div>
-                ) : null}
-                <div className="mt-3 flex justify-between text-sm text-background/65">
-                  <span>Shipping</span>
-                  <span>{isIndia ? "Included" : "Confirmed on WhatsApp"}</span>
-                </div>
-                <div className="mt-5 flex justify-between border-t border-background/20 pt-5 font-display text-xl">
-                  <span>Total</span>
-                  <span>{totalLabel}</span>
+                  {pricing && pricing.discount > 0 ? (
+                    <div className="mt-3 flex justify-between gap-3 text-sm">
+                      <span>{pricing.snapshot.label}</span>
+                      <span>−{isIndia ? inr(pricing.discount) : format(pricing.discount)}</span>
+                    </div>
+                  ) : null}
+                  <div className="mt-4 flex justify-between gap-4 text-sm text-foreground/65">
+                    <span>Shipping</span>
+                    <span>{isIndia ? "Included" : "Confirmed on WhatsApp"}</span>
+                  </div>
+                  <div className="mt-6 flex justify-between border-t border-foreground/15 pt-6 text-xl font-semibold">
+                    <span>Total</span>
+                    <span>{totalLabel}</span>
+                  </div>
                 </div>
               </div>
             </aside>
@@ -914,14 +951,14 @@ function Field({
   required?: boolean;
 }) {
   return (
-    <label className="grid gap-2 text-xs font-semibold uppercase tracking-[0.13em]">
+    <label className="grid gap-2.5 text-sm font-medium">
       {label}
       <input
         required={required}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 border border-foreground/20 bg-transparent px-3 text-sm font-normal normal-case tracking-normal outline-none transition focus:border-foreground"
+        className="h-13 border border-foreground/25 bg-transparent px-4 text-base font-normal outline-none transition focus:border-foreground"
       />
     </label>
   );

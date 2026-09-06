@@ -162,11 +162,13 @@ function notify({
 const NAV = [
   { key: "dash", label: "Dashboard", Icon: LayoutDashboard },
   { key: "homepage", label: "Homepage", Icon: Store },
+  { key: "announcement", label: "Announcement bar", Icon: MessageSquare },
   { key: "orders", label: "Orders", Icon: ShoppingBag },
   { key: "products", label: "Products", Icon: Package },
   { key: "inventory", label: "Inventory", Icon: Boxes },
   { key: "gifts", label: "Gifts", Icon: Gift },
-  { key: "offers", label: "Offers & coupons", Icon: Tag },
+  { key: "offers", label: "Bundles", Icon: Boxes },
+  { key: "coupons", label: "Coupons", Icon: Tag },
   { key: "categories", label: "Categories", Icon: Tag },
   { key: "shipping", label: "Shipping", Icon: Truck },
   { key: "reviews", label: "Reviews", Icon: MessageSquare },
@@ -1033,9 +1035,15 @@ const Admin = () => {
             {!loading && !adminLoadError && tab === "gifts" && (
               <GiftAdmin products={products} categories={categories} />
             )}
-            {!loading && !adminLoadError && tab === "offers" && (
-              <PromotionsAdmin products={products} />
-            )}
+            {!loading &&
+              !adminLoadError &&
+              (tab === "offers" || tab === "coupons" || tab === "announcement") && (
+                <PromotionsAdmin
+                  key={tab}
+                  products={products}
+                  section={tab === "offers" ? "bundles" : tab}
+                />
+              )}
 
             {!loading && !adminLoadError && tab === "orders" && (
               <Section

@@ -103,11 +103,27 @@ const client: any = {
   },
   async mutation(ref: any, args: any) {
     const name = getFunctionName(ref);
-    if (name === "promotions:saveConfig")
+    if (name === "promotions:saveConfig") {
+      const patch =
+        args.section === "announcement"
+          ? {
+              banner_active: args.config.banner_active,
+              banner_messages: args.config.banner_messages,
+            }
+          : args.section === "bundles"
+            ? {
+                active: args.config.active,
+                tiers: args.config.tiers,
+                product_ids: args.config.product_ids,
+              }
+            : args.config;
       settings = {
-        draft: structuredClone(args.config),
-        published: args.publish ? structuredClone(args.config) : settings.published,
+        draft: { ...settings.draft, ...structuredClone(patch) },
+        published: args.publish
+          ? { ...settings.published, ...structuredClone(patch) }
+          : settings.published,
       };
+    }
     if (name === "promotions:saveCoupon")
       coupons = [
         ...coupons.filter((c) => c.id !== args.id),
@@ -148,8 +164,8 @@ function Fixture() {
         <CartProvider>
           <AnnouncementBanner />
           <main className="mx-auto max-w-4xl px-4 pb-16 pt-14">
-            <nav className="mb-6 flex gap-3">
-              {["admin", "packs", "customer"].map((name) => (
+            <nav className="mb-6 flex flex-wrap gap-3">
+              {["admin", "coupons", "announcement", "packs", "customer"].map((name) => (
                 <button
                   key={name}
                   className="border border-black px-3 py-2"
@@ -159,8 +175,12 @@ function Fixture() {
                 </button>
               ))}
             </nav>
-            {tab === "admin" ? (
-              <PromotionsAdmin products={products} />
+            {tab === "admin" || tab === "coupons" || tab === "announcement" ? (
+              <PromotionsAdmin
+                key={tab}
+                products={products}
+                section={tab === "admin" ? "bundles" : tab}
+              />
             ) : tab === "packs" ? (
               <BundleEditor
                 products={products}

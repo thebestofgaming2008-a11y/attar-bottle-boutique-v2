@@ -12,6 +12,46 @@ const giftDefaults = {
   allow_discount_codes: true,
 };
 afterEach(() => vi.unstubAllEnvs());
+
+test("publishing announcements never publishes or overwrites bundle drafts", async () => {
+  const { admin } = await setup();
+  await admin.mutation(api.promotions.saveConfig, { config, publish: true });
+  const draft = { ...config, tiers: [{ quantity: 3, type: "percent" as const, value: 20 }] };
+  await admin.mutation(api.promotions.saveConfig, {
+    config: draft,
+    publish: false,
+    section: "bundles",
+  });
+  await admin.mutation(api.promotions.saveConfig, {
+    config: { ...config, banner_active: true, banner_messages: ["Delivery included"] },
+    publish: true,
+    section: "announcement",
+  });
+  const stored = await admin.query(api.promotions.adminConfig);
+  expect(stored.published.tiers).toEqual(config.tiers);
+  expect(stored.draft.tiers).toEqual(draft.tiers);
+  expect(stored.published.banner_messages).toEqual(["Delivery included"]);
+});
+
+test("publishing bundles preserves live announcements and unfinished banner drafts", async () => {
+  const { admin } = await setup();
+  const live = { ...config, banner_active: true, banner_messages: ["Live message"] };
+  await admin.mutation(api.promotions.saveConfig, { config: live, publish: true });
+  await admin.mutation(api.promotions.saveConfig, {
+    config: { ...live, banner_messages: ["Unpublished message"] },
+    publish: false,
+    section: "announcement",
+  });
+  await admin.mutation(api.promotions.saveConfig, {
+    config: { ...config, active: false },
+    publish: true,
+    section: "bundles",
+  });
+  const stored = await admin.query(api.promotions.adminConfig);
+  expect(stored.published.active).toBe(false);
+  expect(stored.published.banner_messages).toEqual(["Live message"]);
+  expect(stored.draft.banner_messages).toEqual(["Unpublished message"]);
+});
 const customer = {
   name: "Regression customer",
   email: "regression@example.com",
