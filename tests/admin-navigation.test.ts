@@ -17,7 +17,12 @@ describe("admin destinations", () => {
     expect(grouped.find((item) => item.key === "announcement")?.group).toBe("Storefront");
     expect(grouped.find((item) => item.key === "combos")?.label).toBe("Ready-made packs");
     expect(grouped.find((item) => item.key === "offers")?.label).toBe("Build your own combo");
-    expect(grouped.find((item) => item.key === "offers")?.group).toBe("Commerce");
+    expect(grouped.find((item) => item.key === "offers")?.group).toBe("Offers");
+  });
+
+  it("uses a distinct icon for each destination and only four navigation groups", () => {
+    expect(new Set(ADMIN_NAV.map((item) => item.Icon)).size).toBe(ADMIN_NAV.length);
+    expect(ADMIN_NAV_GROUPS).toHaveLength(4);
   });
 
   it("lists fixed combos and multipacks without mixing in individual attars", () => {

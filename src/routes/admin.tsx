@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BundleEditor } from "@/components/admin/BundleEditor";
 import { PromotionsAdmin } from "@/components/admin/PromotionsAdmin";
+import { AdminNavList, AdminMobileNavigation } from "@/components/admin/AdminNavigation";
+import { AdminDashboardOverview } from "@/components/admin/AdminDashboardOverview";
 import { BundleContents } from "@/components/store/BundleContents";
 import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -98,7 +100,6 @@ import { GiftAdmin } from "@/components/admin/GiftAdmin";
 import { NOINDEX_ROBOTS } from "@/lib/seo";
 import {
   ADMIN_NAV as NAV,
-  ADMIN_NAV_GROUPS as navGroups,
   isComboProduct,
   type AdminTabKey as TabKey,
 } from "@/lib/adminNavigation";
@@ -193,12 +194,6 @@ function normalizeWhatsAppPhone(value: string | null | undefined) {
   return digits.length === 10 ? `91${digits}` : digits;
 }
 
-function deltaText(current: number, previous: number) {
-  const diff = current - previous;
-  if (diff === 0) return "No change";
-  return `${diff > 0 ? "+" : ""}${diff}`;
-}
-
 function dateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -267,7 +262,6 @@ const Admin = () => {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { signIn, signOut } = useAuthActions();
   const [tab, setTab] = useState<TabKey>("dash");
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [dashboardRange, setDashboardRange] = useState<"7d" | "30d" | "90d">("7d");
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -470,56 +464,6 @@ const Admin = () => {
     [orders],
   );
 
-  const stats = useMemo(() => {
-    const paid = orders.filter(
-      (o) => o.payment_status === "paid" || o.payment_status === "MOCKED_PAID",
-    );
-    const revenue = paid.reduce((s, o) => s + (o.total_inr ?? o.total ?? 0), 0);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const isSameDay = (value: string | null, date: Date) => {
-      if (!value) return false;
-      const d = new Date(value);
-      return (
-        d.getFullYear() === date.getFullYear() &&
-        d.getMonth() === date.getMonth() &&
-        d.getDate() === date.getDate()
-      );
-    };
-    const todayOrders = orders.filter((o) => isSameDay(o.created_at, today));
-    const yesterdayOrders = orders.filter((o) => isSameDay(o.created_at, yesterday));
-    const todayCustomers = customers.filter((c) => isSameDay(c.created_at, today)).length;
-    const yesterdayCustomers = customers.filter((c) => isSameDay(c.created_at, yesterday)).length;
-    const aov = paid.length ? revenue / paid.length : 0;
-    return [
-      {
-        label: "Revenue",
-        value: formatPrice(revenue),
-        detail: `${paid.length} paid orders`,
-        Icon: IndianRupee,
-      },
-      {
-        label: "Orders today",
-        value: todayOrders.length.toString(),
-        detail: `${deltaText(todayOrders.length, yesterdayOrders.length)} vs yesterday`,
-        Icon: ShoppingBag,
-      },
-      {
-        label: "Average order",
-        value: formatPrice(aov),
-        detail: "AOV from paid orders",
-        Icon: TrendingUp,
-      },
-      {
-        label: "New customers",
-        value: todayCustomers.toString(),
-        detail: `${deltaText(todayCustomers, yesterdayCustomers)} vs yesterday`,
-        Icon: Users,
-      },
-    ];
-  }, [orders, customers]);
-
   const dashboardDays = dashboardRange === "7d" ? 7 : dashboardRange === "30d" ? 30 : 90;
   const dashboard = useMemo(
     () => buildDashboardAnalytics(orders, customers, dashboardDays),
@@ -539,26 +483,6 @@ const Admin = () => {
   }, [products, orders]);
 
   const pendingReviews = reviews.filter((r) => r.status === "pending").length;
-  const returnsOrCancellations = orders.filter((o) =>
-    ["cancelled", "returned"].includes(normalizeOrderStatus(o.status)),
-  ).length;
-  const shippedTracked = orders.filter(
-    (o) => normalizeOrderStatus(o.status) === "shipped" && Boolean(o.tracking_number),
-  ).length;
-  const deliveredOrders = orders.filter(
-    (o) => normalizeOrderStatus(o.status) === "delivered",
-  ).length;
-  const paidOrders = orders.filter(
-    (o) => o.payment_status === "paid" || o.payment_status === "MOCKED_PAID",
-  );
-  const revenueTotal = paidOrders.reduce(
-    (sum, order) => sum + (order.total_inr ?? order.total ?? 0),
-    0,
-  );
-  const inTransitOrders = orders.filter(
-    (o) => normalizeOrderStatus(o.status) === "shipped" && Boolean(o.tracking_number),
-  ).length;
-  const toActionOrders = processingOrders.length + shippedMissingTracking.length;
   const initials =
     (adminEmail || "BA")
       .split("@")[0]
@@ -573,7 +497,6 @@ const Admin = () => {
     inventory: opsStats.lowStock + opsStats.outOfStock,
     reviews: pendingReviews,
   };
-  const ActiveIcon = activeNav.Icon;
 
   const submitAuth = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -643,42 +566,7 @@ const Admin = () => {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3">
-          {navGroups.map((group) => (
-            <div key={group.label} className="mb-5 last:mb-0">
-              <p className="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[rgb(var(--vibe-muted))]">
-                {group.label}
-              </p>
-              <div className="space-y-0.5">
-                {group.items.map(({ key, label, Icon }) => {
-                  const count = navBadges[key];
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => selectTab(key)}
-                      data-testid={`admin-nav-${key}-button`}
-                      className={cn(
-                        "group flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm font-medium transition-colors",
-                        tab === key
-                          ? "bg-[rgb(var(--vibe-foreground))] text-white"
-                          : "text-[rgb(var(--vibe-muted))] hover:bg-[rgb(var(--vibe-soft))] hover:text-[rgb(var(--vibe-foreground))]",
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate">{label}</span>
-                      {Boolean(count) && (
-                        <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[rgb(var(--vibe-muted))] ring-1 ring-[rgb(var(--vibe-border))]">
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
+        <AdminNavList active={tab} onSelect={selectTab} badges={navBadges} />
 
         <div className="border-t border-[rgb(var(--vibe-border))] p-3">
           <div className="flex items-center gap-2 rounded-lg border border-[rgb(var(--vibe-border))] bg-white p-2">
@@ -696,14 +584,12 @@ const Admin = () => {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-[rgb(var(--vibe-border))] bg-[rgb(var(--vibe-background))]/95 px-4 backdrop-blur md:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              aria-label="Open admin menu"
-              onClick={() => setMobileNavOpen(true)}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-[rgb(var(--vibe-muted))] transition-colors hover:bg-white hover:text-[rgb(var(--vibe-foreground))] md:hidden"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
+            <AdminMobileNavigation
+              active={tab}
+              onSelect={selectTab}
+              badges={navBadges}
+              onSignOut={() => void signOut()}
+            />
             <h1 className="truncate text-xl font-semibold leading-tight sm:text-2xl">
               {activeNav.label}
             </h1>
@@ -732,68 +618,8 @@ const Admin = () => {
           </div>
         </header>
 
-        {mobileNavOpen && (
-          <div className="fixed inset-0 z-50 md:hidden">
-            <button
-              type="button"
-              aria-label="Close admin menu"
-              className="absolute inset-0 bg-black/30"
-              onClick={() => setMobileNavOpen(false)}
-            />
-            <div className="relative flex h-full w-[82vw] max-w-80 flex-col border-r border-[rgb(var(--vibe-border))] bg-white p-4 shadow-xl">
-              <div className="mb-6 flex shrink-0 items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">BADR</p>
-                  <p className="text-xs text-[rgb(var(--vibe-muted))]">Admin workspace</p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close admin menu"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-[rgb(var(--vibe-border))]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <nav
-                className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain"
-                aria-label="Admin navigation"
-              >
-                {navGroups.map((group) => (
-                  <div key={group.label}>
-                    <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[rgb(var(--vibe-muted))]">
-                      {group.label}
-                    </p>
-                    <div className="space-y-1">
-                      {group.items.map(({ key, label, Icon }) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => {
-                            selectTab(key);
-                            setMobileNavOpen(false);
-                          }}
-                          className={cn(
-                            "flex h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium",
-                            tab === key
-                              ? "bg-[rgb(var(--vibe-foreground))] text-white"
-                              : "text-[rgb(var(--vibe-muted))]",
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </nav>
-            </div>
-          </div>
-        )}
-
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-[1400px] space-y-6">
+          <div key={tab} className="admin-tab-enter mx-auto max-w-[1400px] space-y-7">
             {loading && (
               <div className="rounded-xl border border-border bg-background p-8 text-center text-foreground/55 text-sm">
                 Loading…
@@ -831,158 +657,37 @@ const Admin = () => {
 
             {!loading && !adminLoadError && tab === "dash" && (
               <>
-                <section
-                  className="vibe-card overflow-hidden border-black bg-white"
-                  data-testid="admin-manage-store-actions"
-                >
-                  <div className="border-b border-[rgb(var(--vibe-border))] p-4 sm:p-5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--vibe-muted))]">
-                      Manage store
-                    </p>
-                    <h2 className="mt-1 text-xl font-semibold text-[#111827]">
-                      What do you want to change?
-                    </h2>
-                    <p className="mt-1 text-sm text-[#6B7280]">
-                      Every editable area is one tap away. Changes publish only after you press its
-                      save button.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 divide-y divide-[rgb(var(--vibe-border))] sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-                    {[
-                      {
-                        key: "homepage" as const,
-                        title: "Edit homepage",
-                        detail: "Poster, film and featured products",
-                        Icon: Store,
-                      },
-                      {
-                        key: "products" as const,
-                        title: "Edit products",
-                        detail: "Photos, copy, price and availability",
-                        Icon: Package,
-                      },
-                      {
-                        key: "orders" as const,
-                        title: "Manage orders",
-                        detail: "Status, tracking and WhatsApp",
-                        Icon: ShoppingBag,
-                      },
-                      {
-                        key: "inventory" as const,
-                        title: "Update stock",
-                        detail: "Quantity and active products",
-                        Icon: Boxes,
-                      },
-                    ].map(({ key, title, detail, Icon }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setTab(key)}
-                        className="group flex min-h-24 items-center gap-3 p-4 text-left transition-colors hover:bg-[#F9FAFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black sm:min-h-32 sm:items-start sm:flex-col"
-                        data-testid={`admin-manage-${key}-button`}
-                      >
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#111827] text-white">
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-1 text-sm font-semibold text-[#111827]">
-                            {title}
-                            <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                          </span>
-                          <span className="mt-0.5 block text-xs leading-relaxed text-[#6B7280]">
-                            {detail}
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                <section data-testid="admin-needs-attention">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-[12px] font-medium uppercase tracking-widest text-[rgb(var(--vibe-muted))]">
-                      Needs your attention
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={() => setTab("orders")}
-                      className="inline-flex items-center gap-1 text-[11px] text-[rgb(var(--vibe-muted))] transition-colors hover:text-[rgb(var(--vibe-foreground))]"
-                    >
-                      Go to orders <ChevronRight className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-                    <AttentionCard
-                      title="Awaiting shipment"
-                      count={processingOrders.length}
-                      description="Orders not yet sent"
-                      Icon={PackageOpen}
-                      accent="warning"
-                    />
-                    <AttentionCard
-                      title="Missing tracking"
-                      count={shippedMissingTracking.length}
-                      description="Shipped without tracker"
-                      Icon={CircleAlert}
-                      accent="info"
-                    />
-                    <AttentionCard
-                      title="In transit"
-                      count={inTransitOrders}
-                      description="On the way"
-                      Icon={Truck}
-                    />
-                    <AttentionCard
-                      title="To action"
-                      count={toActionOrders}
-                      description="Unshipped + missing tracking"
-                      Icon={Clock}
-                    />
-                  </div>
-                </section>
-
-                <QuickAdminNav
-                  items={[
-                    {
-                      label: "Orders",
-                      value: orders.length,
-                      detail: `${toActionOrders} to action`,
-                      Icon: ShoppingBag,
-                      onClick: () => setTab("orders"),
-                    },
-                    {
-                      label: "Products",
-                      value: products.length,
-                      detail: `${opsStats.activeProducts} active`,
-                      Icon: Package,
-                      onClick: () => setTab("products"),
-                    },
-                    {
-                      label: "Inventory",
-                      value: opsStats.lowStock + opsStats.outOfStock,
-                      detail: "need attention",
-                      Icon: Boxes,
-                      onClick: () => setTab("inventory"),
-                    },
-                    {
-                      label: "Reviews",
-                      value: pendingReviews,
-                      detail: "pending",
-                      Icon: MessageSquare,
-                      onClick: () => setTab("reviews"),
-                    },
-                  ]}
+                <AdminDashboardOverview
+                  awaitingShipment={processingOrders.length}
+                  missingTracking={shippedMissingTracking.length}
+                  stockAlerts={opsStats.lowStock + opsStats.outOfStock}
+                  pendingReviews={pendingReviews}
+                  onNavigate={selectTab}
+                  onAction={(action) => {
+                    if (action === "processing" || action === "tracking") {
+                      setOrderQuery("");
+                      setOrderFilter(
+                        action === "processing" ? "processing" : "shipped_no_tracking",
+                      );
+                      selectTab("orders");
+                    } else {
+                      selectTab(action);
+                    }
+                  }}
                 />
 
                 <div className="vibe-card p-5 sm:p-6" data-testid="admin-revenue-card">
                   <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-[13px] font-medium">Revenue</h3>
+                      <h3 className="text-[13px] font-medium">
+                        Revenue · last {dashboardDays} days
+                      </h3>
                       <div className="mt-1 flex items-baseline gap-2">
                         <span className="text-[22px] font-semibold tracking-tight tabular-nums">
-                          {formatPrice(revenueTotal)}
+                          {formatPrice(
+                            dashboard.revenueTrend.reduce((sum, day) => sum + day.value, 0),
+                          )}
                         </span>
-                        <TrendBadge value={0} />
                       </div>
                     </div>
                     <RangeSwitcher value={dashboardRange} onChange={setDashboardRange} />
@@ -1006,7 +711,7 @@ const Admin = () => {
                     </Section>
                   </div>
                   <div className="min-w-0 lg:col-span-2">
-                    <Section title="Best sellers" subtitle="Top products by units sold">
+                    <Section title="Best sellers" subtitle="All-time units sold">
                       <BestSellersList rows={dashboard.bestSellers} />
                     </Section>
                   </div>
@@ -1365,31 +1070,7 @@ function AdminLogin({
             <p className="text-xs leading-tight text-[#737373]">Admin workspace</p>
           </div>
         </div>
-        <nav className="flex-1 overflow-y-auto p-3">
-          {navGroups.map((group) => (
-            <div key={group.label} className="mb-5 last:mb-0">
-              <p className="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[rgb(var(--vibe-muted))]">
-                {group.label}
-              </p>
-              <div className="space-y-0.5">
-                {group.items.map(({ key, label, Icon }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    disabled
-                    className={cn(
-                      "group flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm font-medium transition-colors",
-                      key === "dash" ? "bg-[#ededed] text-[#171717]" : "text-[#525252]",
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
+        <AdminNavList active="dash" disabled />
         <div className="border-t border-[rgb(var(--vibe-border))] p-3">
           <div className="flex items-center gap-2 rounded-lg border border-[rgb(var(--vibe-border))] bg-white p-2">
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[rgb(var(--vibe-foreground))] text-[11px] font-semibold text-white">
@@ -1501,83 +1182,6 @@ function Section({
   );
 }
 
-function AttentionCard({
-  title,
-  count,
-  description,
-  Icon,
-  accent = "neutral",
-}: {
-  title: string;
-  count: number;
-  description: string;
-  Icon: LucideIcon;
-  accent?: "neutral" | "warning" | "info";
-}) {
-  const iconColor =
-    accent === "warning"
-      ? "text-amber-500"
-      : accent === "info"
-        ? "text-blue-500"
-        : "text-[rgb(var(--vibe-muted))]";
-
-  return (
-    <div className="vibe-card p-4 transition-colors hover:border-zinc-400 sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="truncate text-[12px] text-[rgb(var(--vibe-muted))] sm:text-[13px]">
-          {title}
-        </span>
-        <Icon className={cn("h-4 w-4 shrink-0", iconColor)} />
-      </div>
-      <div className="mb-1 flex items-baseline gap-2">
-        <span className="text-[22px] font-semibold tracking-tight tabular-nums sm:text-[24px]">
-          {count}
-        </span>
-        <span className="text-[11px] text-[rgb(var(--vibe-muted))]">orders</span>
-      </div>
-      <p className="line-clamp-2 text-[11px] text-[rgb(var(--vibe-muted))]">{description}</p>
-    </div>
-  );
-}
-
-function QuickAdminNav({
-  items,
-}: {
-  items: Array<{
-    label: string;
-    value: number;
-    detail: string;
-    Icon: LucideIcon;
-    onClick: () => void;
-  }>;
-}) {
-  return (
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="admin-quick-nav">
-      {items.map(({ label, value, detail, Icon, onClick }) => (
-        <button
-          key={label}
-          type="button"
-          onClick={onClick}
-          className="vibe-card flex items-center gap-3 p-3 text-left transition-colors hover:border-zinc-400 hover:bg-white sm:p-4"
-        >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[rgb(var(--vibe-soft))] text-[rgb(var(--vibe-foreground))]">
-            <Icon className="h-4 w-4" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-[13px] font-semibold">{label}</span>
-            <span className="mt-0.5 block text-xs text-[rgb(var(--vibe-muted))]">
-              <span className="font-semibold tabular-nums text-[rgb(var(--vibe-foreground))]">
-                {value}
-              </span>{" "}
-              {detail}
-            </span>
-          </span>
-        </button>
-      ))}
-    </section>
-  );
-}
-
 function RangeSwitcher({
   value,
   onChange,
@@ -1593,6 +1197,8 @@ function RangeSwitcher({
           key={range}
           type="button"
           onClick={() => onChange(range)}
+          aria-pressed={value === range}
+          aria-label={`Last ${parseInt(range)} days`}
           className={cn(
             "h-7 rounded px-3 text-[11px] font-medium transition-colors",
             value === range
@@ -1604,20 +1210,6 @@ function RangeSwitcher({
         </button>
       ))}
     </div>
-  );
-}
-
-function TrendBadge({ value }: { value: number }) {
-  return (
-    <span
-      className={cn(
-        "text-[11px] font-medium tabular-nums",
-        value >= 0 ? "text-emerald-600" : "text-red-600",
-      )}
-    >
-      {value >= 0 ? "+" : ""}
-      {value.toFixed(1)}%
-    </span>
   );
 }
 
