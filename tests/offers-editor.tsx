@@ -12,6 +12,7 @@ import { PromotionOffers } from "../src/components/store/PromotionOffers";
 import { AnnouncementBanner } from "../src/components/store/AnnouncementBanner";
 import { CartProvider, useCart } from "../src/components/store/CartContext";
 import { CurrencyProvider } from "../src/contexts/CurrencyContext";
+import { ADMIN_NAV_GROUPS } from "../src/lib/adminNavigation";
 import "../src/styles.css";
 
 const products: any[] = [
@@ -156,8 +157,8 @@ function Customer() {
   );
 }
 function Fixture() {
-  const [form, setForm] = useState<any>({ bundle_kind: "single", bundle_items: [] });
-  const [tab, setTab] = useState("admin");
+  const [form, setForm] = useState<any>({ bundle_kind: "combo", bundle_items: [] });
+  const [tab, setTab] = useState("offers");
   return (
     <ConvexProvider client={client}>
       <CurrencyProvider>
@@ -165,23 +166,30 @@ function Fixture() {
           <AnnouncementBanner />
           <main className="mx-auto max-w-4xl px-4 pb-16 pt-14">
             <nav className="mb-6 flex flex-wrap gap-3">
-              {["admin", "coupons", "announcement", "packs", "customer"].map((name) => (
-                <button
-                  key={name}
-                  className="border border-black px-3 py-2"
-                  onClick={() => setTab(name)}
-                >
-                  {name}
-                </button>
-              ))}
+              {ADMIN_NAV_GROUPS.flatMap((group) => group.items)
+                .filter((item) =>
+                  ["offers", "coupons", "announcement", "combos"].includes(item.key),
+                )
+                .map(({ key, label }) => (
+                  <button
+                    key={key}
+                    className="border border-black px-3 py-2"
+                    onClick={() => setTab(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              <button className="border border-black px-3 py-2" onClick={() => setTab("customer")}>
+                Customer preview
+              </button>
             </nav>
-            {tab === "admin" || tab === "coupons" || tab === "announcement" ? (
+            {tab === "offers" || tab === "coupons" || tab === "announcement" ? (
               <PromotionsAdmin
                 key={tab}
                 products={products}
-                section={tab === "admin" ? "bundles" : tab}
+                section={tab === "offers" ? "bundles" : tab}
               />
-            ) : tab === "packs" ? (
+            ) : tab === "combos" ? (
               <BundleEditor
                 products={products}
                 kind={form.bundle_kind}

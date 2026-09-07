@@ -96,6 +96,12 @@ import { toast } from "sonner";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
 import { GiftAdmin } from "@/components/admin/GiftAdmin";
 import { NOINDEX_ROBOTS } from "@/lib/seo";
+import {
+  ADMIN_NAV as NAV,
+  ADMIN_NAV_GROUPS as navGroups,
+  isComboProduct,
+  type AdminTabKey as TabKey,
+} from "@/lib/adminNavigation";
 
 const CATEGORIES = [
   {
@@ -158,25 +164,6 @@ function notify({
   }
   toast.success(title, { description });
 }
-
-const NAV = [
-  { key: "dash", label: "Dashboard", Icon: LayoutDashboard },
-  { key: "homepage", label: "Homepage", Icon: Store },
-  { key: "announcement", label: "Announcement bar", Icon: MessageSquare },
-  { key: "orders", label: "Orders", Icon: ShoppingBag },
-  { key: "products", label: "Products", Icon: Package },
-  { key: "inventory", label: "Inventory", Icon: Boxes },
-  { key: "gifts", label: "Gifts", Icon: Gift },
-  { key: "offers", label: "Bundles", Icon: Boxes },
-  { key: "coupons", label: "Coupons", Icon: Tag },
-  { key: "categories", label: "Categories", Icon: Tag },
-  { key: "shipping", label: "Shipping", Icon: Truck },
-  { key: "reviews", label: "Reviews", Icon: MessageSquare },
-  { key: "customers", label: "Customers", Icon: Users },
-  { key: "settings", label: "Settings", Icon: Settings },
-] as const;
-
-type TabKey = (typeof NAV)[number]["key"];
 
 const STATUS_OPTIONS = ["processing", "shipped", "delivered", "cancelled", "returned"] as const;
 
@@ -445,6 +432,7 @@ const Admin = () => {
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
     return products.filter((p) => {
+      if (tab === "combos" && !isComboProduct(p)) return false;
       const stock = p.stock_quantity ?? 0;
       const status =
         p.is_active === false ? "archived" : stock <= 0 ? "out" : stock <= 5 ? "low" : "active";
@@ -459,7 +447,15 @@ const Admin = () => {
         (p.category ?? "").toLowerCase().includes(q)
       );
     });
-  }, [products, productQuery, productFilter]);
+  }, [products, productQuery, productFilter, tab]);
+
+  const selectTab = (key: TabKey) => {
+    if (key !== tab && (key === "products" || key === "combos")) {
+      setProductQuery("");
+      setProductFilter("all");
+    }
+    setTab(key);
+  };
 
   const inventoryRows = useMemo(() => {
     return [...products].sort((a, b) => (a.stock_quantity ?? 0) - (b.stock_quantity ?? 0));
@@ -572,19 +568,6 @@ const Admin = () => {
       .map((part) => part[0]?.toUpperCase())
       .join("") || "BA";
   const activeNav = NAV.find((item) => item.key === tab) ?? NAV[0];
-  const navGroups: { label: string; items: (typeof NAV)[number][] }[] = [
-    { label: "Overview", items: NAV.filter((item) => ["dash", "homepage"].includes(item.key)) },
-    {
-      label: "Commerce",
-      items: NAV.filter((item) =>
-        ["orders", "products", "inventory", "gifts", "offers", "categories", "shipping"].includes(
-          item.key,
-        ),
-      ),
-    },
-    { label: "People", items: NAV.filter((item) => ["customers", "reviews"].includes(item.key)) },
-    { label: "System", items: NAV.filter((item) => item.key === "settings") },
-  ];
   const navBadges: Partial<Record<TabKey, number>> = {
     orders: processingOrders.length + shippedMissingTracking.length,
     inventory: opsStats.lowStock + opsStats.outOfStock,
@@ -673,7 +656,7 @@ const Admin = () => {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setTab(key)}
+                      onClick={() => selectTab(key)}
                       data-testid={`admin-nav-${key}-button`}
                       className={cn(
                         "group flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm font-medium transition-colors",
@@ -758,7 +741,7 @@ const Admin = () => {
               onClick={() => setMobileNavOpen(false)}
             />
             <div className="relative flex h-full w-[82vw] max-w-80 flex-col border-r border-[rgb(var(--vibe-border))] bg-white p-4 shadow-xl">
-              <div className="mb-6 flex items-center justify-between gap-3">
+              <div className="mb-6 flex shrink-0 items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold">BADR</p>
                   <p className="text-xs text-[rgb(var(--vibe-muted))]">Admin workspace</p>
@@ -772,7 +755,10 @@ const Admin = () => {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <nav className="space-y-5">
+              <nav
+                className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain"
+                aria-label="Admin navigation"
+              >
                 {navGroups.map((group) => (
                   <div key={group.label}>
                     <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[rgb(var(--vibe-muted))]">
@@ -784,7 +770,7 @@ const Admin = () => {
                           key={key}
                           type="button"
                           onClick={() => {
-                            setTab(key);
+                            selectTab(key);
                             setMobileNavOpen(false);
                           }}
                           className={cn(
@@ -1118,10 +1104,14 @@ const Admin = () => {
               </Section>
             )}
 
-            {!loading && !adminLoadError && tab === "products" && (
+            {!loading && !adminLoadError && (tab === "products" || tab === "combos") && (
               <Section
-                title="Products"
-                subtitle={`${filteredProducts.length} of ${products.length} total`}
+                title={tab === "combos" ? "Combos & packs" : "Products"}
+                subtitle={
+                  tab === "combos"
+                    ? "Choose the included attars, add photos, and set one price for the set."
+                    : `${filteredProducts.length} of ${products.length} total`
+                }
                 action={
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:flex-wrap">
                     <div className="relative w-full sm:w-auto">
@@ -1141,7 +1131,9 @@ const Admin = () => {
                       data-testid="admin-products-filter-select"
                       className="h-10 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-sm outline-none transition-colors focus:border-[#111827] sm:h-9 sm:w-auto"
                     >
-                      <option value="all">All products</option>
+                      <option value="all">
+                        {tab === "combos" ? "All combos & packs" : "All products"}
+                      </option>
                       <option value="active">Active</option>
                       <option value="low">Low stock</option>
                       <option value="out">Out of stock</option>
@@ -1153,11 +1145,17 @@ const Admin = () => {
                       className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-[#111827] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1F2937] sm:h-9 sm:w-auto"
                     >
                       <Plus className="h-4 w-4" />
-                      Add product
+                      {tab === "combos" ? "Add combo / pack" : "Add product"}
                     </button>
                   </div>
                 }
               >
+                {tab === "combos" && !products.some(isComboProduct) && (
+                  <p className="mb-5 text-sm text-[#6B7280]">
+                    No combos or packs yet. Add your first set above. For buy-more-and-save offers,
+                    use Bundle discounts.
+                  </p>
+                )}
                 <ProductsTable
                   products={filteredProducts}
                   onEdit={setEditing}
@@ -1301,6 +1299,7 @@ const Admin = () => {
 
       {(creating || editing) && (
         <ProductDrawer
+          initialKind={tab === "combos" ? "combo" : "single"}
           products={products}
           product={editing ?? undefined}
           onClose={() => {
@@ -1346,20 +1345,6 @@ function AdminLogin({
   onModeChange: () => void;
   onSubmit: (event: React.FormEvent) => void;
 }) {
-  const navGroups: { label: string; items: (typeof NAV)[number][] }[] = [
-    { label: "Overview", items: NAV.filter((item) => ["dash", "homepage"].includes(item.key)) },
-    {
-      label: "Commerce",
-      items: NAV.filter((item) =>
-        ["orders", "products", "inventory", "gifts", "offers", "categories", "shipping"].includes(
-          item.key,
-        ),
-      ),
-    },
-    { label: "People", items: NAV.filter((item) => ["customers", "reviews"].includes(item.key)) },
-    { label: "System", items: NAV.filter((item) => item.key === "settings") },
-  ];
-
   return (
     <div className="vibe-admin admin-vibe flex min-h-screen bg-[rgb(var(--vibe-page))] text-[rgb(var(--vibe-foreground))]">
       <aside className="hidden h-screen w-60 shrink-0 flex-col border-r border-[#e5e5e5] bg-[#fafafa] md:sticky md:top-0 md:flex">
@@ -3594,20 +3579,28 @@ function ProductThumb({ product }: { product: Product }) {
 function ProductDrawer({
   products,
   product,
+  initialKind = "single",
   onClose,
   onSaved,
 }: {
   product?: Product;
+  initialKind?: "single" | "combo" | "pack";
   products: Product[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<ProductInput>({
-    bundle_kind: product?.bundle_kind ?? "single",
+    bundle_kind: product ? (product.bundle_kind ?? "single") : initialKind,
     bundle_items: product?.bundle_items ?? [],
     name: product?.name ?? "",
     slug: product?.slug ?? null,
-    product_type: product?.product_type ?? "Unisex Attar",
+    product_type:
+      product?.product_type ??
+      (initialKind === "single"
+        ? "Unisex Attar"
+        : initialKind === "combo"
+          ? "Attar combo"
+          : "Attar multipack"),
     mood: product?.mood ?? "",
     scent_profile: product?.scent_profile ?? "",
     hook: product?.hook ?? product?.short_description ?? "",
@@ -3617,8 +3610,9 @@ function ProductDrawer({
     occasion: product?.occasion ?? "",
     intensity: product?.intensity ?? "",
     longevity: product?.longevity ?? "",
-    volume_label: product?.volume_label ?? "6 ml",
-    format_label: product?.format_label ?? "Roll-on attar",
+    volume_label: product?.volume_label ?? (initialKind === "single" ? "6 ml" : ""),
+    format_label:
+      product?.format_label ?? (initialKind === "single" ? "Roll-on attar" : "Attar set"),
     country_of_origin: product?.country_of_origin ?? "India",
     faqs: product?.faqs ?? [],
     seo_title: product?.seo_title ?? "",
@@ -3640,7 +3634,7 @@ function ProductDrawer({
     linked_product_ids: product?.linked_product_ids ?? [],
     variant_label: product?.variant_label ?? "",
     color_options: product?.color_options ?? [],
-    size_options: product?.size_options ?? ["6 ml roll-on"],
+    size_options: product?.size_options ?? (initialKind === "single" ? ["6 ml roll-on"] : []),
     badge: product?.badge ?? null,
     stock_quantity: product?.stock_quantity ?? 0,
     is_active: product?.is_active ?? true,
