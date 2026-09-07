@@ -40,7 +40,7 @@ export function AdminNavList({ active, onSelect, badges = {}, disabled = false }
                 data-testid={`admin-nav-${key}-button`}
                 onClick={() => onSelect?.(key)}
                 className={cn(
-                  "admin-nav-item h-auto min-h-11 w-full justify-start gap-3 whitespace-normal rounded-md px-3 py-2.5 text-left text-sm font-medium disabled:opacity-65",
+                  "admin-nav-item h-auto min-h-11 w-full justify-start gap-2 whitespace-normal rounded-md px-2.5 py-2 text-left text-sm font-medium disabled:opacity-65 md:min-h-9 md:py-1.5",
                   active === key
                     ? "bg-[rgb(var(--vibe-foreground))] text-white hover:bg-[rgb(var(--vibe-foreground))] hover:text-white"
                     : "text-[rgb(var(--vibe-muted))] hover:bg-[rgb(var(--vibe-soft))] hover:text-[rgb(var(--vibe-foreground))]",
@@ -82,7 +82,7 @@ export function AdminMobileNavigation({
       </SheetTrigger>
       <SheetContent
         side="left"
-        className="vibe-admin admin-vibe flex w-[88vw] max-w-80 flex-col gap-0 bg-white p-0 text-[rgb(var(--vibe-foreground))] [&>button]:right-3 [&>button]:top-3 [&>button]:grid [&>button]:h-11 [&>button]:w-11 [&>button]:place-items-center"
+        className="admin-menu-panel vibe-admin admin-vibe flex w-[82vw] max-w-80 flex-col gap-0 bg-white p-0 text-[rgb(var(--vibe-foreground))] [&>button]:right-3 [&>button]:top-3 [&>button]:grid [&>button]:h-11 [&>button]:w-11 [&>button]:place-items-center"
       >
         <div className="shrink-0 border-b border-[rgb(var(--vibe-border))] px-5 py-5 pr-16">
           <SheetTitle className="text-sm font-semibold">BADR admin</SheetTitle>

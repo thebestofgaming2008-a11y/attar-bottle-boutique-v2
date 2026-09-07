@@ -27,7 +27,7 @@ function Fixture() {
             {ADMIN_NAV.find((item) => item.key === tab)?.label}
           </h1>
         </header>
-        <main key={tab} className="admin-tab-enter mx-auto max-w-[1400px] space-y-7 p-4 sm:p-7">
+        <main className="mx-auto max-w-[1400px] space-y-6 p-4 sm:p-7">
           {tab === "dash" ? (
             <>
               <AdminDashboardOverview
@@ -35,8 +35,10 @@ function Fixture() {
                 missingTracking={empty ? 0 : 4}
                 stockAlerts={empty ? 0 : 2}
                 pendingReviews={empty ? 0 : 1}
+                inTransit={empty ? 0 : 3}
+                orderCount={empty ? 0 : 15}
+                productCount={5}
                 onNavigate={setTab}
-                onAction={(action) => setStatus(`Open queue: ${action}`)}
               />
               <div className="vibe-card p-6">
                 <h2 className="font-semibold">Revenue · last 7 days</h2>

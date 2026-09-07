@@ -619,7 +619,7 @@ const Admin = () => {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div key={tab} className="admin-tab-enter mx-auto max-w-[1400px] space-y-7">
+          <div className="mx-auto max-w-[1400px] space-y-6">
             {loading && (
               <div className="rounded-xl border border-border bg-background p-8 text-center text-foreground/55 text-sm">
                 Loading…
@@ -662,18 +662,16 @@ const Admin = () => {
                   missingTracking={shippedMissingTracking.length}
                   stockAlerts={opsStats.lowStock + opsStats.outOfStock}
                   pendingReviews={pendingReviews}
+                  inTransit={
+                    orders.filter(
+                      (order) =>
+                        normalizeOrderStatus(order.status) === "shipped" &&
+                        Boolean(order.tracking_number),
+                    ).length
+                  }
+                  orderCount={orders.length}
+                  productCount={products.length}
                   onNavigate={selectTab}
-                  onAction={(action) => {
-                    if (action === "processing" || action === "tracking") {
-                      setOrderQuery("");
-                      setOrderFilter(
-                        action === "processing" ? "processing" : "shipped_no_tracking",
-                      );
-                      selectTab("orders");
-                    } else {
-                      selectTab(action);
-                    }
-                  }}
                 />
 
                 <div className="vibe-card p-5 sm:p-6" data-testid="admin-revenue-card">

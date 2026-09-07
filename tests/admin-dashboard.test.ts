@@ -5,37 +5,45 @@ import { AdminDashboardOverview } from "../src/components/admin/AdminDashboardOv
 import { AdminNavList } from "../src/components/admin/AdminNavigation";
 import { ADMIN_NAV } from "../src/lib/adminNavigation";
 
-test("dashboard displays each workload count once, without combined or in-transit counters", () => {
+test("original quick tiles show one count each, not total and active/action counts together", () => {
   const html = renderToStaticMarkup(
     createElement(AdminDashboardOverview, {
       awaitingShipment: 7,
       missingTracking: 4,
       stockAlerts: 2,
       pendingReviews: 1,
-      onAction() {},
+      inTransit: 3,
+      orderCount: 15,
+      productCount: 5,
       onNavigate() {},
     }),
   );
-  for (const count of [7, 4, 2, 1])
-    expect(html.match(new RegExp(`>${count}<`, "g"))).toHaveLength(1);
-  expect(html).not.toContain("To action");
-  expect(html).not.toContain("In transit");
+  const quickTiles = html.slice(html.indexOf('data-testid="admin-quick-nav"'));
+  for (const count of [15, 5, 2, 1])
+    expect(quickTiles.match(new RegExp(`>${count}<`, "g"))).toHaveLength(1);
+  expect(quickTiles).not.toContain("to action");
+  expect(quickTiles).not.toContain(" active");
+  expect(html).not.toContain("Quick actions");
   expect(html).not.toContain("+0.0%");
 });
 
-test("empty dashboard shows one calm state, not four zero cards", () => {
+test("original dashboard cards stay in place when counts reach zero", () => {
   const html = renderToStaticMarkup(
     createElement(AdminDashboardOverview, {
       awaitingShipment: 0,
       missingTracking: 0,
       stockAlerts: 0,
       pendingReviews: 0,
-      onAction() {},
+      inTransit: 0,
+      orderCount: 0,
+      productCount: 0,
       onNavigate() {},
     }),
   );
-  expect(html).toContain("All caught up");
-  expect(html).not.toContain('data-testid="admin-attention-');
+  expect(html).toContain("Awaiting shipment");
+  expect(html).toContain("In transit");
+  expect(html).toContain('data-testid="admin-quick-nav"');
+  expect(html).not.toContain('data-testid="admin-manage-store-actions"');
 });
 
 test("the shared menu renders every destination once with an accessible current destination", () => {
