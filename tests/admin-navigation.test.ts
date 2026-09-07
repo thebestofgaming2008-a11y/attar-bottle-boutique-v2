@@ -15,7 +15,9 @@ describe("admin destinations", () => {
       expect(grouped.filter((item) => item.key === key)).toHaveLength(1);
     }
     expect(grouped.find((item) => item.key === "announcement")?.group).toBe("Storefront");
-    expect(grouped.find((item) => item.key === "combos")?.label).toBe("Combos & packs");
+    expect(grouped.find((item) => item.key === "combos")?.label).toBe("Ready-made packs");
+    expect(grouped.find((item) => item.key === "offers")?.label).toBe("Build your own combo");
+    expect(grouped.find((item) => item.key === "offers")?.group).toBe("Commerce");
   });
 
   it("lists fixed combos and multipacks without mixing in individual attars", () => {

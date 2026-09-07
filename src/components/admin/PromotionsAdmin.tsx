@@ -45,12 +45,13 @@ const blankCoupon: Coupon = {
   ends_at: "",
 };
 const titles = {
-  bundles: "Build your own bundle",
+  bundles: "Build your own combo",
   coupons: "Coupons",
   announcement: "Announcement bar",
 };
 const descriptions = {
-  bundles: "Customers choose the fragrances. You set the savings.",
+  bundles:
+    "Customers mix attars. Your quantity discounts apply automatically in cart and checkout.",
   coupons: "Create a discount code for customers or creators.",
   announcement: "Short messages above your store header.",
 };
@@ -130,7 +131,7 @@ export function PromotionsAdmin({
         <>
           <section className={`${card} space-y-6`}>
             <div className="flex items-center justify-between gap-4">
-              <h3 className="font-semibold">Quantity discounts</h3>
+              <h3 className="font-semibold">Buy more, save more</h3>
               <label className="flex min-h-11 items-center gap-3 text-sm">
                 <input
                   type="checkbox"

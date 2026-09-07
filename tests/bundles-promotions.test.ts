@@ -325,6 +325,42 @@ test("mix-and-match tiers use server prices, highest savings, and exclude fixed 
       .discount,
   ).toBe(500);
 });
+test("customer-created combos automatically follow 1, 2, 3 and removed-item quantities without a coupon", async () => {
+  const f = await setup();
+  // Example tiers in the isolated test database only, never live store settings.
+  await f.admin.mutation(api.promotions.saveConfig, {
+    config: {
+      ...config,
+      tiers: [
+        { quantity: 2, type: "percent", value: 10 },
+        { quantity: 3, type: "percent", value: 15 },
+      ],
+    },
+    publish: true,
+    section: "bundles",
+  });
+  const a = { productId: f.a, qty: 1, name: "Oud", price: 1, selectedSize: "6 ml" };
+  const b = { productId: f.b, qty: 1, name: "Rose", price: 1 };
+  const cases = [
+    { cart: [a], discount: 0, amount: 49900, count: 1 },
+    { cart: [a, b], discount: 109.8, amount: 98820, count: 2 },
+    { cart: [{ ...a, qty: 2 }, b], discount: 239.55, amount: 135745, count: 3 },
+    { cart: [a], discount: 0, amount: 49900, count: 1 },
+  ];
+  for (const shopper of [f.t, f.t.withIdentity({ subject: "customer-test" })]) {
+    for (const { cart, discount, amount, count } of cases) {
+      const preview = await shopper.query(api.promotions.preview, {
+        cart: cart.map(({ productId, qty }) => ({ productId, qty })),
+      });
+      const checkout = await shopper.query(api.orders.quoteCheckout, { cart });
+      expect(preview.eligibleQuantity).toBe(count);
+      expect(preview.discount).toBe(discount);
+      expect(checkout.discount).toBe(discount);
+      expect(checkout.amountPaise).toBe(amount);
+    }
+  }
+});
+
 test("coupons select the better discount without stacking and normalize case", async () => {
   const f = await setup();
   await f.admin.mutation(api.promotions.saveConfig, { config, publish: true });

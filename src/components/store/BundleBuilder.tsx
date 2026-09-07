@@ -93,7 +93,7 @@ export function BundleBuilder({ initialProductId }: { initialProductId?: string 
   return (
     <section className="my-8 flex flex-wrap items-center justify-between gap-5 border-y border-current/15 py-6 text-sm">
       <div>
-        <h3 className="font-semibold">Build your own bundle</h3>
+        <h3 className="font-semibold">Build your own combo</h3>
         <p className="mt-2 text-xs leading-6 text-current/65">{tierLabel(config.tiers[0])}</p>
       </div>
       <button

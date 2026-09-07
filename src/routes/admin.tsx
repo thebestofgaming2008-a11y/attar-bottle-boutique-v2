@@ -1106,7 +1106,7 @@ const Admin = () => {
 
             {!loading && !adminLoadError && (tab === "products" || tab === "combos") && (
               <Section
-                title={tab === "combos" ? "Combos & packs" : "Products"}
+                title={tab === "combos" ? "Ready-made packs" : "Products"}
                 subtitle={
                   tab === "combos"
                     ? "Choose the included attars, add photos, and set one price for the set."
@@ -1132,7 +1132,7 @@ const Admin = () => {
                       className="h-10 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-sm outline-none transition-colors focus:border-[#111827] sm:h-9 sm:w-auto"
                     >
                       <option value="all">
-                        {tab === "combos" ? "All combos & packs" : "All products"}
+                        {tab === "combos" ? "All ready-made packs" : "All products"}
                       </option>
                       <option value="active">Active</option>
                       <option value="low">Low stock</option>
@@ -1145,15 +1145,23 @@ const Admin = () => {
                       className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-[#111827] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1F2937] sm:h-9 sm:w-auto"
                     >
                       <Plus className="h-4 w-4" />
-                      {tab === "combos" ? "Add combo / pack" : "Add product"}
+                      {tab === "combos" ? "Add ready-made pack" : "Add product"}
                     </button>
                   </div>
                 }
               >
                 {tab === "combos" && !products.some(isComboProduct) && (
                   <p className="mb-5 text-sm text-[#6B7280]">
-                    No combos or packs yet. Add your first set above. For buy-more-and-save offers,
-                    use Bundle discounts.
+                    No ready-made packs yet. For customer-selected attars with automatic discounts,
+                    use{" "}
+                    <button
+                      type="button"
+                      className="font-medium underline underline-offset-4"
+                      onClick={() => selectTab("offers")}
+                    >
+                      Build your own combo
+                    </button>
+                    .
                   </p>
                 )}
                 <ProductsTable
