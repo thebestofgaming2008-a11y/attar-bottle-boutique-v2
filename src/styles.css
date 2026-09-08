@@ -810,12 +810,23 @@
     transform: translateX(0);
   }
   to {
-    transform: translateX(calc(-50% - 1.5rem));
+    transform: translateX(-50%);
   }
 }
 .announcement-track {
   animation: announcement-scroll 28s linear infinite;
-  padding-left: 1rem;
+}
+.announcement-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  justify-content: space-around;
+  min-width: 100vw;
+}
+.announcement-message {
+  flex-shrink: 0;
+  padding-inline: clamp(2.5rem, 7vw, 7rem);
+  white-space: nowrap;
 }
 .announcement-bar:hover .announcement-track,
 .announcement-bar:focus-within .announcement-track {
@@ -824,15 +835,15 @@
 @media (prefers-reduced-motion: reduce) {
   .announcement-track {
     animation: none;
-    white-space: normal;
-    width: auto;
-    padding: 0 0.75rem;
+    width: max-content;
   }
   .announcement-track > [aria-hidden="true"] {
     display: none;
   }
-  .announcement-bar .announcement-track {
-    overflow-y: auto;
-    max-height: 36px;
+  .announcement-viewport {
+    overflow-x: auto;
+  }
+  .announcement-message {
+    padding-inline: 1.25rem;
   }
 }

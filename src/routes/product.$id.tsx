@@ -6,12 +6,11 @@ import { ChevronLeft, ChevronRight, Minus, Plus, Star } from "lucide-react";
 import {
   BOTTLE_IMAGES,
   PRODUCTS,
-  SCENE_IMAGES,
-  inr,
   resolveStoreProduct,
   storefrontProductFromSource,
   type Product,
 } from "@/lib/products";
+import { productSeo } from "@/lib/productSeo";
 import { useCart } from "@/components/store/CartContext";
 import { ProductCard } from "@/components/store/ProductCard";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
@@ -81,13 +80,8 @@ export const Route = createFileRoute("/product/$id")({
     }
 
     const pageUrl = `${SITE_ORIGIN}/product/${product.id}`;
-    const socialImage = absoluteUrl(
-      product.socialImage || SCENE_IMAGES[product.id] || product.image,
-    );
-    const description =
-      product.seoDescription ||
-      `${product.hook} ${product.category}, ${product.volume || "6 ml"}, ${inr(product.price)}.`;
-    const title = product.seoTitle || `${product.name} Attar Perfume Oil | BADR India`;
+    const { title, description, image } = productSeo(product);
+    const socialImage = absoluteUrl(image);
 
     return {
       meta: [
@@ -180,7 +174,8 @@ function ProductPage() {
     setAdded(true);
   };
   const productGraph = useMemo(() => {
-    const socialImage = product.socialImage || SCENE_IMAGES[product.id] || product.image;
+    const seo = productSeo(product);
+    const socialImage = seo.image;
     const productUrl = `${SITE_ORIGIN}/product/${product.id}`;
     const productImages = Array.from(
       new Set([socialImage, product.image, ...(product.gallery || [])].filter(Boolean)),
@@ -197,14 +192,14 @@ function ProductPage() {
       name: product.name,
       url: productUrl,
       image: productImages,
-      description: product.seoDescription || product.hook,
+      description: seo.description,
       category: product.category,
       brand: { "@type": "Brand", name: "BADR" },
       manufacturer: { "@id": ORGANIZATION_ID },
       countryOfOrigin: { "@type": "Country", name: product.countryOfOrigin || "India" },
       audience: { "@type": "PeopleAudience", suggestedGender: "unisex" },
       size: product.volume || "6 ml",
-      ...(product.sku ? { sku: product.sku, mpn: product.sku } : {}),
+      ...(product.sku ? { sku: product.sku } : {}),
       additionalProperty: [
         { "@type": "PropertyValue", name: "Format", value: product.format || "Roll-on attar" },
         { "@type": "PropertyValue", name: "Volume", value: product.volume || "6 ml" },
@@ -237,7 +232,7 @@ function ProductPage() {
               ratingValue,
               reviewCount: reviews.length,
             },
-            review: reviews.slice(0, 20).map((review) => ({
+            review: reviews.slice(0, 6).map((review) => ({
               "@type": "Review",
               name: review.title || `Verified review of ${product.name}`,
               reviewBody: review.body || review.title || "Verified BADR purchase.",
@@ -258,8 +253,8 @@ function ProductPage() {
           "@type": "WebPage",
           "@id": `${productUrl}/#webpage`,
           url: productUrl,
-          name: product.seoTitle || `${product.name} Attar Perfume Oil | BADR India`,
-          description: product.seoDescription || product.hook,
+          name: seo.title,
+          description: seo.description,
           isPartOf: { "@id": WEBSITE_ID },
           about: { "@id": `${productUrl}/#product` },
           primaryImageOfPage: { "@type": "ImageObject", url: productImages[0] },
@@ -395,38 +390,42 @@ function ProductInformation({
   const { detectedCountry, format } = useCurrency();
 
   return (
-    <div className="min-w-0 px-5 pb-16 pt-16 sm:px-10 sm:py-16 lg:sticky lg:top-12 lg:self-start lg:px-12 lg:py-14 xl:px-16">
-      <p className="text-sm text-black/50">{product.category}</p>
+    <div className="min-w-0 px-6 pb-12 pt-8 sm:px-10 sm:py-12 lg:sticky lg:top-24 lg:self-start lg:px-12 xl:px-16">
+      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-black/60">
+        {product.category}
+      </p>
 
-      <h1 className="mt-3 font-display text-[3.2rem] leading-[0.88] sm:text-6xl xl:text-[4.6rem]">
+      <h1 className="mt-3 font-display text-4xl leading-[1.08] sm:text-5xl xl:text-[3.5rem]">
         {product.name}
       </h1>
 
-      <p className="mt-6 max-w-xl text-lg leading-8 text-black/72 sm:text-xl sm:leading-9">
-        {product.hook}
-      </p>
-
-      <BundleContents items={product.bundleContents} />
-      {!product.bundleContents?.length ? (
-        <BundleBuilder initialProductId={product.backendId} />
+      {product.tag ? (
+        <p className="mt-4 text-sm font-medium uppercase leading-6 tracking-[0.06em] text-black/75">
+          {product.tag}
+        </p>
       ) : null}
-      <div className="mt-7 flex items-center gap-4">
+
+      <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex items-baseline gap-3">
           <span className="text-2xl font-medium">{format(product.price)}</span>
           {product.mrp > product.price ? (
-            <span className="text-sm text-black/35 line-through">{format(product.mrp)}</span>
+            <span className="text-base text-black/55 line-through">{format(product.mrp)}</span>
           ) : null}
         </div>
-        <p className="text-sm text-black/48">
-          {product.inStock === false ? "Sold out" : "In stock"}
-        </p>
+        {product.inStock === false ? <p className="text-sm text-black/65">Sold out</p> : null}
       </div>
-      <p className="mt-2 text-xs leading-5 text-black/45">
+      <p className="mt-2 text-xs leading-5 text-black/60">
         Taxes included.{" "}
         {detectedCountry === "IN"
           ? "Delivery included in India."
           : "International shipping is confirmed at checkout."}
       </p>
+
+      <p className="mt-6 max-w-xl text-base leading-7 text-black/80">{product.hook}</p>
+      <p className="mt-4 text-sm leading-6 text-black/65">
+        {product.volume || "6 ml"} · {product.format || "Roll-on perfume oil"}
+      </p>
+      <BundleContents items={product.bundleContents} />
 
       {(product.sizeOptions?.length ?? 0) > 1 || (product.colorOptions?.length ?? 0) > 1 ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -456,7 +455,7 @@ function ProductInformation({
       <div
         ref={purchaseActionsRef}
         data-testid="product-primary-purchase"
-        className="mt-8 grid grid-cols-[92px_minmax(0,1fr)] gap-2"
+        className="mt-7 grid grid-cols-[120px_minmax(0,1fr)] gap-3"
       >
         <div className="grid min-h-14 grid-cols-3 bg-[#f1efe9]">
           <button type="button" aria-label="Decrease quantity" onClick={onDecrease}>
@@ -481,10 +480,9 @@ function ProductInformation({
         </button>
       </div>
 
-      <p className="mt-6 max-w-xl text-sm leading-6 text-black/55">
-        {product.volume || "6 ml"} {product.format || "roll-on perfume oil"}. Designed to wear for{" "}
-        {product.longevity.toLowerCase()}.
-      </p>
+      {!product.bundleContents?.length ? (
+        <BundleBuilder initialProductId={product.backendId} />
+      ) : null}
     </div>
   );
 }
@@ -552,7 +550,7 @@ function ProductGallery({ product }: { product: Product }) {
                   key={image}
                   type="button"
                   onClick={() => setActiveIndex(imageIndex)}
-                  className={`h-16 w-16 shrink-0 bg-[#f7f6f2] p-1.5 transition-colors sm:h-18 sm:w-18 ${
+                  className={`h-14 w-12 shrink-0 bg-[#f7f6f2] p-1.5 transition-colors min-[375px]:h-16 min-[375px]:w-16 sm:h-18 sm:w-18 ${
                     activeIndex === imageIndex
                       ? "border border-black"
                       : "border border-transparent hover:border-black/30"
@@ -591,28 +589,25 @@ function ProductStory({ product }: { product: Product }) {
   return (
     <section className="overflow-hidden border-t border-black/10 bg-white text-black">
       <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[0.92fr_1.08fr]">
-        <div className="flex flex-col justify-center px-5 py-16 sm:px-10 sm:py-24 lg:px-16">
-          <p className="text-xs text-black/48">About {product.name}</p>
-          <h2 className="mt-3 max-w-2xl font-display text-4xl leading-[0.94] sm:text-5xl">
-            What {product.name} smells like
-          </h2>
-          <p className="mt-6 max-w-2xl text-sm leading-7 text-black/68 sm:text-base sm:leading-8">
+        <div className="flex flex-col justify-center px-6 py-12 sm:px-10 sm:py-20 lg:px-16">
+          <h2 className="max-w-2xl font-display text-3xl leading-[1.15] sm:text-4xl">The scent</h2>
+          <p className="mt-5 max-w-xl text-base leading-7 text-black/75">
             {product.meaning ? `${product.meaning} ` : ""}
             {product.story}
           </p>
 
-          <div className="mt-10">
-            <h3 className="text-xs font-medium text-black/48">Key notes</h3>
-            <ul className="mt-4 flex flex-wrap gap-x-7 gap-y-3">
+          <div className="mt-8">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.08em]">Key notes</h3>
+            <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
               {product.notes.map((note) => (
-                <li key={note} className="text-base text-black/78 sm:text-lg">
+                <li key={note} className="text-base leading-7 text-black/75">
                   {note}
                 </li>
               ))}
             </ul>
           </div>
 
-          <dl className="mt-10 grid grid-cols-3 gap-5">
+          <dl className="mt-8 divide-y divide-black/10 bg-[#f7f6f2] px-5">
             <ProductStat label="Intensity" value={product.intensity} />
             <ProductStat label="Lasts" value={product.longevity} />
             <ProductStat label="Best worn" value={product.occasion} />
@@ -635,9 +630,9 @@ function ProductStory({ product }: { product: Product }) {
 
 function ProductStat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-[10px] text-black/45">{label}</dt>
-      <dd className="mt-2 text-sm font-medium capitalize leading-5 sm:text-base">{value}</dd>
+    <div className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] items-baseline gap-5 py-4">
+      <dt className="text-sm font-medium text-black/80">{label}</dt>
+      <dd className="text-sm capitalize leading-6 text-black/70">{value}</dd>
     </div>
   );
 }
@@ -647,11 +642,10 @@ function ProductFaqs({ product }: { product: Product }) {
     <section className="border-t border-black/10 bg-white px-5 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.55fr_1.45fr] lg:gap-20">
         <div>
-          <p className="text-xs text-black/48">Product information</p>
-          <h2 className="mt-3 font-display text-4xl sm:text-5xl">FAQs</h2>
+          <h2 className="font-display text-3xl leading-tight sm:text-4xl">Product information</h2>
         </div>
         <Accordion type="single" collapsible className="border-t border-black/18">
-          {product.faqs.slice(0, 3).map((faq, index) => (
+          {product.faqs.map((faq, index) => (
             <AccordionItem key={faq.q} value={`faq-${index}`} className="border-black/18">
               <AccordionTrigger className="py-6 text-left text-sm font-medium hover:no-underline sm:text-base">
                 {faq.q}
