@@ -805,6 +805,21 @@
     animation: none;
   }
 }
+/* Fixed and portalled storefront UI share the viewport below the announcement.
+   :has keeps portals in sync without a global effect or stale state on navigation. */
+:root:has(.store-motion[data-announcement="true"]) {
+  --announcement-height: 36px;
+}
+.store-viewport-overlay {
+  top: var(--announcement-height, 0px);
+}
+:root:has(.store-motion[data-announcement="true"]) .store-centered-dialog {
+  top: calc(50% + var(--announcement-height, 0px) / 2);
+  max-height: min(90dvh, calc(100dvh - var(--announcement-height, 0px) - 24px));
+}
+:root:has(.store-motion[data-announcement="true"]) .store-bottom-dialog {
+  max-height: min(85dvh, calc(100dvh - var(--announcement-height, 0px) - 12px));
+}
 @keyframes announcement-scroll {
   from {
     transform: translateX(0);

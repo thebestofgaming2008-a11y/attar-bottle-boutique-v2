@@ -35,7 +35,7 @@ export function ProductQuickView({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92svh] w-[calc(100%-1.5rem)] max-w-4xl gap-0 overflow-y-auto border-0 bg-[#f4f1ea] p-0 shadow-[0_30px_100px_rgba(0,0,0,0.32)] sm:rounded-none">
+      <DialogContent className="store-centered-dialog max-h-[92svh] w-[calc(100%-1.5rem)] max-w-4xl gap-0 overflow-y-auto border-0 bg-[#f4f1ea] p-0 shadow-[0_30px_100px_rgba(0,0,0,0.32)] sm:rounded-none">
         <div className="grid sm:grid-cols-2">
           <div className="relative aspect-square overflow-hidden bg-white p-8 sm:min-h-[620px] sm:aspect-auto sm:p-12">
             <img

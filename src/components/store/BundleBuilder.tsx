@@ -104,7 +104,7 @@ export function BundleBuilder({ initialProductId }: { initialProductId?: string 
         Choose fragrances
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-none sm:max-w-xl">
+        <DialogContent className="store-centered-dialog max-h-[90dvh] overflow-y-auto rounded-none sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Make it yours</DialogTitle>
             <DialogDescription>

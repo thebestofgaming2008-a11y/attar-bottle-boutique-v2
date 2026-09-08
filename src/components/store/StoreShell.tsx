@@ -28,7 +28,9 @@ const CURRENCY_NAMES: Record<string, string> = {
 
 export function StoreShell({ children }: { children: ReactNode }) {
   const offers = useQuery(api.promotions.publicConfig);
-  const hasBanner = Boolean(offers?.banner_active && offers.banner_messages.length);
+  const hasBanner = Boolean(
+    offers?.banner_active && offers.banner_messages.some((message) => message.trim()),
+  );
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -96,6 +98,7 @@ export function StoreShell({ children }: { children: ReactNode }) {
   return (
     <div
       ref={rootRef}
+      data-announcement={hasBanner ? "true" : undefined}
       className="store-motion min-h-screen bg-background text-foreground"
       style={
         {
@@ -215,7 +218,7 @@ function SiteHeader() {
       <div
         aria-hidden={!menuOpen}
         inert={!menuOpen}
-        className={`fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-[#080808] px-6 pb-8 pt-24 text-white transition-[opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`store-viewport-overlay fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-[#080808] px-6 pb-8 pt-24 text-white transition-[opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           menuOpen ? "visible opacity-100" : "invisible pointer-events-none opacity-0"
         }`}
       >

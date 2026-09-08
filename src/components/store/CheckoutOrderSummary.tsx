@@ -63,9 +63,9 @@ export function CheckoutOrderSummary({
         </Dialog.Trigger>
       </div>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-reduce:animate-none" />
+        <Dialog.Overlay className="store-viewport-overlay fixed inset-0 z-[60] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 motion-reduce:animate-none" />
         <Dialog.Content
-          className="fixed inset-x-0 bottom-0 z-[61] flex max-h-[85dvh] flex-col bg-background text-foreground shadow-xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom motion-reduce:animate-none"
+          className="store-bottom-dialog fixed inset-x-0 bottom-0 z-[61] flex max-h-[85dvh] flex-col bg-background text-foreground shadow-xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom motion-reduce:animate-none"
           onOpenAutoFocus={(event) => {
             // Opening the summary should not summon the phone keyboard.
             event.preventDefault();

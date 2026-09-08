@@ -31,7 +31,7 @@ export function CartDrawer() {
 
   return (
     <div
-      className={`fixed inset-0 z-50 overflow-hidden ${open ? "" : "pointer-events-none"}`}
+      className={`store-viewport-overlay fixed inset-0 z-50 overflow-hidden ${open ? "" : "pointer-events-none"}`}
       aria-hidden={!open}
       inert={!open}
     >
