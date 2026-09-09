@@ -4171,4 +4171,4 @@ function Toggle({
   );
 }
 
-export default Admin;
+// Keep the component private so the router can load admin code only on /admin.

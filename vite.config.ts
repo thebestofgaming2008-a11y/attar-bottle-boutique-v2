@@ -41,7 +41,28 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       tailwindcss(),
       tanstackStart({ server: { entry: "server" } }),
-      ...(command === "build" ? [nitro({ defaultPreset: "cloudflare-module" })] : []),
+      ...(command === "build"
+        ? [
+            nitro({
+              defaultPreset: "cloudflare-module",
+              rolldownConfig: {
+                output: {
+                  codeSplitting: {
+                    groups: [
+                      {
+                        // Nitro rebundles the Vite SSR output. Keep its helpers out
+                        // of the server chunk to avoid a circular initialization.
+                        name: "ssr-helpers",
+                        test: /\/assets\/rolldown-runtime-/,
+                        priority: 100,
+                      },
+                    ],
+                  },
+                },
+              },
+            }),
+          ]
+        : []),
       react(),
     ],
   };
