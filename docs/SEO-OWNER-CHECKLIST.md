@@ -6,6 +6,8 @@ The codebase supplies the technical foundation. Search engines do not sell guara
 
 ### 1. Google Search Console
 
+**9 September 2026:** Existing domain ownership and successful sitemap verified; homepage, shop and all five product indexing requests accepted. Google live tests passed for homepage and Oud Zafar, with valid product rich-result markup. No manual actions/security issues. See `SEARCH-CONSOLE-AUDIT-2026-09-09.md` for evidence and remaining optional shipping/returns fields. Do not repeat setup or submit the same indexing requests again immediately.
+
 1. Add a **Domain property** for `houseofbadr.com`.
 2. Verify it with the DNS TXT record Google provides.
 3. Submit `https://houseofbadr.com/sitemap.xml`.
