@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { nowIso, requireAdmin, writeAuditLog } from "./lib";
+import { razorpayReadiness } from "./orders";
 
 const zones = ["Local", "Regional", "National", "Remote"];
 const carriers = ["DTDC", "India Post"];
@@ -374,18 +375,10 @@ export const launchReadiness = query({
     const outOfStockActive = active
       .filter((product) => (product.stock_quantity ?? 0) <= 0 || product.in_stock === false)
       .map((product) => product.name);
-    const razorpayKeyId = process.env.RAZORPAY_KEY_ID ?? "";
     const turnstileSecret = process.env.TURNSTILE_SECRET_KEY ?? "";
     const env = {
       adminEmail: Boolean(process.env.ADMIN_EMAIL || process.env.ADMIN_EMAILS),
-      razorpayKeyId: Boolean(razorpayKeyId),
-      razorpaySecret: Boolean(process.env.RAZORPAY_KEY_SECRET),
-      razorpayWebhookSecret: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
-      razorpayMode: razorpayKeyId.startsWith("rzp_live_")
-        ? "live"
-        : razorpayKeyId.startsWith("rzp_test_")
-          ? "test"
-          : "invalid",
+      ...razorpayReadiness(),
       turnstileSecret: Boolean(turnstileSecret),
       turnstileProduction: Boolean(
         turnstileSecret && !turnstileSecret.startsWith("1x0000000000000000000000000000000"),

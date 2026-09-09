@@ -134,6 +134,7 @@ export default defineSchema({
     .index("by_category", ["category"])
     .index("by_active", ["is_active"]),
   orders: defineTable({
+    razorpay_key_id: optionalString,
     pricing_snapshot: v.optional(pricingSnapshot),
     order_number: v.string(),
     user_id: optionalString,
@@ -190,6 +191,7 @@ export default defineSchema({
     .index("by_payment_id", ["payment_id"])
     .index("by_created_at", ["created_at"]),
   checkout_intents: defineTable({
+    razorpay_key_id: optionalString,
     pricing_snapshot: v.optional(pricingSnapshot),
     coupon_code: optionalString,
     gift_selections: v.optional(
