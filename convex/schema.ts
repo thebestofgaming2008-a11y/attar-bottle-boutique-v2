@@ -249,6 +249,7 @@ export default defineSchema({
     subtotal: v.number(),
   }).index("by_order_id", ["order_id"]),
   reviews: defineTable({
+    verified_purchase: v.optional(v.boolean()),
     product_id: v.string(),
     user_id: optionalString,
     customer_name: optionalString,

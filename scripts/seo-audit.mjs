@@ -100,6 +100,31 @@ for (const path of paths) {
       issues,
     );
     check(product?.offers?.url === canonicals[0]?.href, "Offer URL differs from canonical", issues);
+    const visibleReviewCount = (html.match(/<blockquote\b/g) || []).length;
+    const reviewSchema = product?.review || [];
+    if (visibleReviewCount === 0) {
+      check(
+        !product?.aggregateRating && reviewSchema.length === 0,
+        "Ratings/reviews exist without visible customer reviews",
+        issues,
+      );
+    } else {
+      check(
+        Number(product?.aggregateRating?.reviewCount) >= visibleReviewCount &&
+          reviewSchema.length === visibleReviewCount,
+        "Review markup does not match visible reviews",
+        issues,
+      );
+      check(
+        Number(product?.aggregateRating?.ratingValue) >= 1 &&
+          Number(product?.aggregateRating?.ratingValue) <= 5,
+        "Invalid aggregate rating",
+        issues,
+      );
+    }
+    console.log(
+      `CHECK reviews ${path}: ${visibleReviewCount} visible, ${reviewSchema.length} marked up`,
+    );
     if (product?.offers) productOffers.set(path, product.offers);
   }
   failures += issues.length;
