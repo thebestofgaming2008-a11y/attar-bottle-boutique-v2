@@ -86,10 +86,11 @@ async function sitemapResponse(request: Request, env: Env) {
     name?: string | null;
     updated_at?: string | null;
     cover_image_url?: string | null;
-  }> = ["oud-zafar", "oud-gulaab", "fitoor", "dariya", "ulfat"].map((slug) => ({ slug }));
+  }> = [];
   try {
     const client = new ConvexHttpClient(env.VITE_CONVEX_URL);
     const liveProducts = (await client.query(api.products.listActiveProducts, {})) as Array<{
+      id: string;
       slug?: string | null;
       name?: string | null;
       updated_at?: string | null;
@@ -97,14 +98,18 @@ async function sitemapResponse(request: Request, env: Env) {
     }>;
     const seen = new Set<string>();
     const normalized = liveProducts.flatMap((product) => {
-      const slug = product.slug?.trim();
+      const slug = product.slug?.trim() || product.id;
       if (!slug || seen.has(slug)) return [];
       seen.add(slug);
       return [{ ...product, slug }];
     });
-    if (normalized.length) products = normalized;
+    products = normalized;
   } catch {
-    // The core catalog remains discoverable if Convex is temporarily unavailable.
+    // An outage must not resurrect seed products or publish an incomplete sitemap.
+    return new Response("Sitemap temporarily unavailable. Please retry.", {
+      status: 503,
+      headers: { "retry-after": "300", "cache-control": "no-store" },
+    });
   }
   const urls = [
     ...PUBLIC_STATIC_PATHS.map((path) => ({
@@ -128,7 +133,7 @@ async function sitemapResponse(request: Request, env: Env) {
       lastmod: validLastModified(product.updated_at),
       image: product.cover_image_url
         ? {
-            location: product.cover_image_url,
+            location: new URL(product.cover_image_url, origin).href,
             title: `${product.name || product.slug} attar perfume`,
           }
         : null,
@@ -188,13 +193,13 @@ async function merchantFeedResponse(request: Request, env: Env) {
     Record<string, unknown>
   >;
   const items = products.flatMap((product) => {
-    const slug = String(product.slug || "").trim();
+    const slug = String(product.slug || product.id || "").trim();
     const name = String(product.name || "").trim();
     const image = String(product.cover_image_url || "").trim();
     const price = Number(product.price_inr ?? product.price ?? 0);
     const salePrice = Number(product.sale_price_inr ?? product.sale_price ?? 0);
     if (!slug || !name || !image || !Number.isFinite(price) || price <= 0) return [];
-    const sku = String(product.sku || "").trim();
+    const isPack = product.bundle_kind === "combo" || product.bundle_kind === "pack";
     const notes = Array.isArray(product.key_notes)
       ? (product.key_notes as unknown[]).map(String).filter(Boolean).slice(0, 8)
       : [];
@@ -211,27 +216,28 @@ async function merchantFeedResponse(request: Request, env: Env) {
       : [];
     const available = product.in_stock !== false && Number(product.stock_quantity ?? 0) > 0;
     const productUrl = `${origin}/product/${encodeURIComponent(slug)}`;
-    const size = String(product.volume_label || "6 ml");
+    const size = String(product.volume_label || (isPack ? "" : "6 ml"));
     return [
       `<item>
-        <g:id>${xmlText(sku || slug)}</g:id>
-        <title>${xmlText(`${name} ${size} Roll-On Attar Perfume Oil`)}</title>
+        <g:id>${xmlText(String(product.id || slug))}</g:id>
+        <title>${xmlText(isPack ? `${name} Attar Set` : `${name} ${size} Roll-On Attar Perfume Oil`)}</title>
         <description>${xmlText(description)}</description>
         <link>${xmlText(productUrl)}</link>
         <g:canonical_link>${xmlText(productUrl)}</g:canonical_link>
-        <g:image_link>${xmlText(image)}</g:image_link>
-        ${additionalImages.map((url) => `<g:additional_image_link>${xmlText(url)}</g:additional_image_link>`).join("\n        ")}
+        <g:image_link>${xmlText(new URL(image, origin).href)}</g:image_link>
+        ${additionalImages.map((url) => `<g:additional_image_link>${xmlText(new URL(url, origin).href)}</g:additional_image_link>`).join("\n        ")}
         <g:availability>${available ? "in_stock" : "out_of_stock"}</g:availability>
         <g:price>${price.toFixed(2)} INR</g:price>
         ${salePrice > 0 && salePrice < price ? `<g:sale_price>${salePrice.toFixed(2)} INR</g:sale_price>` : ""}
         <g:condition>new</g:condition>
         <g:brand>BADR</g:brand>
-        ${sku ? `<g:mpn>${xmlText(sku)}</g:mpn>` : `<g:identifier_exists>false</g:identifier_exists>`}
+        <g:identifier_exists>false</g:identifier_exists>
+        ${isPack ? "<g:is_bundle>true</g:is_bundle>" : ""}
         <g:product_type>Health &amp; Beauty &gt; Personal Care &gt; Fragrances &gt; Attar Perfume Oils</g:product_type>
         <g:google_product_category>Health &amp; Beauty &gt; Personal Care &gt; Cosmetics &gt; Perfume &amp; Cologne</g:google_product_category>
         <g:gender>unisex</g:gender>
         <g:age_group>adult</g:age_group>
-        <g:size>${xmlText(size)}</g:size>
+        ${size ? `<g:size>${xmlText(size)}</g:size>` : ""}
         <g:shipping><g:country>IN</g:country><g:service>Standard</g:service><g:price>0.00 INR</g:price></g:shipping>
       </item>`,
     ];

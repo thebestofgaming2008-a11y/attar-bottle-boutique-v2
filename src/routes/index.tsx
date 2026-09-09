@@ -8,7 +8,7 @@ import { Hero } from "@/components/store/Hero";
 import { BrandFilm } from "@/components/store/BrandFilm";
 import { ScentChapter } from "@/components/store/ScentChapter";
 import { ProductCard } from "@/components/store/ProductCard";
-import { listActiveProducts } from "@/services/productService";
+import { loadPublicCatalog, loadPublishedHomepage } from "@/services/publicPageService";
 import { DEFAULT_HOMEPAGE_FILM_CONFIG, type HomepageFilmPlacement } from "@/lib/homepageFilm";
 import type { HomepageLayout } from "@/lib/homepageLayout";
 import { HomepageLayoutRenderer } from "@/components/store/HomepageLayoutRenderer";
@@ -21,21 +21,20 @@ import {
   socialMeta,
 } from "@/lib/seo";
 
-const HOME_TITLE = "Attar Perfume Online India | Unisex Perfume Oils | BADR";
+const HOME_TITLE = "BADR | House of BADR — Attar Perfume Oils India";
 const HOME_DESCRIPTION =
-  "Shop concentrated 6 ml attar perfumes online from BADR. Discover oud, rose, fruity, fresh aquatic and vanilla perfume oils from ₹499 with India delivery included.";
+  "Discover House of BADR attar perfume oils: oud, rose, fresh aquatic and vanilla fragrances for all genders. Shop roll-on attars with delivery included in India.";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const liveProducts = await listActiveProducts().catch(() => []);
-    const collection = (
-      liveProducts.length
-        ? liveProducts.map((product) =>
-            storefrontProductFromSource(product as unknown as Record<string, unknown>),
-          )
-        : PRODUCTS
-    ).sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
-    return { collection };
+    const [liveProducts, homepage] = await Promise.all([
+      loadPublicCatalog(),
+      loadPublishedHomepage(),
+    ]);
+    const collection = liveProducts
+      .map((product) => storefrontProductFromSource(product as unknown as Record<string, unknown>))
+      .sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
+    return { collection, homepage };
   },
   head: () => ({
     meta: [
@@ -55,10 +54,13 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { collection } = Route.useLoaderData();
-  const filmConfig = useQuery(api.homepage.getFilmConfig, {}) ?? DEFAULT_HOMEPAGE_FILM_CONFIG;
-  const publishedLayout = useQuery(api.homepageLayout.getPublishedLayout, {}) as
-    HomepageLayout | null | undefined;
+  const { collection, homepage } = Route.useLoaderData();
+  const filmConfig =
+    useQuery(api.homepage.getFilmConfig, {}) ?? homepage.film ?? DEFAULT_HOMEPAGE_FILM_CONFIG;
+  const liveLayout = useQuery(api.homepageLayout.getPublishedLayout, {});
+  const publishedLayout = (
+    liveLayout === undefined ? homepage.layout : liveLayout
+  ) as HomepageLayout | null;
   const collectionById = new Map(collection.map((product) => [product.id, product]));
   const chapterProducts = PRODUCTS.flatMap((product) => {
     const current = collectionById.get(product.id);
@@ -93,7 +95,7 @@ function Index() {
           "@type": "ListItem",
           position: index + 1,
           name: `${product.name} attar perfume`,
-          url: `${SITE_ORIGIN}/product/${product.id}`,
+          url: `${SITE_ORIGIN}/product/${encodeURIComponent(product.id)}`,
         })),
       },
     ],

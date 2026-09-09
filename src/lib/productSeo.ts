@@ -10,7 +10,9 @@ export function productSeo(product: Product) {
     product.seoDescription?.trim() ||
     [
       `${product.name} by BADR.`,
-      product.hook,
+      product.notes?.length
+        ? `${product.notes.slice(0, 3).join(", ")} ${isPack ? "fragrances" : "attar perfume oil"}.`
+        : product.hook,
       !isPack ? `${product.volume || "6 ml"} ${product.format || "roll-on perfume oil"}.` : "",
     ]
       .filter(Boolean)

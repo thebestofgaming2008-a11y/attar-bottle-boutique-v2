@@ -56,7 +56,10 @@ function withSecurityHeaders(response: Response, request: Request) {
   headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   headers.set("cross-origin-opener-policy", "same-origin-allow-popups");
   const pathname = new URL(request.url).pathname;
-  if (PRIVATE_INDEX_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+  if (
+    response.status >= 400 ||
+    PRIVATE_INDEX_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  ) {
     headers.set("x-robots-tag", "noindex, nofollow, noarchive");
     headers.set("cache-control", "private, no-store, max-age=0");
   }

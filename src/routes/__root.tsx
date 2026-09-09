@@ -46,7 +46,7 @@ const ROOT_SCHEMA = {
         height: 512,
       },
       image: DEFAULT_SOCIAL_IMAGE,
-      email: "mailto:houseofbadr@gmail.com",
+      email: "houseofbadr@gmail.com",
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
@@ -148,7 +148,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "BADR Attar Perfume — Rare Air" },
       {
         property: "og:description",
-        content: "Five concentrated unisex attar perfume oils made in India. From ₹499.",
+        content:
+          "Discover House of BADR concentrated attar perfume oils made in India. Explore oud, rose, fresh and vanilla fragrances.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_ORIGIN },
@@ -158,7 +159,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "BADR Attar Perfume — Rare Air" },
       {
         name: "twitter:description",
-        content: "Five concentrated unisex attar perfume oils made in India. From ₹499.",
+        content:
+          "Discover House of BADR concentrated attar perfume oils made in India. Explore oud, rose, fresh and vanilla fragrances.",
       },
       { name: "twitter:image", content: DEFAULT_SOCIAL_IMAGE },
       { name: "twitter:image:alt", content: "BADR Oud Zafar attar perfume bottle" },

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { BundleContents, bundleSummary } from "@/components/store/BundleContents";
 import { BundleBuilder } from "@/components/store/BundleBuilder";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
@@ -20,7 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getProductBySlug, listActiveProducts } from "@/services/productService";
+import { loadPublicCatalog, loadPublicProduct } from "@/services/publicPageService";
 import { listPublishedReviews, type ProductReview } from "@/services/reviewService";
 import { SearchSelect } from "@/components/ui/search-select";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -35,36 +35,40 @@ import {
 
 const PRODUCT_DATA_TIMEOUT_MS = 3500;
 
-function withProductFallback<T>(request: Promise<T>, fallback: T): Promise<T> {
-  return Promise.race([
-    request,
-    new Promise<T>((resolve) => {
-      setTimeout(() => resolve(fallback), PRODUCT_DATA_TIMEOUT_MS);
-    }),
-  ]).catch(() => fallback);
+async function withProductFallback<T>(request: Promise<T>, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      request,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), PRODUCT_DATA_TIMEOUT_MS);
+      }),
+    ]).catch(() => fallback);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export const Route = createFileRoute("/product/$id")({
   loader: async ({ params }) => {
     const [liveProduct, activeProducts] = await Promise.all([
-      withProductFallback(getProductBySlug(params.id), null),
-      withProductFallback(listActiveProducts(), []),
+      loadPublicProduct(params.id),
+      withProductFallback(loadPublicCatalog(), []),
     ]);
+    if (!liveProduct) throw notFound();
+    if (liveProduct.slug && liveProduct.slug !== params.id) {
+      throw redirect({ to: "/product/$id", params: { id: liveProduct.slug }, statusCode: 301 });
+    }
     const staticProduct = PRODUCTS.find((product) => product.id === params.id);
-    const product = liveProduct
-      ? resolveStoreProduct(liveProduct as unknown as Record<string, unknown>, staticProduct)
-      : staticProduct;
-    if (!product) throw notFound();
+    const product = resolveStoreProduct(
+      liveProduct as unknown as Record<string, unknown>,
+      staticProduct,
+    );
 
     const liveCatalog = activeProducts.map((item) =>
       storefrontProductFromSource(item as unknown as Record<string, unknown>),
     );
-    const catalogIds = new Set(liveCatalog.map((item) => item.id));
-    const completeCatalog = [
-      ...liveCatalog,
-      ...PRODUCTS.filter((item) => !catalogIds.has(item.id)),
-    ];
-    const related = completeCatalog.filter((item) => item.id !== product.id).slice(0, 4);
+    const related = liveCatalog.filter((item) => item.id !== product.id).slice(0, 4);
     const reviews = liveProduct?.id
       ? await withProductFallback(listPublishedReviews(liveProduct.id), [])
       : [];
@@ -79,7 +83,7 @@ export const Route = createFileRoute("/product/$id")({
       };
     }
 
-    const pageUrl = `${SITE_ORIGIN}/product/${product.id}`;
+    const pageUrl = `${SITE_ORIGIN}/product/${encodeURIComponent(product.id)}`;
     const { title, description, image } = productSeo(product);
     const socialImage = absoluteUrl(image);
 
@@ -176,7 +180,7 @@ function ProductPage() {
   const productGraph = useMemo(() => {
     const seo = productSeo(product);
     const socialImage = seo.image;
-    const productUrl = `${SITE_ORIGIN}/product/${product.id}`;
+    const productUrl = `${SITE_ORIGIN}/product/${encodeURIComponent(product.id)}`;
     const productImages = Array.from(
       new Set([socialImage, product.image, ...(product.gallery || [])].filter(Boolean)),
     ).map(absoluteUrl);
@@ -612,6 +616,25 @@ function ProductStory({ product }: { product: Product }) {
             <ProductStat label="Lasts" value={product.longevity} />
             <ProductStat label="Best worn" value={product.occasion} />
           </dl>
+          <nav
+            aria-label="Fragrance guides"
+            className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-black/65"
+          >
+            <Link
+              to="/journal/$slug"
+              params={{ slug: "how-to-apply-attar" }}
+              className="underline underline-offset-4"
+            >
+              How to apply attar
+            </Link>
+            <Link
+              to="/journal/$slug"
+              params={{ slug: "choose-attar-by-scent" }}
+              className="underline underline-offset-4"
+            >
+              Choose your scent
+            </Link>
+          </nav>
         </div>
 
         <figure className="relative min-h-[480px] bg-white sm:min-h-[620px] lg:min-h-[720px] lg:border-l lg:border-black/10">

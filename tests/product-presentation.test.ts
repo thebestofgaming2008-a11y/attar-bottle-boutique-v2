@@ -51,6 +51,11 @@ test("admin SEO fields remain authoritative", () => {
   });
 });
 
+test("product search descriptions reflect the current scent notes", () => {
+  const seo = productSeo({ ...product, notes: ["Rose", "Saffron", "Sandalwood"] });
+  expect(seo.description).toContain("Rose, Saffron, Sandalwood attar perfume oil.");
+});
+
 test("packs are not described as one 6 ml bottle", () => {
   const seo = productSeo({ ...product, bundleContents: [{}] } as Product);
   expect(seo.title).toContain("Attar Set");

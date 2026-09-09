@@ -6,7 +6,7 @@ import { Search } from "lucide-react";
 import { StoreShell, SiteFooter } from "@/components/store/StoreShell";
 import { useCart } from "@/components/store/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { listActiveProducts } from "@/services/productService";
+import { loadPublicCatalog } from "@/services/publicPageService";
 import { BOTTLE_IMAGES } from "@/lib/products";
 import { SearchSelect } from "@/components/ui/search-select";
 import {
@@ -21,7 +21,7 @@ import {
 const SHOP_URL = `${SITE_ORIGIN}/shop`;
 const SHOP_TITLE = "Shop Attar Perfume Online | Oud, Rose & Vanilla Oils | BADR";
 const SHOP_DESCRIPTION =
-  "Shop BADR concentrated 6 ml attar perfume oils online in India. Explore oud, rose, fruity, aquatic and vanilla scents for all genders from ₹499.";
+  "Shop BADR roll-on attar perfume oils online in India. Compare oud, rose, fruity, aquatic and vanilla scents, fragrance notes and current prices. India delivery included.";
 const SHOP_FAQS = [
   {
     question: "What is a BADR attar?",
@@ -41,7 +41,7 @@ const SHOP_FAQS = [
 ];
 
 export const Route = createFileRoute("/shop")({
-  loader: async () => ({ products: await listActiveProducts() }),
+  loader: async () => ({ products: await loadPublicCatalog() }),
   head: () => ({
     meta: [
       { title: SHOP_TITLE },
@@ -127,7 +127,7 @@ function ShopPage() {
             "@type": "ListItem",
             position: index + 1,
             name: `${product.name} attar perfume`,
-            url: `${SITE_ORIGIN}/product/${product.slug || product.id}`,
+            url: `${SITE_ORIGIN}/product/${encodeURIComponent(product.slug || product.id)}`,
             image: product.cover_image_url || undefined,
           })),
         },
@@ -259,6 +259,32 @@ function ShopPage() {
                 </article>
               ))}
             </div>
+            <nav
+              aria-label="Attar buying guides"
+              className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm"
+            >
+              <Link
+                to="/journal/$slug"
+                params={{ slug: "choose-attar-by-scent" }}
+                className="underline underline-offset-4"
+              >
+                Find your scent profile
+              </Link>
+              <Link
+                to="/journal/$slug"
+                params={{ slug: "oud-attar-guide" }}
+                className="underline underline-offset-4"
+              >
+                Explore oud attar
+              </Link>
+              <Link
+                to="/journal/$slug"
+                params={{ slug: "attar-vs-spray-perfume" }}
+                className="underline underline-offset-4"
+              >
+                Attar or spray perfume?
+              </Link>
+            </nav>
           </section>
         </div>
       </main>

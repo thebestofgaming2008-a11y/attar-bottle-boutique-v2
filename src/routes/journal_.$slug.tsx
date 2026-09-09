@@ -109,7 +109,15 @@ function JournalArticlePage() {
           <h1 className="mt-7 font-display text-5xl leading-[0.92] sm:text-7xl">{article.title}</h1>
           <p className="mt-7 text-lg leading-8 text-black/65">{article.description}</p>
           <p className="mt-5 text-[10px] uppercase tracking-[0.12em] text-black/40">
-            Written by BADR · {article.readingTime} · Updated 31 August 2026
+            Written by BADR · {article.readingTime} · Updated{" "}
+            <time dateTime={article.updated}>
+              {new Date(article.updated).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+                timeZone: "UTC",
+              })}
+            </time>
           </p>
 
           <div className="mt-14 border-t border-black/12">

@@ -11,13 +11,13 @@ The codebase supplies the technical foundation. Search engines do not sell guara
 3. Submit `https://houseofbadr.com/sitemap.xml`.
 4. Inspect the home page, shop page, journal page, and each live product URL, then request indexing.
 5. Review **Pages**, **Shopping**, **Product snippets**, **Merchant listings**, and **Core Web Vitals** weekly for the first month.
-6. Copy the Google verification value into the production `VITE_GOOGLE_SITE_VERIFICATION` variable on Cloudflare and redeploy.
+6. If already DNS-verified, keep that TXT record; no HTML token or additional verification is necessary. `VITE_GOOGLE_SITE_VERIFICATION` is only for an optional HTML-tag verification method.
 
 ### 2. Bing Webmaster Tools
 
 1. Import the verified site from Search Console or add `houseofbadr.com` directly.
 2. Submit `https://houseofbadr.com/sitemap.xml`.
-3. Copy the Bing verification value into `VITE_BING_SITE_VERIFICATION` on Cloudflare and redeploy.
+3. If verification is complete through import/DNS, nothing more is needed. `VITE_BING_SITE_VERIFICATION` is available only if choosing HTML-tag verification.
 
 The site already submits changed products and homepage publishes through IndexNow. Its key file is at `https://houseofbadr.com/61fbb4ef675648bc9241202d677ee755.txt`.
 
@@ -32,7 +32,7 @@ The site already submits changed products and homepage publishes through IndexNo
 
 ### 4. Analytics and speed evidence
 
-1. Enable Cloudflare Web Analytics for `houseofbadr.com` and set its token as `VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN`, then redeploy. The code loads the beacon only when a token exists.
+1. Cloudflare Web Analytics was already showing visits in the owner's dashboard. Keep the working installation; do not add a second beacon. The optional `VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN` is only needed for manual installation if automatic injection is not enabled.
 2. Run PageSpeed Insights for `/`, `/shop`, and the most important product page on both mobile and desktop.
 3. Save the baseline and repeat after major media/layout changes. Prioritize real Core Web Vitals field data once it becomes available.
 
@@ -91,4 +91,3 @@ After approval, update `/shipping`, `/returns`, `/privacy`, and `/terms`, then a
 - Returns: `https://houseofbadr.com/returns`
 - Privacy: `https://houseofbadr.com/privacy`
 - Terms: `https://houseofbadr.com/terms`
-
