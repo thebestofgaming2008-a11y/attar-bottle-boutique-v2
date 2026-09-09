@@ -1,3 +1,4 @@
+import { HeroBottleEditor } from "./HeroBottleEditor";
 import {
   ChevronDown,
   ChevronLeft,
@@ -922,6 +923,9 @@ function SectionEditor({
       <div>
         {heading}
         <div className="space-y-5">
+          {section.type === "hero" ? (
+            <HeroBottleEditor section={section} products={products} onChange={onChange} />
+          ) : null}
           <TextField
             label="Small text above the main heading (optional)"
             value={section.eyebrow}

@@ -91,6 +91,20 @@ function normalizeLayout(layout: HomepageLayout): HomepageLayout {
     if (section.type === "hero") {
       return {
         ...section,
+        bottleImages: Array.from(
+          new Map(
+            (section.bottleImages ?? []).map((image) => [
+              cleanText(image.productId, 120),
+              {
+                productId: cleanText(image.productId, 120),
+                imageUrl: cleanUrl(image.imageUrl, false),
+                scale: bounded(image.scale, 50, 300, 100),
+                x: bounded(image.x, -50, 50, 0),
+                y: bounded(image.y, -50, 50, 0),
+              },
+            ]),
+          ).values(),
+        ).slice(0, 30),
         id,
         eyebrow: cleanText(section.eyebrow, 80),
         headline: cleanText(section.headline, 120),

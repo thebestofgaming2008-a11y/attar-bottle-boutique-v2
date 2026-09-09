@@ -885,14 +885,16 @@ function CheckoutPage() {
                   </span>
                 </div>
                 {pricing && pricing.discount > 0 ? (
-                  <div className="mt-3 flex justify-between gap-3 text-sm">
+                  <div className="mt-3 flex justify-between gap-3 text-sm text-green-700">
                     <span>{pricing.snapshot.label}</span>
                     <span>−{isIndia ? inr(pricing.discount) : format(pricing.discount)}</span>
                   </div>
                 ) : null}
                 <div className="mt-4 flex justify-between gap-4 text-sm text-foreground/65">
                   <span>Shipping</span>
-                  <span>{isIndia ? "Included" : "Confirmed on WhatsApp"}</span>
+                  <span className={isIndia ? "font-semibold text-green-700" : undefined}>
+                    {isIndia ? "FREE" : "Confirmed on WhatsApp"}
+                  </span>
                 </div>
                 <div className="mt-6 flex justify-between border-t border-foreground/15 pt-6 text-xl font-semibold">
                   <span>Total</span>

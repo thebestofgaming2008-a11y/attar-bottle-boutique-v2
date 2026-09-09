@@ -161,7 +161,7 @@ export function CartDrawer() {
         {lines.length > 0 ? (
           <footer className="border-t border-border bg-secondary px-5 pb-6 pt-5">
             {quote && quote.discount > 0 ? (
-              <div className="mb-3 flex justify-between text-sm">
+              <div className="mb-3 flex justify-between text-sm text-green-700">
                 <span>Savings</span>
                 <span>−{format(quote.discount)}</span>
               </div>

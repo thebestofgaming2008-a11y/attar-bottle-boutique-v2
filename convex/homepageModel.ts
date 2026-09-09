@@ -23,6 +23,17 @@ const heroSection = v.object({
   ctaLabel: v.string(),
   ctaHref: v.string(),
   productIds: v.array(v.string()),
+  bottleImages: v.optional(
+    v.array(
+      v.object({
+        productId: v.string(),
+        imageUrl: v.string(),
+        scale: v.number(),
+        x: v.number(),
+        y: v.number(),
+      }),
+    ),
+  ),
 });
 
 const videoSection = v.object({

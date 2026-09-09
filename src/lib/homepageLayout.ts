@@ -16,6 +16,14 @@ type BaseHomepageSection = {
   visible: boolean;
 };
 
+export type HeroBottleImage = {
+  productId: string;
+  imageUrl: string;
+  scale: number;
+  x: number;
+  y: number;
+};
+
 export type HomepageHeroSection = BaseHomepageSection & {
   type: "hero";
   eyebrow: string;
@@ -24,6 +32,7 @@ export type HomepageHeroSection = BaseHomepageSection & {
   ctaLabel: string;
   ctaHref: string;
   productIds: string[];
+  bottleImages?: HeroBottleImage[];
 };
 
 export type HomepageVideoSection = BaseHomepageSection & {

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { BOTTLE_IMAGES, type Product } from "@/lib/products";
 import type { HomepageHeroSection } from "@/lib/homepageLayout";
+import { HeroBottle } from "./HeroBottle";
 
 export function Hero({ products, config }: { products: Product[]; config?: HomepageHeroSection }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -77,15 +78,25 @@ export function Hero({ products, config }: { products: Product[]; config?: Homep
                 tabIndex={index === activeIndex ? 0 : -1}
                 className="group flex h-full w-44 flex-col items-center justify-end gap-2 sm:w-52"
               >
-                <img
-                  src={BOTTLE_IMAGES[product.id] || product.image}
-                  alt={index === activeIndex ? `BADR ${product.name} attar bottle` : ""}
-                  className="min-h-0 w-full flex-1 object-contain transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-1"
-                  fetchPriority={index === 0 ? "high" : "auto"}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  draggable={false}
-                />
+                {config?.bottleImages?.find((image) => image.productId === product.id) ? (
+                  <div className="min-h-0 w-full flex-1">
+                    <HeroBottle
+                      image={config.bottleImages.find((image) => image.productId === product.id)!}
+                      alt={index === activeIndex ? `BADR ${product.name} attar bottle` : ""}
+                      priority={index === 0}
+                    />
+                  </div>
+                ) : (
+                  <img
+                    src={BOTTLE_IMAGES[product.id] || product.image}
+                    alt={index === activeIndex ? `BADR ${product.name} attar bottle` : ""}
+                    className="min-h-0 w-full flex-1 object-contain transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-1"
+                    fetchPriority={index === 0 ? "high" : "auto"}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                    draggable={false}
+                  />
+                )}
                 <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-background/55 transition-colors duration-300 group-hover:text-background">
                   {product.name}
                 </span>
