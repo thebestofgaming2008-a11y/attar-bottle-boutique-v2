@@ -21,7 +21,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { loadPublicCatalog, loadPublicProduct } from "@/services/publicPageService";
-import { listPublishedReviews, type ProductReview } from "@/services/reviewService";
+import { listPublishedReviews } from "@/services/reviewService";
+import { ProductReviews } from "@/components/store/ProductReviews";
 import { SearchSelect } from "@/components/ui/search-select";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import {
@@ -333,7 +334,12 @@ function ProductPage() {
           </div>
         </section>
 
-        {reviews.length ? <ProductReviews reviews={reviews} /> : null}
+        <ProductReviews
+          key={product.id}
+          reviews={reviews}
+          productId={product.backendId}
+          productName={product.name}
+        />
       </main>
 
       <SiteFooter />
@@ -679,31 +685,6 @@ function ProductFaqs({ product }: { product: Product }) {
             </AccordionItem>
           ))}
         </Accordion>
-      </div>
-    </section>
-  );
-}
-
-function ProductReviews({ reviews }: { reviews: ProductReview[] }) {
-  return (
-    <section className="border-t border-black/12 bg-white px-5 py-16 sm:px-8 sm:py-24">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex items-center gap-3">
-          <Star className="h-4 w-4 fill-current" />
-          <h2 className="font-display text-2xl sm:text-4xl">Customer reviews</h2>
-        </div>
-        <div className="mt-9 grid gap-px bg-black/15 md:grid-cols-3">
-          {reviews.slice(0, 6).map((review) => (
-            <blockquote key={review.id} className="bg-white p-6 sm:p-8">
-              <p className="text-sm leading-7">
-                “{review.body || review.title || "A verified BADR purchase."}”
-              </p>
-              <footer className="mt-6 text-[9px] font-semibold uppercase tracking-[0.12em] text-black/45">
-                {review.customer_name || "Verified customer"} · Verified · {review.rating}/5
-              </footer>
-            </blockquote>
-          ))}
-        </div>
       </div>
     </section>
   );

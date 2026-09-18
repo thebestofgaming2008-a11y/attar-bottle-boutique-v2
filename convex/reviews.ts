@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { nowIso, requireAdmin, requireIdentity, writeAuditLog } from "./lib";
 
 const reviewStatus = new Set(["pending", "published", "hidden"]);
@@ -18,7 +18,7 @@ function cleanNullable(value: string | null | undefined, max = 1000) {
 }
 
 function validateFeedback(args: { rating: number; title?: string | null; body?: string | null }) {
-  if (!Number.isFinite(args.rating) || args.rating < 1 || args.rating > 5) {
+  if (!Number.isInteger(args.rating) || args.rating < 1 || args.rating > 5) {
     throw new Error("Choose a rating from 1 to 5.");
   }
   if (!cleanText(args.title) && !cleanText(args.body)) {
@@ -97,9 +97,11 @@ function normalizeOrderNumber(value: string) {
 async function hasReviewedByEmail(ctx: any, email: string, productId: string) {
   const rows = await ctx.db
     .query("reviews")
-    .withIndex("by_product_id", (q: any) => q.eq("product_id", productId))
-    .take(200);
-  return rows.some((row: any) => cleanEmail(row.customer_email) === email);
+    .withIndex("by_product_email", (q: any) =>
+      q.eq("product_id", productId).eq("customer_email", email),
+    )
+    .first();
+  return Boolean(rows);
 }
 
 export const listPublishedForProduct = query({
@@ -137,7 +139,7 @@ export const listPublishedForProduct = query({
         verified_purchase: true as const,
         created_at: row.created_at ?? null,
         customer_email: null,
-        media_urls: [],
+        media_urls: row.media_urls ?? [],
       }))
       .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
   },
@@ -161,6 +163,7 @@ export const submit = mutation({
     title: v.optional(v.union(v.string(), v.null())),
     body: v.optional(v.union(v.string(), v.null())),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const auth = await requireIdentity(ctx);
     validateFeedback(args);
@@ -174,7 +177,11 @@ export const submit = mutation({
         q.eq("user_id", auth.userId).eq("product_id", args.productId),
       )
       .first();
-    if (existing) throw new Error("You already reviewed this product.");
+    if (
+      existing ||
+      (user.email && (await hasReviewedByEmail(ctx, cleanEmail(user.email), args.productId)))
+    )
+      throw new Error("You already reviewed this product.");
     if (!(await hasVerifiedPurchase(ctx, auth.userId, user.email, args.productId))) {
       throw new Error("Only verified customers can review this product.");
     }
@@ -184,7 +191,7 @@ export const submit = mutation({
       product_id: args.productId,
       user_id: auth.userId,
       customer_name: user.name ?? null,
-      customer_email: user.email ?? null,
+      customer_email: cleanEmail(user.email) || null,
       rating,
       title: cleanNullable(args.title, 100),
       body: cleanNullable(args.body, 1600),
@@ -208,6 +215,7 @@ export const submitForOrder = mutation({
     title: v.optional(v.union(v.string(), v.null())),
     body: v.optional(v.union(v.string(), v.null())),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const orderNumber = normalizeOrderNumber(args.orderNumber);
     validateFeedback(args);
@@ -248,6 +256,67 @@ export const submitForOrder = mutation({
     });
     const doc = await ctx.db.get(id);
     return doc ? publicReview(doc) : null;
+  },
+});
+
+// Photo uploads are server-mediated: neither an R2/admin token nor arbitrary media URLs
+// are accepted from the customer. Each paid review has a bounded upload budget.
+export const reservePhotoUpload = internalMutation({
+  args: {
+    reviewId: v.id("reviews"),
+    orderNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const review = await ctx.db.get(args.reviewId);
+    if (!review || review.status !== "pending" || !review.verified_purchase)
+      throw new Error("This review is no longer open for photos.");
+    const auth = await requireIdentity(ctx).catch(() => null);
+    let permitted = Boolean(auth && review.user_id === auth.userId);
+    if (!permitted && args.orderNumber && args.email) {
+      const order = await ctx.db
+        .query("orders")
+        .withIndex("by_order_number", (q) =>
+          q.eq("order_number", normalizeOrderNumber(args.orderNumber!)),
+        )
+        .first();
+      if (
+        order &&
+        order.payment_status === "paid" &&
+        cleanEmail(order.customer_email) === cleanEmail(args.email) &&
+        cleanEmail(review.customer_email) === cleanEmail(args.email)
+      ) {
+        const items = await ctx.db
+          .query("order_items")
+          .withIndex("by_order_id", (q) => q.eq("order_id", order._id))
+          .take(100);
+        permitted = items.some((item) => item.product_id === review.product_id);
+      }
+    }
+    if (!permitted) throw new Error("Verify the purchase before uploading photos.");
+    if ((review.media_urls?.length ?? 0) >= 3) throw new Error("A review can have up to 3 photos.");
+    if ((review.photo_upload_attempts ?? 0) >= 6)
+      throw new Error("Photo upload limit reached. Your written review is still saved.");
+    await ctx.db.patch(review._id, {
+      photo_upload_attempts: (review.photo_upload_attempts ?? 0) + 1,
+    });
+    return null;
+  },
+});
+
+export const attachPhoto = internalMutation({
+  args: { reviewId: v.id("reviews"), url: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const review = await ctx.db.get(args.reviewId);
+    if (!review || review.status !== "pending")
+      throw new Error("Review moderation already completed; the photo was not added.");
+    const photos = review.media_urls ?? [];
+    if (photos.includes(args.url)) return null;
+    if (photos.length >= 3) throw new Error("A review can have up to 3 photos.");
+    await ctx.db.patch(review._id, { media_urls: [...photos, args.url], updated_at: nowIso() });
+    return null;
   },
 });
 

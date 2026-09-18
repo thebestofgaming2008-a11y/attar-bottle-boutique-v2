@@ -2213,7 +2213,12 @@ function ReviewsTable({
                   rel="noreferrer"
                   className="rounded-md border border-[#E5E7EB] px-2 py-1 text-xs text-[#4B5563] hover:bg-[#F9FAFB]"
                 >
-                  Media
+                  <img
+                    src={url}
+                    alt="Customer review photo"
+                    loading="lazy"
+                    className="h-24 w-24 object-contain"
+                  />
                 </a>
               ))}
             </div>

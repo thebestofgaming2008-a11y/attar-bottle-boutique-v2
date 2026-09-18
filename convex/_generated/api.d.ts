@@ -24,6 +24,7 @@ import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as promotionModel from "../promotionModel.js";
 import type * as promotions from "../promotions.js";
+import type * as reviewPhotos from "../reviewPhotos.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as shipping from "../shipping.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   products: typeof products;
   promotionModel: typeof promotionModel;
   promotions: typeof promotions;
+  reviewPhotos: typeof reviewPhotos;
   reviews: typeof reviews;
   seed: typeof seed;
   shipping: typeof shipping;

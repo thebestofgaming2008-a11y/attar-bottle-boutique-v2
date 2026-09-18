@@ -251,6 +251,7 @@ export default defineSchema({
     subtotal: v.number(),
   }).index("by_order_id", ["order_id"]),
   reviews: defineTable({
+    photo_upload_attempts: v.optional(v.number()),
     verified_purchase: v.optional(v.boolean()),
     product_id: v.string(),
     user_id: optionalString,
@@ -267,6 +268,7 @@ export default defineSchema({
   })
     .index("by_product_id", ["product_id"])
     .index("by_user_product", ["user_id", "product_id"])
+    .index("by_product_email", ["product_id", "customer_email"])
     .index("by_status", ["status"])
     .index("by_created_at", ["created_at"]),
   gift_campaigns: defineTable({
