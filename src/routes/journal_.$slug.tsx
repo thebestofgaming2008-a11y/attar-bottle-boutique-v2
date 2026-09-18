@@ -98,19 +98,25 @@ function JournalArticlePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
       />
-      <main className="bg-white px-5 pb-24 pt-32 text-black sm:px-8 sm:pt-40">
+      <main className="bg-white px-5 pb-20 pt-28 text-left text-black [overflow-wrap:anywhere] sm:px-8 sm:pb-24 sm:pt-40">
         <article className="mx-auto max-w-3xl">
-          <nav aria-label="Breadcrumb" className="text-[10px] text-black/42">
+          <nav aria-label="Breadcrumb" className="text-xs leading-5 text-black/60">
             <Link to="/journal" className="underline underline-offset-4">
               Journal
             </Link>{" "}
             / {article.shortTitle}
           </nav>
-          <h1 className="mt-7 font-display text-5xl leading-[0.92] sm:text-7xl">{article.title}</h1>
-          <p className="mt-7 text-lg leading-8 text-black/65">{article.description}</p>
-          <p className="mt-5 text-[10px] uppercase tracking-[0.12em] text-black/40">
-            Written by BADR · {article.readingTime} · Updated{" "}
-            <time dateTime={article.updated}>
+          <h1 className="mt-6 text-balance font-display text-[clamp(2rem,8.5vw,2.5rem)] leading-[1.12] sm:mt-7 sm:text-5xl sm:leading-[1.05] lg:text-7xl lg:leading-[0.98]">
+            {article.title}
+          </h1>
+          <p className="mt-6 text-base leading-7 text-black/75 sm:mt-7 sm:text-lg sm:leading-8">
+            {article.description}
+          </p>
+          <p className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-xs leading-5 text-black/60">
+            <span>Written by BADR</span>
+            <span>{article.readingTime}</span>
+            <time dateTime={article.updated} className="basis-full sm:basis-auto">
+              Updated{" "}
               {new Date(article.updated).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "long",
@@ -120,13 +126,13 @@ function JournalArticlePage() {
             </time>
           </p>
 
-          <div className="mt-14 border-t border-black/12">
+          <div className="mt-8 border-t border-black/12 sm:mt-14">
             {article.sections.map((section) => (
-              <section key={section.heading} className="border-b border-black/12 py-10 sm:py-12">
-                <h2 className="font-display text-3xl leading-none sm:text-4xl">
+              <section key={section.heading} className="border-b border-black/12 py-8 sm:py-12">
+                <h2 className="text-balance font-display text-[22px] leading-[1.25] sm:text-3xl sm:leading-[1.1] lg:text-4xl">
                   {section.heading}
                 </h2>
-                <div className="mt-6 space-y-5 text-[15px] leading-8 text-black/68 sm:text-base">
+                <div className="mt-4 space-y-4 text-base leading-7 text-black/75 sm:mt-6 sm:space-y-5 sm:leading-8">
                   {section.paragraphs.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
@@ -143,26 +149,28 @@ function JournalArticlePage() {
           </div>
 
           {products.length ? (
-            <section className="py-14">
-              <p className="text-xs text-black/45">Scents mentioned in this guide</p>
+            <section className="py-8 sm:py-14">
+              <p className="text-xs leading-5 text-black/60">Scents mentioned in this guide</p>
               <div className="mt-5 grid gap-px bg-black/12 sm:grid-cols-2">
                 {products.map((product) => (
                   <Link
                     key={product.id}
                     to="/product/$id"
                     params={{ id: product.id }}
-                    className="group flex items-center gap-4 bg-white p-4"
+                    className="group flex min-w-0 items-center gap-4 bg-white py-4 sm:p-4"
                   >
                     <img
                       src={product.image}
                       alt={`${product.name} attar bottle`}
-                      className="h-24 w-20 object-contain"
+                      className="h-24 w-20 shrink-0 object-contain"
                       loading="lazy"
                       decoding="async"
                     />
-                    <span>
-                      <strong className="block font-display text-xl">{product.name}</strong>
-                      <span className="mt-1 block text-xs text-black/48">
+                    <span className="min-w-0">
+                      <strong className="block font-display text-xl leading-tight">
+                        {product.name}
+                      </strong>
+                      <span className="mt-2 block text-sm leading-6 text-black/65">
                         {product.notes.join(" · ")}
                       </span>
                     </span>
@@ -173,15 +181,15 @@ function JournalArticlePage() {
           ) : null}
         </article>
 
-        <section className="mx-auto mt-10 max-w-6xl border-t border-black/12 pt-14">
-          <p className="text-xs text-black/45">Continue reading</p>
+        <section className="mx-auto mt-4 max-w-3xl border-t border-black/12 pt-8 sm:mt-10 sm:pt-14">
+          <p className="text-xs leading-5 text-black/60">Continue reading</p>
           <div className="mt-5 grid gap-px bg-black/12 md:grid-cols-3">
             {related.map((candidate) => (
               <Link
                 key={candidate.slug}
                 to="/journal/$slug"
                 params={{ slug: candidate.slug }}
-                className="bg-white p-6 font-display text-2xl leading-none transition-colors hover:bg-black hover:text-white"
+                className="min-w-0 bg-white py-5 font-display text-xl leading-[1.25] transition-colors hover:bg-black hover:text-white sm:p-6 sm:text-2xl"
               >
                 {candidate.shortTitle}
               </Link>

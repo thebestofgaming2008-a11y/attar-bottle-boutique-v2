@@ -50,33 +50,36 @@ function JournalPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
       />
-      <main className="bg-white px-5 pb-24 pt-32 text-black sm:px-8 sm:pt-40">
+      <main className="bg-white px-5 pb-20 pt-28 text-left text-black [overflow-wrap:anywhere] sm:px-8 sm:pb-24 sm:pt-40">
         <div className="mx-auto max-w-6xl">
-          <p className="text-xs text-black/45">BADR field notes</p>
-          <h1 className="mt-4 max-w-5xl font-display text-6xl leading-[0.88] sm:text-8xl">
+          <p className="text-xs leading-5 text-black/60">BADR field notes</p>
+          <h1 className="mt-4 max-w-5xl text-balance font-display text-[clamp(2rem,8.5vw,2.5rem)] leading-[1.12] sm:text-6xl sm:leading-[1.05] lg:text-8xl lg:leading-[0.95]">
             Wear fragrance with intent.
           </h1>
-          <p className="mt-8 max-w-2xl text-base leading-8 text-black/62 sm:text-lg">
+          <p className="mt-6 max-w-2xl text-base leading-7 text-black/75 sm:mt-8 sm:text-lg sm:leading-8">
             Straight answers about perfume oil, scent profiles and the small decisions that change
             how an attar wears.
           </p>
 
-          <div className="mt-16 grid gap-px bg-black/12 md:grid-cols-2">
+          <div className="mt-10 grid gap-px border-y border-black/12 bg-black/12 sm:mt-16 md:grid-cols-2">
             {JOURNAL_ARTICLES.map((article, index) => (
-              <article key={article.slug} className="flex min-h-72 flex-col bg-white p-7 sm:p-10">
-                <p className="text-[10px] uppercase tracking-[0.12em] text-black/40">
+              <article
+                key={article.slug}
+                className="flex min-w-0 flex-col bg-white py-8 sm:min-h-72 sm:p-10"
+              >
+                <p className="text-xs leading-5 text-black/60">
                   Guide {String(index + 1).padStart(2, "0")} · {article.readingTime}
                 </p>
-                <h2 className="mt-5 font-display text-3xl leading-none sm:text-4xl">
+                <h2 className="mt-4 text-balance font-display text-[22px] leading-[1.25] sm:mt-5 sm:text-3xl sm:leading-[1.1] lg:text-4xl">
                   {article.shortTitle}
                 </h2>
-                <p className="mt-5 max-w-xl text-sm leading-7 text-black/60">
+                <p className="mt-4 max-w-xl text-base leading-7 text-black/75 sm:mt-5">
                   {article.description}
                 </p>
                 <Link
                   to="/journal/$slug"
                   params={{ slug: article.slug }}
-                  className="mt-auto pt-8 text-xs font-semibold underline decoration-black/25 underline-offset-4"
+                  className="mt-auto self-start py-3 text-sm font-semibold underline decoration-black/25 underline-offset-4 sm:pt-8"
                 >
                   Read the guide
                 </Link>

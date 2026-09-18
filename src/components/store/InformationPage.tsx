@@ -22,27 +22,29 @@ export function InformationPage({
 }) {
   return (
     <StoreShell>
-      <main className="bg-white px-5 pb-24 pt-32 text-black sm:px-8 sm:pt-40">
+      <main className="bg-white px-5 pb-20 pt-28 text-left text-black [overflow-wrap:anywhere] sm:px-8 sm:pb-24 sm:pt-40">
         <div className="mx-auto max-w-5xl">
-          <p className="text-xs text-black/45">{eyebrow}</p>
-          <h1 className="mt-4 max-w-4xl font-display text-6xl leading-[0.88] sm:text-8xl">
+          <p className="text-xs leading-5 text-black/60">{eyebrow}</p>
+          <h1 className="mt-4 max-w-4xl text-balance font-display text-[clamp(2rem,8.5vw,2.5rem)] leading-[1.12] sm:text-6xl sm:leading-[1.05] lg:text-8xl lg:leading-[0.95]">
             {title}
           </h1>
-          <p className="mt-8 max-w-2xl text-base leading-8 text-black/65 sm:text-lg">{intro}</p>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-black/75 sm:mt-8 sm:text-lg sm:leading-8">
+            {intro}
+          </p>
           {updated ? (
-            <p className="mt-5 text-[10px] uppercase tracking-[0.12em] text-black/40">
-              Last updated {updated}
-            </p>
+            <p className="mt-4 text-xs leading-5 text-black/60 sm:mt-5">Last updated {updated}</p>
           ) : null}
 
-          <div className="mt-16 border-t border-black/12">
+          <div className="mt-10 border-t border-black/12 sm:mt-16">
             {sections.map((section) => (
               <section
                 key={section.title}
-                className="grid gap-5 border-b border-black/12 py-10 sm:grid-cols-[0.7fr_1.3fr] sm:gap-12 sm:py-12"
+                className="grid gap-4 border-b border-black/12 py-8 sm:gap-6 sm:py-12 md:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] md:gap-12"
               >
-                <h2 className="font-display text-2xl leading-none sm:text-3xl">{section.title}</h2>
-                <div className="space-y-5 text-sm leading-7 text-black/65 sm:text-[15px] sm:leading-8">
+                <h2 className="min-w-0 text-balance font-display text-[22px] leading-[1.25] sm:text-3xl">
+                  {section.title}
+                </h2>
+                <div className="min-w-0 space-y-4 text-base leading-7 text-black/75 sm:space-y-5 sm:leading-8">
                   {section.paragraphs.map((paragraph) =>
                     typeof paragraph === "string" ? (
                       <p key={paragraph}>{paragraph}</p>
