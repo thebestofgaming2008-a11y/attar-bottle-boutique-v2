@@ -320,6 +320,13 @@ function ProductPage() {
         <ProductStory product={product} />
         {product.faqs.length ? <ProductFaqs product={product} /> : null}
 
+        <ProductReviews
+          key={product.id}
+          reviews={reviews}
+          productId={product.backendId}
+          productName={product.name}
+        />
+
         <section className="border-t border-black/10 bg-white px-3 py-16 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-7xl">
             <p className="text-center text-xs text-black/48">The BADR collection</p>
@@ -333,13 +340,6 @@ function ProductPage() {
             </div>
           </div>
         </section>
-
-        <ProductReviews
-          key={product.id}
-          reviews={reviews}
-          productId={product.backendId}
-          productName={product.name}
-        />
       </main>
 
       <SiteFooter />

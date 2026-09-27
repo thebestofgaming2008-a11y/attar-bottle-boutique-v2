@@ -1,6 +1,6 @@
 # Customer photo reviews
 
-Each fragrance page now has a bottom-of-page Customer reviews section, including an honest empty state and Write a review button. Buyers can give 1–5 stars, write feedback and attach up to three photos. Signed-in eligible purchasers use their account; guests verify with the order number and checkout email.
+Each fragrance page has a Customer reviews section immediately after the scent details and product information, before the You may also like recommendations (placement corrected September 27). It includes an honest empty state and Write a review button. Buyers can give 1–5 stars, write feedback and attach up to three photos. Signed-in eligible purchasers use their account; guests verify with the order number and checkout email.
 
 Reviews remain pending until an administrator publishes them in Admin → Reviews. Admins can inspect photo thumbnails/full-size links before publishing or hiding. Approved reviews display their stars, text and optional photos. Existing account and tracking-page text review flows remain available. No fabricated reviews or ratings were created.
 
