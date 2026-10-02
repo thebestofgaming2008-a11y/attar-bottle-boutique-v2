@@ -13,6 +13,7 @@ import { BrandFilm } from "./BrandFilm";
 import { ScentChapter } from "./ScentChapter";
 import { ProductCard } from "./ProductCard";
 import { PromoBanner } from "./PromoBanner";
+import { publicMediaData } from "@/lib/publicMedia";
 
 export type HomepageEditingContext = {
   selectedId: string | null;
@@ -78,7 +79,7 @@ function videoConfig(section: HomepageVideoSection): HomepageFilmConfig {
 }
 
 export function HomepageLayoutRenderer({
-  layout,
+  layout: sourceLayout,
   products,
   editing,
 }: {
@@ -86,6 +87,7 @@ export function HomepageLayoutRenderer({
   products: Product[];
   editing?: HomepageEditingContext;
 }) {
+  const layout = publicMediaData(sourceLayout);
   const productMap = new Map(products.map((product) => [product.id, product]));
   const sectionNodes = layout.sections.flatMap((section) => {
     if (!section.visible && !editing) return [];

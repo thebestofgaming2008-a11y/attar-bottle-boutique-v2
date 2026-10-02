@@ -209,7 +209,7 @@ function ShopPage() {
                       </p>
                       <div className="mt-3 flex items-baseline gap-2 text-xs sm:text-sm">
                         <span>{format(price)}</span>
-                        {product.sale_price_inr ? (
+                        {price < product.price_inr ? (
                           <span className="text-xs text-muted-foreground line-through">
                             {format(product.price_inr)}
                           </span>

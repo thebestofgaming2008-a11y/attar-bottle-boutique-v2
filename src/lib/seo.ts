@@ -2,8 +2,7 @@ export const SITE_ORIGIN = import.meta.env.VITE_PUBLIC_SITE_URL || "https://hous
 export const SITE_NAME = "BADR";
 export const ORGANIZATION_ID = `${SITE_ORIGIN}/#organization`;
 export const WEBSITE_ID = `${SITE_ORIGIN}/#website`;
-export const DEFAULT_SOCIAL_IMAGE =
-  "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/products/scene-oud-zafar.webp";
+export const DEFAULT_SOCIAL_IMAGE = "https://media.houseofbadr.com/products/scene-oud-zafar.webp";
 export const INDEX_ROBOTS =
   "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
 export const NOINDEX_ROBOTS = "noindex, nofollow, noarchive";

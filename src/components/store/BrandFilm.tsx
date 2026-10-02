@@ -3,6 +3,18 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { HomepageFilmConfig } from "@/lib/homepageFilm";
 import type { HomepageMedia } from "@/lib/homepageLayout";
+import { publicMediaData } from "@/lib/publicMedia";
+
+function loadFilm(video: HTMLVideoElement) {
+  let changed = false;
+  video.querySelectorAll<HTMLSourceElement>("source[data-src]").forEach((source) => {
+    if (!source.hasAttribute("src") && source.dataset.src) {
+      source.src = source.dataset.src;
+      changed = true;
+    }
+  });
+  if (changed) video.load();
+}
 
 /**
  * The Oud Zafar launch film. It fills a phone screen, stays uncropped on wider
@@ -10,15 +22,16 @@ import type { HomepageMedia } from "@/lib/homepageLayout";
  * bandwidth, battery or GPU time farther down the page.
  */
 export function BrandFilm({
-  config,
+  config: sourceConfig,
   posterMedia,
 }: {
   config: HomepageFilmConfig;
   posterMedia?: HomepageMedia;
 }) {
+  const config = publicMediaData(sourceConfig);
   const videoRef = useRef<HTMLVideoElement>(null);
   const manuallyPaused = useRef(false);
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
@@ -30,31 +43,33 @@ export function BrandFilm({
     if (!video) return;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reducedMotion) {
-      manuallyPaused.current = true;
-      video.pause();
-      setPaused(true);
-      return;
-    }
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+      ?.saveData;
+    manuallyPaused.current = reducedMotion || Boolean(saveData);
+    let visible = false;
+    const updatePlayback = () => {
+      if (visible && !document.hidden && !manuallyPaused.current) {
+        loadFilm(video);
+        void video.play().catch(() => setPaused(true));
+      } else {
+        video.pause();
+      }
+    };
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !manuallyPaused.current) {
-          void video
-            .play()
-            .then(() => {
-              setPaused(false);
-              setVideoReady(true);
-            })
-            .catch(() => setPaused(true));
-        } else {
-          video.pause();
-        }
+        visible = entry.isIntersecting;
+        updatePlayback();
       },
       { threshold: 0.12 },
     );
     observer.observe(video);
-    return () => observer.disconnect();
+    document.addEventListener("visibilitychange", updatePlayback);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", updatePlayback);
+      video.pause();
+    };
   }, [config.videoMp4Url, config.videoWebmUrl]);
 
   const mobileFit = config.mobileFit === "contain" ? "object-contain" : "object-cover";
@@ -84,16 +99,23 @@ export function BrandFilm({
         muted
         loop
         playsInline
-        autoPlay
-        preload="metadata"
+        preload="none"
         disablePictureInPicture
         aria-hidden="true"
         onLoadedData={() => setVideoReady(true)}
         onCanPlay={() => setVideoReady(true)}
-        onPlaying={() => setVideoReady(true)}
+        onPlaying={() => {
+          setVideoReady(true);
+          setPaused(false);
+        }}
+        onPause={() => setPaused(true)}
+        onError={() => {
+          setVideoReady(false);
+          setPaused(true);
+        }}
       >
-        {config.videoWebmUrl && <source src={config.videoWebmUrl} type="video/webm" />}
-        {config.videoMp4Url && <source src={config.videoMp4Url} type="video/mp4" />}
+        {config.videoWebmUrl && <source data-src={config.videoWebmUrl} type="video/webm" />}
+        {config.videoMp4Url && <source data-src={config.videoMp4Url} type="video/mp4" />}
       </video>
       <picture>
         {posterMedia?.mobileImageUrl ? (
@@ -123,6 +145,7 @@ export function BrandFilm({
           if (!video) return;
           if (video.paused) {
             manuallyPaused.current = false;
+            loadFilm(video);
             void video
               .play()
               .then(() => {

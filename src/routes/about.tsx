@@ -74,7 +74,7 @@ function AboutPage() {
           <div className="mx-auto max-w-6xl">
             <p className="text-xs leading-5 text-black/60">House of BADR · Made in India</p>
             <h1 className="mt-4 max-w-5xl text-balance font-display text-[clamp(2.5rem,11vw,4rem)] leading-[1.1] sm:text-7xl sm:leading-[0.95] lg:text-[8rem] lg:leading-[0.9]">
-              Rare air.
+              House of BADR.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-black/75 sm:mt-10 sm:text-2xl sm:leading-10">
               BADR is an independent Indian fragrance house making concentrated attar perfume oils

@@ -1,6 +1,7 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
 import type { Product } from "./productService";
+import { publicMediaData } from "@/lib/publicMedia";
 
 // Public page loaders must distinguish an empty/missing catalog from an outage.
 // Never publish an old seed product as available when the live product is gone.
@@ -20,7 +21,9 @@ async function bounded<T>(request: Promise<T>): Promise<T> {
 
 export async function loadPublicCatalog(): Promise<Product[]> {
   const client = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL);
-  return (await bounded(client.query(api.products.listActiveProducts, {}))) as Product[];
+  return publicMediaData(
+    (await bounded(client.query(api.products.listActiveProducts, {}))) as Product[],
+  );
 }
 
 export async function loadPublicProduct(identifier: string): Promise<Product | null> {

@@ -13,6 +13,7 @@ import spinGulaab from "@/assets/spin-oud-gulaab.webp";
 import spinFitoor from "@/assets/spin-fitoor.webp";
 import spinDariya from "@/assets/spin-dariya.webp";
 import spinUlfat from "@/assets/spin-ulfat.webp";
+import { publicMediaData } from "./publicMedia";
 
 /** Cinematic poster per scent, keyed by product id. */
 export const SCENE_IMAGES: Record<string, string> = {
@@ -272,6 +273,7 @@ function productFaqs(value: unknown) {
  * editable content fields.
  */
 export function resolveStoreProduct(source: ProductSource, fallback?: Product): Product {
+  source = publicMediaData(source);
   const slug = text(source.slug) || fallback?.id || text(source.id) || "product";
   const price = Number(source.sale_price_inr ?? source.sale_price ?? source.price_inr ?? 0);
   const regularPrice = Number(source.price_inr ?? source.price ?? price);

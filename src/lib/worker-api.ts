@@ -1,4 +1,5 @@
 import { JOURNAL_ARTICLES } from "./journal";
+import { publicMediaUrl, publicMediaData } from "./publicMedia";
 
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
   IN: "INR",
@@ -133,7 +134,7 @@ async function sitemapResponse(request: Request, env: Env) {
       lastmod: validLastModified(product.updated_at),
       image: product.cover_image_url
         ? {
-            location: new URL(product.cover_image_url, origin).href,
+            location: publicMediaUrl(new URL(product.cover_image_url, origin).href),
             title: `${product.name || product.slug} attar perfume`,
           }
         : null,
@@ -195,7 +196,7 @@ async function merchantFeedResponse(request: Request, env: Env) {
   const items = products.flatMap((product) => {
     const slug = String(product.slug || product.id || "").trim();
     const name = String(product.name || "").trim();
-    const image = String(product.cover_image_url || "").trim();
+    const image = publicMediaUrl(String(product.cover_image_url || "").trim());
     const price = Number(product.price_inr ?? product.price ?? 0);
     const salePrice = Number(product.sale_price_inr ?? product.sale_price ?? 0);
     if (!slug || !name || !image || !Number.isFinite(price) || price <= 0) return [];
@@ -212,7 +213,7 @@ async function merchantFeedResponse(request: Request, env: Env) {
       .replace(/\s+/g, " ")
       .trim();
     const additionalImages = Array.isArray(product.images)
-      ? (product.images as unknown[]).map(String).filter(Boolean).slice(0, 10)
+      ? (product.images as unknown[]).map(String).map(publicMediaUrl).filter(Boolean).slice(0, 10)
       : [];
     const available = product.in_stock !== false && Number(product.stock_quantity ?? 0) > 0;
     const productUrl = `${origin}/product/${encodeURIComponent(slug)}`;
@@ -400,7 +401,11 @@ async function catalogProductsResponse(request: Request, env: Env) {
   try {
     const client = new ConvexHttpClient(env.VITE_CONVEX_URL);
     const products = await client.query(api.products.listActiveProducts, {});
-    const response = json(products, 200, "public, max-age=300, stale-while-revalidate=3600");
+    const response = json(
+      publicMediaData(products),
+      200,
+      "public, max-age=300, stale-while-revalidate=3600",
+    );
     await cache.put(cacheKey, response.clone());
     return response;
   } catch (error) {
@@ -436,7 +441,11 @@ async function catalogProductResponse(request: Request, env: Env) {
       ? await client.query(api.products.getProductById, { id })
       : await client.query(api.products.getProductBySlug, { slug });
     if (!product) return json({ error: "Product not found." }, 404);
-    const response = json(product, 200, "public, max-age=300, stale-while-revalidate=3600");
+    const response = json(
+      publicMediaData(product),
+      200,
+      "public, max-age=300, stale-while-revalidate=3600",
+    );
     await cache.put(cacheKey, response.clone());
     return response;
   } catch (error) {

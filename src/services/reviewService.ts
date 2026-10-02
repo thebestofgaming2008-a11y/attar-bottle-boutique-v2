@@ -1,5 +1,6 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
+import { publicMediaData } from "@/lib/publicMedia";
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL;
 if (!convexUrl) throw new Error("Missing VITE_CONVEX_URL.");
@@ -19,9 +20,11 @@ export interface ProductReview {
 }
 
 export async function listPublishedReviews(productId: string): Promise<ProductReview[]> {
-  return (await convex.query(api.reviews.listPublishedForProduct, {
-    productId,
-  })) as ProductReview[];
+  return publicMediaData(
+    (await convex.query(api.reviews.listPublishedForProduct, {
+      productId,
+    })) as ProductReview[],
+  );
 }
 
 export async function submitReview(input: {

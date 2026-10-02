@@ -100,7 +100,8 @@ for (const path of paths) {
       issues,
     );
     check(product?.offers?.url === canonicals[0]?.href, "Offer URL differs from canonical", issues);
-    const visibleReviewCount = (html.match(/<blockquote\b/g) || []).length;
+    const visibleReviewCount = (html.match(/data-customer-review="true"/g) || []).length;
+    const attributedReviewCount = (html.match(/data-review-author="[^"]+"/g) || []).length;
     const reviewSchema = product?.review || [];
     if (visibleReviewCount === 0) {
       check(
@@ -111,7 +112,7 @@ for (const path of paths) {
     } else {
       check(
         Number(product?.aggregateRating?.reviewCount) >= visibleReviewCount &&
-          reviewSchema.length === visibleReviewCount,
+          reviewSchema.length === attributedReviewCount,
         "Review markup does not match visible reviews",
         issues,
       );

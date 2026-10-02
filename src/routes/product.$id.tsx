@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/accordion";
 import { loadPublicCatalog, loadPublicProduct } from "@/services/publicPageService";
 import { listPublishedReviews } from "@/services/reviewService";
+import { reviewStructuredData } from "@/lib/reviewSeo";
 import { ProductReviews } from "@/components/store/ProductReviews";
 import { SearchSelect } from "@/components/ui/search-select";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -237,17 +238,9 @@ function ProductPage() {
               ratingValue,
               reviewCount: reviews.length,
             },
-            review: reviews.slice(0, 6).map((review) => ({
-              "@type": "Review",
-              name: review.title || `Verified review of ${product.name}`,
-              reviewBody: review.body || review.title || "Verified BADR purchase.",
-              reviewRating: { "@type": "Rating", ratingValue: review.rating, bestRating: 5 },
-              author: {
-                "@type": "Person",
-                name: review.customer_name || "Verified customer",
-              },
-              ...(review.created_at ? { datePublished: review.created_at.slice(0, 10) } : {}),
-            })),
+            ...(reviewStructuredData(reviews).length
+              ? { review: reviewStructuredData(reviews) }
+              : {}),
           }
         : {}),
     };

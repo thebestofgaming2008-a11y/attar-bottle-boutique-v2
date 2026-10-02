@@ -56,6 +56,9 @@ function withSecurityHeaders(response: Response, request: Request) {
   headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   headers.set("cross-origin-opener-policy", "same-origin-allow-popups");
   const pathname = new URL(request.url).pathname;
+  if (new URL(request.url).hostname.endsWith(".workers.dev")) {
+    headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+  }
   if (
     response.status >= 400 ||
     PRIVATE_INDEX_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))

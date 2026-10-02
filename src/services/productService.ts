@@ -1,5 +1,6 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
+import { publicMediaData } from "@/lib/publicMedia";
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL;
 if (!convexUrl) throw new Error("Missing VITE_CONVEX_URL.");
@@ -122,7 +123,7 @@ let activeProductsMemoryCache: { expiresAt: number; products: Product[] } | null
 let activeProductsInFlight: Promise<Product[]> | null = null;
 
 function normalize(p: unknown): Product {
-  const r = p as Record<string, unknown>;
+  const r = publicMediaData(p) as Record<string, unknown>;
   return {
     ...(r as object),
     images: Array.isArray(r.images) ? (r.images as string[]) : [],

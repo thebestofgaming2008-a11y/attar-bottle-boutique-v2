@@ -23,7 +23,7 @@ export interface HomepageFilmConfig {
   posterZoom: number;
 }
 
-const MEDIA_BASE = "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/campaign";
+const MEDIA_BASE = "https://media.houseofbadr.com/campaign";
 
 export const DEFAULT_HOMEPAGE_FILM_CONFIG: HomepageFilmConfig = {
   enabled: true,

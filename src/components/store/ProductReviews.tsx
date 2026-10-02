@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProductReview } from "@/services/reviewService";
 import { prepareReviewPhoto } from "@/lib/reviewPhoto";
+import { reviewAuthor } from "@/lib/reviewSeo";
 
 export function ProductReviews({
   reviews,
@@ -60,7 +61,12 @@ export function ProductReviews({
         {reviews.length ? (
           <div className="mt-10 grid gap-x-10 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
             {reviews.slice(0, limit).map((review) => (
-              <article key={review.id} className="border-t border-black/10 pt-6">
+              <article
+                key={review.id}
+                data-customer-review="true"
+                data-review-author={reviewAuthor(review) || undefined}
+                className="border-t border-black/10 pt-6"
+              >
                 <div aria-label={`${review.rating} out of 5 stars`} className="mb-4 flex gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
@@ -97,7 +103,7 @@ export function ProductReviews({
                   </div>
                 ) : null}
                 <p className="mt-5 text-xs text-black/60">
-                  {review.customer_name || "Customer"} · Verified purchase
+                  {reviewAuthor(review) || "Customer"} · Verified purchase
                 </p>
               </article>
             ))}

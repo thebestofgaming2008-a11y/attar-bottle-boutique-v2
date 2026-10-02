@@ -17,6 +17,20 @@ beforeEach(() => {
   query.mockReset();
 });
 describe("Search feeds reflect the published catalog", () => {
+  it("uses real product update dates and the production image domain", async () => {
+    query.mockResolvedValue([
+      {
+        id: "a",
+        slug: "dariya",
+        updated_at: "2026-09-29T12:00:00Z",
+        cover_image_url: "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev/products/a.webp",
+      },
+    ]);
+    const body = await (await request("/sitemap.xml"))?.text();
+    expect(body).toContain("<lastmod>2026-09-29T12:00:00.000Z</lastmod>");
+    expect(body).toContain("https://media.houseofbadr.com/products/a.webp");
+    expect(body).not.toContain("r2.dev");
+  });
   it("does not resurrect products when the catalog is empty", async () => {
     query.mockResolvedValue([]);
     const response = await request("/sitemap.xml");

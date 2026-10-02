@@ -182,7 +182,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "preconnect", href: "https://pub-30772d6b9c8546adbd34e4a9f0683d2d.r2.dev" },
+      { rel: "preconnect", href: "https://media.houseofbadr.com" },
       {
         rel: "alternate",
         type: "application/atom+xml",
