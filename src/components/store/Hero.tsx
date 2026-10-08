@@ -31,12 +31,10 @@ export function Hero({ products, config }: { products: Product[]; config?: Homep
       aria-label="BADR fragrance collection"
       className="relative overflow-hidden bg-foreground px-6 pb-4 pt-28 text-background sm:pt-32"
     >
-      {config?.eyebrow ? (
-        <p className="mb-5 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-background/65">
-          {config.eyebrow}
-        </p>
-      ) : null}
       <h1 className="mx-auto text-center font-display text-[22vw] leading-[0.82] sm:text-[9rem]">
+        <span className="mb-5 block font-sans text-[10px] font-semibold uppercase leading-none tracking-[0.24em] text-background/65">
+          {config?.eyebrow || "House of BADR · Attar perfume oils"}
+        </span>
         {headlineWords.map((word) => (
           <span key={word} className="block">
             {word}

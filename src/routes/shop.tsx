@@ -9,6 +9,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { loadPublicCatalog } from "@/services/publicPageService";
 import { BOTTLE_IMAGES } from "@/lib/products";
 import { SearchSelect } from "@/components/ui/search-select";
+import { SEO_COLLECTIONS } from "@/lib/seoCollections";
 import {
   DEFAULT_SOCIAL_IMAGE,
   ORGANIZATION_ID,
@@ -245,6 +246,27 @@ function ShopPage() {
               No scents match those filters.
             </p>
           )}
+
+          <nav
+            aria-label="Shop attar by scent family"
+            className="mx-auto mt-16 max-w-4xl border-y border-black/10 py-10 sm:mt-24"
+          >
+            <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">
+              Shop by scent family
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {SEO_COLLECTIONS.map((seoCollection) => (
+                <Link
+                  key={seoCollection.slug}
+                  to="/collections/$slug"
+                  params={{ slug: seoCollection.slug }}
+                  className="border border-black/15 px-5 py-3 text-xs font-semibold transition-colors hover:bg-black hover:text-white"
+                >
+                  {seoCollection.shortName}
+                </Link>
+              ))}
+            </div>
+          </nav>
 
           <section className="mx-auto mt-20 max-w-4xl border-t border-black/10 py-16 sm:mt-28 sm:py-20">
             <p className="text-center text-xs text-black/45">Buying BADR attar online</p>

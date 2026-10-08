@@ -1,4 +1,5 @@
 import { JOURNAL_ARTICLES } from "./journal";
+import { SEO_COLLECTIONS } from "./seoCollections";
 import { publicMediaUrl, publicMediaData } from "./publicMedia";
 
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
@@ -125,6 +126,13 @@ async function sitemapResponse(request: Request, env: Env) {
       priority: "0.7",
       frequency: "monthly",
       lastmod: validLastModified(article.updated),
+      image: null,
+    })),
+    ...SEO_COLLECTIONS.map((collection) => ({
+      location: `${origin}/collections/${collection.slug}`,
+      priority: "0.8",
+      frequency: "weekly",
+      lastmod: null,
       image: null,
     })),
     ...products.map((product) => ({

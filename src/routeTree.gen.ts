@@ -23,6 +23,7 @@ import { Route as ShippingRouteImport } from './routes/shipping'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrackOrderRouteImport } from './routes/track-order'
+import { Route as CollectionsSlugRouteImport } from './routes/collections.$slug'
 import { Route as JournalSlugRouteImport } from './routes/journal_.$slug'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 
@@ -96,6 +97,11 @@ const TrackOrderRoute = TrackOrderRouteImport.update({
   path: '/track-order',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CollectionsSlugRoute = CollectionsSlugRouteImport.update({
+  id: '/collections/$slug',
+  path: '/collections/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JournalSlugRoute = JournalSlugRouteImport.update({
   id: '/journal_/$slug',
   path: '/journal/$slug',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/track-order': typeof TrackOrderRoute
+  '/collections/$slug': typeof CollectionsSlugRoute
   '/journal/$slug': typeof JournalSlugRoute
   '/product/$id': typeof ProductIdRoute
 }
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/track-order': typeof TrackOrderRoute
+  '/collections/$slug': typeof CollectionsSlugRoute
   '/journal/$slug': typeof JournalSlugRoute
   '/product/$id': typeof ProductIdRoute
 }
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/track-order': typeof TrackOrderRoute
+  '/collections/$slug': typeof CollectionsSlugRoute
   '/journal_/$slug': typeof JournalSlugRoute
   '/product/$id': typeof ProductIdRoute
 }
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/terms'
     | '/track-order'
+    | '/collections/$slug'
     | '/journal/$slug'
     | '/product/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/terms'
     | '/track-order'
+    | '/collections/$slug'
     | '/journal/$slug'
     | '/product/$id'
   id:
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/terms'
     | '/track-order'
+    | '/collections/$slug'
     | '/journal_/$slug'
     | '/product/$id'
   fileRoutesById: FileRoutesById
@@ -234,6 +246,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRoute
   TermsRoute: typeof TermsRoute
   TrackOrderRoute: typeof TrackOrderRoute
+  CollectionsSlugRoute: typeof CollectionsSlugRoute
   JournalSlugRoute: typeof JournalSlugRoute
   ProductIdRoute: typeof ProductIdRoute
 }
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/collections/$slug': {
+      id: '/collections/$slug'
+      path: '/collections/$slug'
+      fullPath: '/collections/$slug'
+      preLoaderRoute: typeof CollectionsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/journal_/$slug': {
       id: '/journal_/$slug'
       path: '/journal/$slug'
@@ -370,6 +390,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRoute,
   TermsRoute: TermsRoute,
   TrackOrderRoute: TrackOrderRoute,
+  CollectionsSlugRoute: CollectionsSlugRoute,
   JournalSlugRoute: JournalSlugRoute,
   ProductIdRoute: ProductIdRoute,
 }

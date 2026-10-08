@@ -29,6 +29,9 @@ describe("Search feeds reflect the published catalog", () => {
     const body = await (await request("/sitemap.xml"))?.text();
     expect(body).toContain("<lastmod>2026-09-29T12:00:00.000Z</lastmod>");
     expect(body).toContain("https://media.houseofbadr.com/products/a.webp");
+    expect(body).toContain("https://houseofbadr.com/collections/oud-attar");
+    expect(body).toContain("https://houseofbadr.com/collections/fresh-attar");
+    expect(body).toContain("https://houseofbadr.com/collections/vanilla-attar");
     expect(body).not.toContain("r2.dev");
   });
   it("does not resurrect products when the catalog is empty", async () => {

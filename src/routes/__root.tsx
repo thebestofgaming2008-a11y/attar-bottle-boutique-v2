@@ -46,6 +46,17 @@ const ROOT_SCHEMA = {
         height: 512,
       },
       image: DEFAULT_SOCIAL_IMAGE,
+      slogan: "Rare Air. Crafted for the Relentless.",
+      foundingDate: "2026",
+      sameAs: ["https://www.instagram.com/houseof.badr/"],
+      knowsAbout: [
+        "Attar perfume oil",
+        "Alcohol-free fragrance",
+        "Oud attar",
+        "Rose attar",
+        "Vanilla attar",
+        "Roll-on perfume oil",
+      ],
       email: "houseofbadr@gmail.com",
       contactPoint: {
         "@type": "ContactPoint",

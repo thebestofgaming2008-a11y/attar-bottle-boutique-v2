@@ -303,6 +303,15 @@ export function SiteFooter() {
         <Link to="/shop">Shop</Link>
         <Link to="/about">Our story</Link>
         <Link to="/journal">Journal</Link>
+        <Link to="/collections/$slug" params={{ slug: "oud-attar" }}>
+          Oud attar
+        </Link>
+        <Link to="/collections/$slug" params={{ slug: "fresh-attar" }}>
+          Fresh attar
+        </Link>
+        <Link to="/collections/$slug" params={{ slug: "vanilla-attar" }}>
+          Vanilla attar
+        </Link>
         <Link to="/account">Account</Link>
         <Link to="/track-order" search={{ order: undefined, email: undefined }}>
           Track order
