@@ -12,10 +12,11 @@ export function Wordmark({
   return (
     <span className={`inline-flex flex-col items-center text-center leading-none ${className}`}>
       <img
-        src="/brand/badr-wordmark.png"
+        src="/brand/badr-wordmark.webp"
         alt="BADR"
         width={138}
         height={118}
+        fetchPriority={size === "md" ? "high" : undefined}
         className={`block h-auto ${width}`}
       />
       {estd && (

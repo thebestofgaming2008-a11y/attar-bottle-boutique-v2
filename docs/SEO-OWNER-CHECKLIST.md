@@ -8,12 +8,12 @@ The codebase supplies the technical foundation. Search engines do not sell guara
 
 **9 September 2026:** Existing domain ownership and successful sitemap verified; homepage, shop and all five product indexing requests accepted. Google live tests passed for homepage and Oud Zafar, with valid product rich-result markup. No manual actions/security issues. See `SEARCH-CONSOLE-AUDIT-2026-09-09.md` for evidence and remaining optional shipping/returns fields. Do not repeat setup or submit the same indexing requests again immediately.
 
-1. Add a **Domain property** for `houseofbadr.com`.
-2. Verify it with the DNS TXT record Google provides.
-3. Submit `https://houseofbadr.com/sitemap.xml`.
-4. Inspect the home page, shop page, journal page, and each live product URL, then request indexing.
-5. Review **Pages**, **Shopping**, **Product snippets**, **Merchant listings**, and **Core Web Vitals** weekly for the first month.
-6. If already DNS-verified, keep that TXT record; no HTML token or additional verification is necessary. `VITE_GOOGLE_SITE_VERIFICATION` is only for an optional HTML-tag verification method.
+**10 October 2026:** Domain ownership remains verified. Google reread the resubmitted sitemap successfully and discovered all 21 public pages. Dariya's live test passes and soft-404 validation has started; indexing requests and the dated aggregate report are recorded in `SEO-SEARCH-CONSOLE-AUDIT-2026-10-10.md`. Accepted requests are not confirmation of indexing.
+
+1. Keep the existing verification TXT record; do not repeat property setup. `VITE_GOOGLE_SITE_VERIFICATION` is only for an optional HTML-tag verification method.
+2. Keep `https://houseofbadr.com/sitemap.xml` current as products and useful pages change.
+3. Review **Pages**, **Shopping**, **Product snippets**, **Merchant listings**, and **Core Web Vitals** regularly. Check each report's update date before treating older exclusions as the result of a new deployment.
+4. Check the pending Dariya validation and today's indexing requests after Google processes them; repeated immediate submissions do not improve priority.
 
 ### 2. Bing Webmaster Tools
 

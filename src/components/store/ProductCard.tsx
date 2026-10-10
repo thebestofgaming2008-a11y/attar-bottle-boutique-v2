@@ -3,6 +3,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { type Product } from "@/lib/products";
 import { useCart } from "./CartContext";
 import { bundleSummary } from "./BundleContents";
+import { responsiveImage } from "@/lib/responsiveImage";
 
 export function ProductCard({
   product,
@@ -27,7 +28,7 @@ export function ProductCard({
         className="relative block aspect-[3/4] overflow-hidden bg-white"
       >
         <img
-          src={cardImage}
+          {...responsiveImage(cardImage, "(min-width: 1024px) 24vw, 46vw", 400)}
           alt={`${product.name} attar, ${product.volume || "6 ml"}`}
           className="h-full w-full object-cover object-center transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.025]"
           loading="lazy"

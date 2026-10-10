@@ -39,7 +39,7 @@ export function CartDrawer() {
         onClick={onClose}
         className={`absolute inset-0 bg-foreground/45 backdrop-blur-[2px] transition-[opacity,backdrop-filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "opacity-100" : "opacity-0"}`}
       />
-      <aside
+      <div
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
@@ -179,7 +179,7 @@ export function CartDrawer() {
             </Link>
           </footer>
         ) : null}
-      </aside>
+      </div>
     </div>
   );
 }

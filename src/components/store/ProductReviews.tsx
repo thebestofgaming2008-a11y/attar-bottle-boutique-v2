@@ -67,7 +67,11 @@ export function ProductReviews({
                 data-review-author={reviewAuthor(review) || undefined}
                 className="border-t border-black/10 pt-6"
               >
-                <div aria-label={`${review.rating} out of 5 stars`} className="mb-4 flex gap-1">
+                <div
+                  role="img"
+                  aria-label={`${review.rating} out of 5 stars`}
+                  className="mb-4 flex gap-1"
+                >
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       aria-hidden="true"

@@ -2,17 +2,18 @@
 
 > BADR is an independent Indian fragrance house offering concentrated, alcohol-free 6 ml roll-on attars for all genders.
 
-Canonical website: https://houseofbadr.com
-Shop: https://houseofbadr.com/shop
-About BADR: https://houseofbadr.com/about
-Attar guides: https://houseofbadr.com/journal
-Oud attar collection: https://houseofbadr.com/collections/oud-attar
-Fresh attar collection: https://houseofbadr.com/collections/fresh-attar
-Vanilla attar collection: https://houseofbadr.com/collections/vanilla-attar
-Shipping information: https://houseofbadr.com/shipping
-Returns and refunds: https://houseofbadr.com/returns
-Contact: https://houseofbadr.com/contact
-Order tracking: https://houseofbadr.com/track-order
+## Website
+
+- [House of BADR](https://houseofbadr.com): Canonical website.
+- [Shop](https://houseofbadr.com/shop): Current catalog and prices.
+- [About BADR](https://houseofbadr.com/about): Brand and product facts.
+- [Attar guides](https://houseofbadr.com/journal): Choosing and using attar.
+- [Oud attar](https://houseofbadr.com/collections/oud-attar): Oud fragrances.
+- [Fresh attar](https://houseofbadr.com/collections/fresh-attar): Fresh fragrances.
+- [Vanilla attar](https://houseofbadr.com/collections/vanilla-attar): Vanilla fragrances.
+- [Shipping](https://houseofbadr.com/shipping): Delivery information.
+- [Returns and refunds](https://houseofbadr.com/returns): Order support and terms.
+- [Contact](https://houseofbadr.com/contact): Customer support.
 
 ## Brand facts
 
@@ -21,15 +22,15 @@ Order tracking: https://houseofbadr.com/track-order
 - Every fragrance in the current collection is designed for all genders.
 - The collection covers oud, rose oud, fruity woody, fresh aquatic, and vanilla gourmand scent profiles.
 - Customer and international-order support is available on WhatsApp at +91 90732 15410.
-- Official Instagram: https://www.instagram.com/houseof.badr/
+- [Official Instagram](https://www.instagram.com/houseof.badr/)
 
 ## Products
 
-- Oud Zafar: a deep, warm profile built around oud, saffron, rose, amber, and sandalwood. https://houseofbadr.com/product/oud-zafar
-- Oud Gulaab: a floral oud profile built around Turkish rose, sandalwood, and musk. https://houseofbadr.com/product/oud-gulaab
-- Fitoor: a fruity woody profile built around pineapple, apple, vanilla, and musk. https://houseofbadr.com/product/fitoor
-- Dariya: a fresh aquatic profile built around bergamot, mandarin, and vetiver. https://houseofbadr.com/product/dariya
-- Ulfat: a warm gourmand profile built around lavender, vanilla, and amber. https://houseofbadr.com/product/ulfat
+- [Oud Zafar](https://houseofbadr.com/product/oud-zafar): A deep, warm profile built around oud, saffron, rose, amber, and sandalwood.
+- [Oud Gulaab](https://houseofbadr.com/product/oud-gulaab): A floral oud profile built around Turkish rose, sandalwood, and musk.
+- [Fitoor](https://houseofbadr.com/product/fitoor): A fruity woody profile built around pineapple, apple, vanilla, and musk.
+- [Dariya](https://houseofbadr.com/product/dariya): A fresh aquatic profile built around bergamot, mandarin, and vetiver.
+- [Ulfat](https://houseofbadr.com/product/ulfat): A warm gourmand profile built around lavender, vanilla, and amber.
 
 ## Ordering
 

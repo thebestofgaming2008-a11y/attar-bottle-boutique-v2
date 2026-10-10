@@ -56,6 +56,10 @@ function withSecurityHeaders(response: Response, request: Request) {
   headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   headers.set("cross-origin-opener-policy", "same-origin-allow-popups");
   const pathname = new URL(request.url).pathname;
+  if (response.headers.get("content-type")?.includes("text/html")) {
+    // HTML references release-specific chunks; browsers must revalidate it.
+    headers.set("cache-control", "no-cache");
+  }
   if (new URL(request.url).hostname.endsWith(".workers.dev")) {
     headers.set("x-robots-tag", "noindex, nofollow, noarchive");
   }

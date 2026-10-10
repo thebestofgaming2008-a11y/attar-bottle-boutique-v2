@@ -11,6 +11,7 @@ import {
   type Product,
 } from "@/lib/products";
 import { productSeo } from "@/lib/productSeo";
+import { responsiveImage } from "@/lib/responsiveImage";
 import { useCart } from "@/components/store/CartContext";
 import { ProductCard } from "@/components/store/ProductCard";
 import { SiteFooter, StoreShell } from "@/components/store/StoreShell";
@@ -340,6 +341,7 @@ function ProductPage() {
       <div
         data-testid="product-sticky-purchase"
         aria-hidden={!showStickyPurchase}
+        inert={!showStickyPurchase}
         className={`fixed inset-x-0 bottom-0 z-40 grid min-h-20 grid-cols-[minmax(0,0.72fr)_minmax(190px,1.28fr)] items-center gap-4 bg-[#f7f6f2]/96 px-4 py-3 shadow-[0_-14px_45px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:hidden ${
           showStickyPurchase ? "translate-y-0" : "pointer-events-none translate-y-full"
         }`}
@@ -521,7 +523,7 @@ function ProductGallery({ product }: { product: Product }) {
       <figure className="aspect-[4/5] overflow-hidden bg-white p-7 sm:aspect-square sm:p-12 lg:p-16">
         <img
           key={selectedImage}
-          src={selectedImage}
+          {...responsiveImage(selectedImage, "(min-width: 1024px) 42vw, 86vw", 960)}
           alt={
             activeIndex === 0
               ? `${product.name} attar`
@@ -561,7 +563,13 @@ function ProductGallery({ product }: { product: Product }) {
                   aria-label={`Show ${product.name} product image ${imageIndex + 1}`}
                   aria-current={activeIndex === imageIndex ? "true" : undefined}
                 >
-                  <img src={image} alt="" className="h-full w-full object-contain" loading="lazy" />
+                  <img
+                    {...responsiveImage(image, "64px", 160)}
+                    alt=""
+                    className="h-full w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </button>
               );
             })}
