@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { InformationPage } from "@/components/store/InformationPage";
 import { SITE_ORIGIN, serializeJsonLd, socialMeta } from "@/lib/seo";
-import { DISPATCH_TEXT, MERCHANT_POLICY_UPDATED } from "@/lib/merchantPolicy";
+import { DELIVERY_TEXT, DISPATCH_TEXT, MERCHANT_POLICY_UPDATED } from "@/lib/merchantPolicy";
 
 const URL = `${SITE_ORIGIN}/shipping`;
 const TITLE = "Shipping & Delivery | BADR Attar";
 const DESCRIPTION =
-  "BADR India orders dispatch within 24–48 hours after payment confirmation, with delivery included. Find tracking and international-order information.";
+  "BADR dispatches orders within 24–48 hours after payment confirmation. India delivery is included and takes 5 working days after dispatch.";
 
 export const Route = createFileRoute("/shipping")({
   head: () => ({
@@ -51,6 +51,8 @@ function ShippingPage() {
             title: "India orders",
             paragraphs: [
               DISPATCH_TEXT,
+              DELIVERY_TEXT,
+              "The 5-working-day delivery period starts after dispatch, not when the order is placed. Dispatch time is additional to delivery time.",
               "India customers complete payment through Razorpay. The amount shown at checkout is validated against the live BADR catalog before payment, and India delivery is included in the displayed product price.",
               "An order is confirmed only after payment has been verified. Keep the order number and the email used during checkout for tracking and support.",
             ],
@@ -72,7 +74,7 @@ function ShippingPage() {
           {
             title: "Delivery support",
             paragraphs: [
-              "If tracking has not updated or delivery appears delayed, contact BADR with the order number. Delivery timing can vary by destination and carrier; do not rely on an estimate that has not been confirmed for your order.",
+              "If tracking has not updated or delivery appears delayed, contact BADR with the order number so we can check with the carrier.",
               { label: "Contact BADR", href: "/contact" },
             ],
           },

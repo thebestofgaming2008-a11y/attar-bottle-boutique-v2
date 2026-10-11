@@ -122,6 +122,14 @@ for (const path of paths) {
       "Dispatch markup does not match visible owner-confirmed terms",
       issues,
     );
+    check(
+      shipping?.deliveryTime?.transitTime?.minValue === 5 &&
+        shipping?.deliveryTime?.transitTime?.maxValue === 5 &&
+        shipping?.deliveryTime?.transitTime?.unitCode === "DAY" &&
+        html.includes("5 working days after dispatch"),
+      "Transit markup does not match visible owner-confirmed terms",
+      issues,
+    );
     const visibleReviewCount = (html.match(/data-customer-review="true"/g) || []).length;
     const attributedReviewCount = (html.match(/data-review-author="[^"]+"/g) || []).length;
     const reviewSchema = product?.review || [];

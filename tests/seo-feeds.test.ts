@@ -92,6 +92,13 @@ describe("Search feeds reflect the published catalog", () => {
     expect(body).not.toContain("<g:mpn>");
     expect(body).toContain("<g:sale_price>499.00 INR</g:sale_price>");
     expect(body).toContain("<g:availability>in_stock</g:availability>");
+    expect(body).toContain("<g:min_handling_time>1</g:min_handling_time>");
+    expect(body).toContain("<g:max_handling_time>2</g:max_handling_time>");
+    expect(body).toContain("<g:min_transit_time>5</g:min_transit_time>");
+    expect(body).toContain("<g:max_transit_time>5</g:max_transit_time>");
+    expect(body).toContain("<g:item_condition>DEFECTIVE_ONLY</g:item_condition>");
+    expect(body).toContain("<g:window_days>7</g:window_days>");
+    expect(body).toContain("<g:policy_url>https://houseofbadr.com/returns</g:policy_url>");
   });
   it("describes packs as sets without inventing a 6 ml size", async () => {
     query.mockResolvedValue([

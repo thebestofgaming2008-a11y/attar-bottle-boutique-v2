@@ -1,9 +1,9 @@
-// Owner-supplied terms, 11 October 2026. Do not infer transit/business days
-// or change-of-mind eligibility from the ambiguous portions of the supplied copy.
+// Owner-confirmed terms, 11 October 2026. Transit starts after dispatch.
 export const MERCHANT_POLICY_UPDATED = "2026-10-11";
 export const DISPATCH_TEXT = "Orders are dispatched within 24–48 hours after payment confirmation.";
+export const DELIVERY_TEXT = "India delivery takes 5 working days after dispatch.";
 export const RETURN_ISSUE_TEXT =
-  "Report damaged, leaking or incorrect items within 7 days of delivery. Returns and exchanges for these issues have the same 7-day window.";
+  "Returns and exchanges are accepted only for damaged, leaking or incorrect items reported within 7 days of delivery. Items must be unused and sealed. The same 7-day window and conditions apply to exchanges.";
 export const RETURN_POSTAGE_TEXT =
   "BADR pays return shipping when the error is ours or the item arrived damaged.";
 
@@ -12,11 +12,11 @@ export function shippingDetails() {
     "@type": "OfferShippingDetails",
     shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "INR" },
     shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
-    // Transit time is deliberately omitted until the owner clarifies whether
-    // the five-day estimate includes dispatch and whether it is working days.
     deliveryTime: {
       "@type": "ShippingDeliveryTime",
+      description: `${DISPATCH_TEXT} ${DELIVERY_TEXT}`,
       handlingTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 2, unitCode: "DAY" },
+      transitTime: { "@type": "QuantitativeValue", minValue: 5, maxValue: 5, unitCode: "DAY" },
     },
   };
 }
@@ -28,6 +28,7 @@ export function merchantReturnPolicy(origin: string) {
     "@type": "MerchantReturnPolicy",
     "@id": `${origin}/returns#policy`,
     merchantReturnLink: `${origin}/returns`,
+    description: `${RETURN_ISSUE_TEXT} ${RETURN_POSTAGE_TEXT}`,
   };
 }
 

@@ -250,7 +250,17 @@ async function merchantFeedResponse(request: Request, env: Env) {
         <g:gender>unisex</g:gender>
         <g:age_group>adult</g:age_group>
         ${size ? `<g:size>${xmlText(size)}</g:size>` : ""}
-        <g:shipping><g:country>IN</g:country><g:service>Standard</g:service><g:price>0.00 INR</g:price></g:shipping>
+        <g:shipping>
+          <g:country>IN</g:country><g:service>Standard</g:service><g:price>0.00 INR</g:price>
+          <g:min_handling_time>1</g:min_handling_time><g:max_handling_time>2</g:max_handling_time>
+          <g:min_transit_time>5</g:min_transit_time><g:max_transit_time>5</g:max_transit_time>
+        </g:shipping>
+        <g:returns>
+          <g:country>IN</g:country><g:item_condition>DEFECTIVE_ONLY</g:item_condition>
+          <g:window_days>7</g:window_days><g:window_type>FINITE_RETURN_WINDOW</g:window_type>
+          <g:method>BY_MAIL</g:method><g:outcome>REFUND</g:outcome><g:outcome>EXCHANGE</g:outcome>
+          <g:policy_url>${xmlText(`${origin}/returns`)}</g:policy_url>
+        </g:returns>
       </item>`,
     ];
   });

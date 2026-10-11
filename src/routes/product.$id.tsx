@@ -11,7 +11,12 @@ import {
   type Product,
 } from "@/lib/products";
 import { productSeo } from "@/lib/productSeo";
-import { DISPATCH_TEXT, indiaPriceText, shippingDetails } from "@/lib/merchantPolicy";
+import {
+  DELIVERY_TEXT,
+  DISPATCH_TEXT,
+  indiaPriceText,
+  shippingDetails,
+} from "@/lib/merchantPolicy";
 import { responsiveImage } from "@/lib/responsiveImage";
 import { useCart } from "@/components/store/CartContext";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -425,6 +430,7 @@ function ProductInformation({
       ) : null}
       <div className="mt-3 space-y-1 text-xs leading-5 text-black/65">
         <p>{DISPATCH_TEXT}</p>
+        <p>{DELIVERY_TEXT}</p>
         <p className="flex flex-wrap gap-x-4 gap-y-1">
           <Link to="/shipping" className="underline underline-offset-4">
             Shipping details
