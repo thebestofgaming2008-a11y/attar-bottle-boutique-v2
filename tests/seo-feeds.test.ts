@@ -33,6 +33,12 @@ describe("Search feeds reflect the published catalog", () => {
     expect(body).toContain("https://houseofbadr.com/collections/fresh-attar");
     expect(body).toContain("https://houseofbadr.com/collections/vanilla-attar");
     expect(body).not.toContain("r2.dev");
+    expect(body).toContain(
+      "<loc>https://houseofbadr.com/shipping</loc><lastmod>2026-10-11T00:00:00.000Z</lastmod>",
+    );
+    expect(body).toContain(
+      "<loc>https://houseofbadr.com/returns</loc><lastmod>2026-10-11T00:00:00.000Z</lastmod>",
+    );
   });
   it("does not resurrect products when the catalog is empty", async () => {
     query.mockResolvedValue([]);

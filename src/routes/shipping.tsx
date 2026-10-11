@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { InformationPage } from "@/components/store/InformationPage";
 import { SITE_ORIGIN, serializeJsonLd, socialMeta } from "@/lib/seo";
+import { DISPATCH_TEXT, MERCHANT_POLICY_UPDATED } from "@/lib/merchantPolicy";
 
 const URL = `${SITE_ORIGIN}/shipping`;
 const TITLE = "Shipping & Delivery | BADR Attar";
 const DESCRIPTION =
-  "Understand BADR delivery for India orders, tracking updates and the separate WhatsApp process for international attar orders.";
+  "BADR India orders dispatch within 24–48 hours after payment confirmation, with delivery included. Find tracking and international-order information.";
 
 export const Route = createFileRoute("/shipping")({
   head: () => ({
@@ -32,6 +33,7 @@ function ShippingPage() {
     name: TITLE,
     description: DESCRIPTION,
     inLanguage: "en-IN",
+    dateModified: MERCHANT_POLICY_UPDATED,
   };
   return (
     <>
@@ -43,11 +45,12 @@ function ShippingPage() {
         eyebrow="Orders & delivery"
         title="Shipping, clearly."
         intro="India delivery is included in each displayed product price. International shipping and payment are confirmed personally before an order is agreed."
-        updated="31 August 2026"
+        updated="11 October 2026"
         sections={[
           {
             title: "India orders",
             paragraphs: [
+              DISPATCH_TEXT,
               "India customers complete payment through Razorpay. The amount shown at checkout is validated against the live BADR catalog before payment, and India delivery is included in the displayed product price.",
               "An order is confirmed only after payment has been verified. Keep the order number and the email used during checkout for tracking and support.",
             ],

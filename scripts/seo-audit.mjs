@@ -87,6 +87,12 @@ for (const path of paths) {
     }
   }
   check(graphs.length > 0, "Missing JSON-LD", issues);
+  const store = graphs.find((g) => g["@type"] === "OnlineStore");
+  check(
+    store?.hasMerchantReturnPolicy?.merchantReturnLink === `${canonicalOrigin}/returns`,
+    "Missing canonical organization return-policy link",
+    issues,
+  );
   if (path.startsWith("/product/")) {
     const product = graphs.find((g) => g["@type"] === "Product");
     check(
@@ -100,6 +106,22 @@ for (const path of paths) {
       issues,
     );
     check(product?.offers?.url === canonicals[0]?.href, "Offer URL differs from canonical", issues);
+    const shipping = product?.offers?.shippingDetails;
+    check(
+      shipping?.shippingDestination?.addressCountry === "IN" &&
+        Number(shipping?.shippingRate?.value) === 0 &&
+        shipping?.shippingRate?.currency === "INR",
+      "Incorrect India shipping rate or destination",
+      issues,
+    );
+    check(
+      shipping?.deliveryTime?.handlingTime?.minValue === 1 &&
+        shipping?.deliveryTime?.handlingTime?.maxValue === 2 &&
+        shipping?.deliveryTime?.handlingTime?.unitCode === "DAY" &&
+        html.includes("24–48 hours"),
+      "Dispatch markup does not match visible owner-confirmed terms",
+      issues,
+    );
     const visibleReviewCount = (html.match(/data-customer-review="true"/g) || []).length;
     const attributedReviewCount = (html.match(/data-review-author="[^"]+"/g) || []).length;
     const reviewSchema = product?.review || [];
@@ -192,6 +214,30 @@ for (const path of [
     response.status === 404 && /noindex/.test(response.headers.get("x-robots-tag") || "");
   if (!good) failures++;
   console.log(`${good ? "PASS" : "FAIL"} missing ${path} HTTP ${response.status}`);
+}
+// This checks user-agent handling, not access from the providers' real IP ranges.
+const representativeProduct = paths.find((path) => path.startsWith("/product/"));
+if (representativeProduct) {
+  const results = await Promise.all(
+    ["Googlebot", "bingbot", "OAI-SearchBot", "ChatGPT-User", "PerplexityBot"].map(
+      async (agent) => {
+        const response = await fetch(new URL(representativeProduct, base), {
+          headers: { "user-agent": agent },
+          signal: AbortSignal.timeout(25000),
+        });
+        const html = await response.text();
+        const good =
+          response.status === 200 &&
+          html.includes('"@type":"Product"') &&
+          !/noindex/i.test(response.headers.get("x-robots-tag") || "");
+        return { agent, good, status: response.status };
+      },
+    ),
+  );
+  for (const { agent, good, status } of results) {
+    if (!good) failures++;
+    console.log(`${good ? "PASS" : "FAIL"} user-agent handling ${agent} HTTP ${status}`);
+  }
 }
 console.log(
   `${paths.length} public pages; ${failures} issues. No purchases or admin changes made.`,

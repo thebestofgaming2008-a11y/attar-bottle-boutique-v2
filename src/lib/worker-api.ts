@@ -1,5 +1,6 @@
 import { JOURNAL_ARTICLES } from "./journal";
 import { SEO_COLLECTIONS } from "./seoCollections";
+import { MERCHANT_POLICY_UPDATED } from "./merchantPolicy";
 import { publicMediaUrl, publicMediaData } from "./publicMedia";
 
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
@@ -118,7 +119,9 @@ async function sitemapResponse(request: Request, env: Env) {
       location: `${origin}${path}`,
       priority: path === "" ? "1.0" : path === "/shop" ? "0.9" : "0.6",
       frequency: path === "/shop" ? "daily" : path === "" ? "weekly" : "monthly",
-      lastmod: null,
+      lastmod: ["/shipping", "/returns"].includes(path)
+        ? validLastModified(MERCHANT_POLICY_UPDATED)
+        : null,
       image: null,
     })),
     ...JOURNAL_ARTICLES.map((article) => ({

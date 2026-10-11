@@ -11,6 +11,7 @@ import {
   type Product,
 } from "@/lib/products";
 import { productSeo } from "@/lib/productSeo";
+import { DISPATCH_TEXT, indiaPriceText, shippingDetails } from "@/lib/merchantPolicy";
 import { responsiveImage } from "@/lib/responsiveImage";
 import { useCart } from "@/components/store/CartContext";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -226,11 +227,7 @@ function ProductPage() {
             : "https://schema.org/InStock",
         itemCondition: "https://schema.org/NewCondition",
         seller: { "@id": ORGANIZATION_ID },
-        shippingDetails: {
-          "@type": "OfferShippingDetails",
-          shippingRate: { "@type": "MonetaryAmount", value: "0", currency: "INR" },
-          shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
-        },
+        shippingDetails: shippingDetails(),
       },
       ...(reviews.length
         ? {
@@ -392,7 +389,7 @@ function ProductInformation({
   onAdd: () => void;
   added: boolean;
 }) {
-  const { detectedCountry, format } = useCurrency();
+  const { currency, format } = useCurrency();
 
   return (
     <div className="min-w-0 px-6 pb-12 pt-8 sm:px-10 sm:py-12 lg:sticky lg:top-24 lg:self-start lg:px-12 xl:px-16">
@@ -419,12 +416,24 @@ function ProductInformation({
         </div>
         {product.inStock === false ? <p className="text-sm text-black/65">Sold out</p> : null}
       </div>
-      <p className="mt-2 text-xs leading-5 text-black/60">
-        Taxes included.{" "}
-        {detectedCountry === "IN"
-          ? "Delivery included in India."
-          : "International shipping is confirmed at checkout."}
-      </p>
+      <p className="mt-2 text-xs leading-5 text-black/60">Taxes and India delivery included.</p>
+      {currency !== "INR" ? (
+        <p className="mt-1 text-xs leading-5 text-black/60" data-india-price={product.price}>
+          India price: {indiaPriceText(product.price)} INR. Converted prices are estimates;
+          international shipping and payment are confirmed via WhatsApp.
+        </p>
+      ) : null}
+      <div className="mt-3 space-y-1 text-xs leading-5 text-black/65">
+        <p>{DISPATCH_TEXT}</p>
+        <p className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link to="/shipping" className="underline underline-offset-4">
+            Shipping details
+          </Link>
+          <Link to="/returns" className="underline underline-offset-4">
+            Returns and exchanges
+          </Link>
+        </p>
+      </div>
 
       <p className="mt-6 max-w-xl text-base leading-7 text-black/80">{product.hook}</p>
       <p className="mt-4 text-sm leading-6 text-black/65">

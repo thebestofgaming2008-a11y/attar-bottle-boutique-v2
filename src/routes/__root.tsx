@@ -16,6 +16,7 @@ import { AuthProvider } from "../contexts/AuthContext";
 import { CurrencyProvider } from "../contexts/CurrencyContext";
 import { convex } from "../integrations/convex/client";
 import { createBrowserTokenStorage } from "../lib/safeStorage";
+import { merchantReturnPolicy } from "../lib/merchantPolicy";
 import {
   DEFAULT_SOCIAL_IMAGE,
   INDEX_ROBOTS,
@@ -46,6 +47,7 @@ const ROOT_SCHEMA = {
         height: 512,
       },
       image: DEFAULT_SOCIAL_IMAGE,
+      hasMerchantReturnPolicy: merchantReturnPolicy(SITE_ORIGIN),
       slogan: "Rare Air. Crafted for the Relentless.",
       foundingDate: "2026",
       sameAs: ["https://www.instagram.com/houseof.badr/"],
