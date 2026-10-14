@@ -200,6 +200,8 @@ test("gifts remain visible to admin, account owner and guest tracking", async ()
     currency: "INR",
   });
   const adminOrders = await f.admin.query(api.orders.listAll, { limit: 10 });
+  expect(adminOrders[0].customer_phone).toBe(customer.phone);
+  expect(adminOrders[0].shipping_address).toMatchObject(customer);
   expect(adminOrders[0].items.some((item: { is_gift: boolean }) => item.is_gift)).toBe(true);
   const accountOrders = await f.t
     .withIdentity({ subject: `${f.customerId}|session` })

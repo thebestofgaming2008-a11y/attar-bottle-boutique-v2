@@ -3,6 +3,8 @@ import { BundleEditor } from "@/components/admin/BundleEditor";
 import { PromotionsAdmin } from "@/components/admin/PromotionsAdmin";
 import { AdminNavList, AdminMobileNavigation } from "@/components/admin/AdminNavigation";
 import { AdminDashboardOverview } from "@/components/admin/AdminDashboardOverview";
+import { AdminOrderCustomerDetails } from "@/components/admin/AdminOrderCustomerDetails";
+import { getOrderContact } from "@/lib/adminOrderContact";
 import { BundleContents } from "@/components/store/BundleContents";
 import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -356,7 +358,7 @@ const Admin = () => {
     order: AdminOrder,
     payload: { carrier: string; trackingNumber: string; trackingUrl: string },
   ) => {
-    const rawPhone = order.customer_phone || order.shipping_address?.phone || "";
+    const rawPhone = getOrderContact(order).phone;
     const phoneDigits = normalizeWhatsAppPhone(rawPhone);
     if (!phoneDigits) {
       notify({
@@ -1560,7 +1562,9 @@ function OrderRow({
     : "—";
 
   const payload = { carrier, trackingNumber, trackingUrl };
-  const hasPhone = Boolean(order.customer_phone);
+  const contact = getOrderContact(order);
+  const hasPhone = Boolean(normalizeWhatsAppPhone(contact.phone));
+  const detailsId = `admin-order-details-${order.id}`;
 
   return (
     <div className="rounded-lg border border-border bg-background hover:border-foreground/20 transition-colors">
@@ -1610,6 +1614,8 @@ function OrderRow({
             type="button"
             onClick={() => setExpanded((v) => !v)}
             data-testid={`admin-order-expand-button-${order.id}`}
+            aria-expanded={expanded}
+            aria-controls={expanded ? detailsId : undefined}
             className="h-8 px-3 rounded-md border border-border text-xs font-medium hover:bg-foreground/[0.04] transition-colors inline-flex items-center gap-1"
           >
             <Truck className="h-3.5 w-3.5" />
@@ -1681,6 +1687,8 @@ function OrderRow({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           data-testid={`admin-mobile-order-expand-button-${order.id}`}
+          aria-expanded={expanded}
+          aria-controls={expanded ? detailsId : undefined}
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border text-sm font-medium transition-colors hover:bg-foreground/[0.04]"
         >
           <Truck className="h-4 w-4" />
@@ -1689,7 +1697,11 @@ function OrderRow({
       </div>
 
       {expanded && (
-        <div className="border-t border-border bg-foreground/[0.015] px-4 py-4 space-y-3">
+        <div
+          id={detailsId}
+          className="border-t border-border bg-foreground/[0.015] px-4 py-4 space-y-3"
+        >
+          <AdminOrderCustomerDetails order={order} />
           <section
             aria-label="Items to pack"
             className="space-y-3 rounded-md border border-border bg-background p-4"
@@ -1804,9 +1816,7 @@ function OrderRow({
                   : "bg-foreground/10 text-foreground/40 cursor-not-allowed",
               )}
               title={
-                hasPhone
-                  ? `Send to ${order.customer_phone}`
-                  : "Customer phone is missing on this order"
+                hasPhone ? `Send to ${contact.phone}` : "Customer phone is missing on this order"
               }
             >
               <MessageCircle className="h-4 w-4" />
